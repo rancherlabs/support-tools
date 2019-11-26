@@ -29,8 +29,13 @@ CLUSTER_IDS=$(docker exec ${DOCKER_ID} kubectl get clusters --no-headers -o cust
 for ID in $CLUSTER_IDS
 do
   CLUSTER_NAME=$(docker exec ${DOCKER_ID} kubectl get cluster ${ID} --no-headers -o custom-columns=name:spec.displayName)
+  NODE_COUNT=$(docker exec ${DOCKER_ID} kubectl get nodes.management.cattle.io -n $ID --no-headers 2>/dev/null | wc -l )
+  ((TOTAL_NODE_COUNT += NODE_COUNT))
   echo ""
   echo "--------------------------------------------------------------------------------"
   echo "Cluster: ${CLUSTER_NAME} (${ID})"
   docker exec ${DOCKER_ID} kubectl get nodes.management.cattle.io -n $ID -o custom-columns=Node\ Id:metadata.name,Address:status.internalNodeStatus.addresses[*].address,Role:status.rkeNode.role[*],CPU:status.internalNodeStatus.capacity.cpu,RAM:status.internalNodeStatus.capacity.memory,OS:status.dockerInfo.OperatingSystem,Docker\ Version:status.dockerInfo.ServerVersion,Created:metadata.creationTimestamp
+  echo "Node count: ${NODE_COUNT}"
 done
+echo "--------------------------------------------------------------------------------"
+echo "Total node count: ${TOTAL_NODE_COUNT}"
