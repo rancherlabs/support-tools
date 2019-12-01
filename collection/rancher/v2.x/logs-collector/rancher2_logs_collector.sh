@@ -115,8 +115,13 @@ iptables --wait 1 --numeric --verbose --list --table mangle > $TMPDIR/networking
 iptables --wait 1 --numeric --verbose --list --table nat > $TMPDIR/networking/iptablesnat 2>&1
 iptables --wait 1 --numeric --verbose --list > $TMPDIR/networking/iptables 2>&1
 if $(command -v netstat >/dev/null 2>&1); then
-  netstat --programs --all --numeric --tcp --udp > $TMPDIR/networking/netstat 2>&1
-  netstat --statistics > $TMPDIR/networking/netstatistics 2>&1
+  if $(grep RancherOS /etc/os-release >/dev/null 2>&1);
+    then
+      netstat -antu > $TMPDIR/networking/netstat 2>&1
+    else
+      netstat --programs --all --numeric --tcp --udp > $TMPDIR/networking/netstat 2>&1
+      netstat --statistics > $TMPDIR/networking/netstatistics 2>&1
+  fi
 fi
 cat /proc/net/xfrm_stat > $TMPDIR/networking/procnetxfrmstat 2>&1
 if $(command -v ip >/dev/null 2>&1); then
@@ -126,7 +131,9 @@ fi
 if $(command -v ifconfig >/dev/null 2>&1); then
   ifconfig -a > $TMPDIR/networking/ifconfiga
 fi
-cat /etc/cni/net.d/*.conf* > $TMPDIR/networking/cni-config 2>&1
+if [ -d /etc/cni/net.d/ ]; then
+  cat /etc/cni/net.d/*.conf* > $TMPDIR/networking/cni-config 2>&1
+fi
 
 # System logging
 echo "Collecting systemlogs"
