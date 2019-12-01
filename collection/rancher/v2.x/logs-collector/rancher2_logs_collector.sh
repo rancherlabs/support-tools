@@ -107,9 +107,22 @@ timeout_done_msg
 if [ -f /etc/docker/daemon.json ]; then
   cat /etc/docker/daemon.json > $TMPDIR/docker/etcdockerdaemon.json
 fi
+
 # Networking
 mkdir -p $TMPDIR/networking
 iptables-save > $TMPDIR/networking/iptablessave 2>&1
+iptables --wait 1 --numeric --verbose --list --table mangle > $TMPDIR/networking/iptablesmangle 2>&1
+iptables --wait 1 --numeric --verbose --list --table nat > $TMPDIR/networking/iptablesnat 2>&1
+iptables --wait 1 --numeric --verbose --list > $TMPDIR/networking/iptables 2>&1
+if $(command -v netstat >/dev/null 2>&1); then
+  if $(grep RancherOS /etc/os-release >/dev/null 2>&1);
+    then
+      netstat -antu > $TMPDIR/networking/netstat 2>&1
+    else
+      netstat --programs --all --numeric --tcp --udp > $TMPDIR/networking/netstat 2>&1
+      netstat --statistics > $TMPDIR/networking/netstatistics 2>&1
+  fi
+fi
 cat /proc/net/xfrm_stat > $TMPDIR/networking/procnetxfrmstat 2>&1
 if $(command -v ip >/dev/null 2>&1); then
   ip addr show > $TMPDIR/networking/ipaddrshow 2>&1
@@ -117,6 +130,9 @@ if $(command -v ip >/dev/null 2>&1); then
 fi
 if $(command -v ifconfig >/dev/null 2>&1); then
   ifconfig -a > $TMPDIR/networking/ifconfiga
+fi
+if [ -d /etc/cni/net.d/ ]; then
+  cat /etc/cni/net.d/*.conf* > $TMPDIR/networking/cni-config 2>&1
 fi
 
 # System logging
