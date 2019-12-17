@@ -1,5 +1,6 @@
 #!/bin/bash
-#Check if we're running as root.
+
+# Check if we're running as root.
 if [[ $EUID -ne 0 ]]; then
   echo "This script must be run as root"
   exit 1
@@ -30,8 +31,13 @@ done
 # Create temp directory
 TMPDIR=$(mktemp -d $MKTEMP_BASEDIR)
 
-#Set TIMEOUT in seconds for select commands
+# Set TIMEOUT in seconds for select commands
 TIMEOUT=60
+
+# Detect RancherOS
+if $(grep RancherOS /etc/os-release >/dev/null 2>&1); then
+  RANCHEROS=true
+fi
 
 function timeout_start_msg() {
   TIMEOUT_CMD=$1
@@ -51,8 +57,8 @@ echo "Collecting systeminfo"
 mkdir -p $TMPDIR/systeminfo
 hostname > $TMPDIR/systeminfo/hostname 2>&1
 hostname -f > $TMPDIR/systeminfo/hostnamefqdn 2>&1
-cat /etc/hosts > $TMPDIR/systeminfo/etchosts 2>&1
-cat /etc/resolv.conf > $TMPDIR/systeminfo/etcresolvconf 2>&1
+cp -p /etc/hosts $TMPDIR/systeminfo/etchosts 2>&1
+cp -p /etc/resolv.conf $TMPDIR/systeminfo/etcresolvconf 2>&1
 date > $TMPDIR/systeminfo/date 2>&1
 free -m > $TMPDIR/systeminfo/freem 2>&1
 uptime > $TMPDIR/systeminfo/uptime 2>&1
@@ -63,15 +69,34 @@ if df -i >/dev/null 2>&1; then
 fi
 lsmod > $TMPDIR/systeminfo/lsmod 2>&1
 mount > $TMPDIR/systeminfo/mount 2>&1
-ps aux > $TMPDIR/systeminfo/psaux 2>&1
+ps auxfww > $TMPDIR/systeminfo/ps 2>&1
+if [ "${RANCHEROS}" = true ]
+  then
+    top -bn 1 > $TMPDIR/systeminfo/top 2>&1
+  else
+    COLUMNS=512 top -cbn 1 > $TMPDIR/systeminfo/top 2>&1
+fi
+cat /proc/cpuinfo > $TMPDIR/systeminfo/cpuinfo 2>&1
+uname -a > $TMPDIR/systeminfo/uname 2>&1
+cat /etc/*release > $TMPDIR/systeminfo/osrelease 2>&1
+if $(command -v lsblk >/dev/null 2>&1); then
+  lsblk > $TMPDIR/systeminfo/lsblk 2>&1
+fi
 
 timeout_start_msg "lsof"
-lsof -Pn >$TMPDIR/systeminfo/lsof 2>&1 & timeout_cmd
+lsof -Pn > $TMPDIR/systeminfo/lsof 2>&1 & timeout_cmd
 timeout_done_msg
 
 if $(command -v sysctl >/dev/null 2>&1); then
   sysctl -a > $TMPDIR/systeminfo/sysctla 2>/dev/null
 fi
+if $(command -v systemctl >/dev/null 2>&1); then
+  systemctl list-units > $TMPDIR/systeminfo/systemd-units 2>&1
+fi
+if $(command -v service >/dev/null 2>&1); then
+  service --status-all > $TMPDIR/systeminfo/service-statusall 2>&1
+fi
+
 # OS: Ubuntu
 if $(command -v ufw >/dev/null 2>&1); then
   ufw status > $TMPDIR/systeminfo/ubuntu-ufw 2>&1
@@ -79,6 +104,10 @@ fi
 if $(command -v apparmor_status >/dev/null 2>&1); then
   apparmor_status > $TMPDIR/systeminfo/ubuntu-apparmorstatus 2>&1
 fi
+if $(command -v dpkg >/dev/null 2>&1); then
+  dpkg -l > $TMPDIR/systeminfo/packages-dpkg 2>&1
+fi
+
 # OS: RHEL
 if [ -f /etc/redhat-release ]; then
   systemctl status NetworkManager > $TMPDIR/systeminfo/rhel-statusnetworkmanager 2>&1
@@ -86,6 +115,9 @@ if [ -f /etc/redhat-release ]; then
   if $(command -v getenforce >/dev/null 2>&1); then
   getenforce > $TMPDIR/systeminfo/rhel-getenforce 2>&1
   fi
+fi
+if $(command -v rpm >/dev/null 2>&1); then
+  rpm -qa > $TMPDIR/systeminfo/packages-rpm 2>&1
 fi
 
 # Docker
@@ -115,7 +147,7 @@ iptables --wait 1 --numeric --verbose --list --table mangle > $TMPDIR/networking
 iptables --wait 1 --numeric --verbose --list --table nat > $TMPDIR/networking/iptablesnat 2>&1
 iptables --wait 1 --numeric --verbose --list > $TMPDIR/networking/iptables 2>&1
 if $(command -v netstat >/dev/null 2>&1); then
-  if $(grep RancherOS /etc/os-release >/dev/null 2>&1);
+  if [ "${RANCHEROS}" = true ]
     then
       netstat -antu > $TMPDIR/networking/netstat 2>&1
     else
@@ -169,6 +201,10 @@ for KUBECONTAINER in "${KUBECONTAINERS[@]}"; do
 	  docker logs $DOCKER_LOGOPTS -t $KUBECONTAINER > $TMPDIR/k8s/containerlogs/$KUBECONTAINER 2>&1
   fi
 done
+if $(grep "kubelet.service" $TMPDIR/systeminfo/systemd-units > /dev/null 2>&1); then
+  journalctl --unit=kubelet > $TMPDIR/k8s/containerlogs/journalctl-kubelet
+  journalctl --unit=kubeproxy > $TMPDIR/k8s/containerlogs/journalctl-kubeproxy
+fi
 
 # System pods
 echo "Collecting system pods logging"
