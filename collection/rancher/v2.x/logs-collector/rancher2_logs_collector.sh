@@ -210,7 +210,7 @@ fi
 echo "Collecting system pods logging"
 mkdir -p $TMPDIR/k8s/podlogs
 mkdir -p $TMPDIR/k8s/podinspect
-SYSTEMNAMESPACES=(kube-system kube-public cattle-system cattle-alerting cattle-logging cattle-pipeline ingress-nginx cattle-prometheus)
+SYSTEMNAMESPACES=(kube-system kube-public cattle-system cattle-alerting cattle-logging cattle-pipeline ingress-nginx cattle-prometheus istio-system)
 for SYSTEMNAMESPACE in "${SYSTEMNAMESPACES[@]}"; do
   CONTAINERS=$(docker ps -a --filter name=$SYSTEMNAMESPACE --format "{{.Names}}")
   for CONTAINER in $CONTAINERS; do
