@@ -1,4 +1,4 @@
-# logs-collector
+# usage-collector
 
 The script needs to be downloaded and run directly on a host running a Rancher server container, either as a single node install or a Rancher Pod as part of a High Availability install. The script needs to be run by a user with access to the Docker socket or using `sudo`.
 
