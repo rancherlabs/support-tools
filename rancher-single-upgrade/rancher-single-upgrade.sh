@@ -23,7 +23,6 @@ function createbackupimagesfromvolumes() {
         echo "Script must be run as the root user when using option -i."
         exit 1
     fi
-    #ARCHIVEDIR=/tmp/
     ARCHIVEDIR=""
     grecho "Starting process to create Rancher backups from qualifying docker volumes."
     for dir in ${DOCKER_VOLUME_BASE}*; do
