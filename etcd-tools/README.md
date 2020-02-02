@@ -1,13 +1,6 @@
 # etcd-tools
 This is a collection of etcd tools to do long and tedious tasks.  Currently there is a restore tool for restoring a snapshot to a single node and a join tool for rejoining other members after the restore has been completed on the single node.  This has been tested on RKE deployed clusters, Rancher deployed clusters (tested on aws) and Rancher custom clusters.  These tools assume you have not changed node IP's or removed the cluster from the Rancher interface.  If either of these things have been done, your cluster will not be in a healthy state after restore.
 
-If you are using RancherOS please use the temporary separate scripts for Rancher OS instead as shown below.
-```bash
-wget https://github.com/patrick0057/etcd-tools/raw/master/restore-etcd-single-temp-rancheros.sh
-wget https://github.com/patrick0057/etcd-tools/raw/master/etcd-join-temp-rancheros.sh
-```
-
-
 1. Take an etcd snapshot before starting, using one of the following commands (only one will work):
 ```bash
 docker exec etcd etcdctl snapshot save /tmp/snapshot.db && docker cp etcd:/tmp/snapshot.db .
@@ -62,3 +55,21 @@ docker exec etcd sh -c "etcdctl member remove <id>"
 docker restart kubelet kube-apiserver
 ```
 
+## Quickly generate and copy SSH keys
+
+Generate and copy.  This method is quickest if you have a password login you can use on the remote end.
+```
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/etcd -N "" <<< y >/dev/null
+ssh-copy-id -i ~/.ssh/etcd user@host
+```
+
+Generate and manual copy.  This method is quickest if you have ssh sessions open already and no other way to login directly without a key.
+```
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/etcd -N "" <<< y >/dev/null
+cat ~/.ssh/etcd.pub
+```
+Copy output and on the other host paste it in like so
+```
+cat >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
