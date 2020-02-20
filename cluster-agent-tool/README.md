@@ -1,4 +1,4 @@
-## Deploy new cluster and node agents
+## Deploy new cluster and node agents on Rancher 2.x
 
 If you've recently made changes to your Rancher installation like updating the server URL or changing the Rancher installation SSL, then you will likely need to redeploy your cluster agent YAML files from the Rancher.
 
