@@ -1,6 +1,6 @@
 ## Deploy new cluster and node agents on Rancher 2.x
 
-If you've recently made changes to your Rancher installation like updating the server URL or changing the Rancher installation SSL, then you will likely need to redeploy your cluster agent YAML files from the Rancher.
+If you've recently made changes to your Rancher installation like updating the server URL or changing the Rancher installation SSL, then you will likely need to redeploy your cluster and node agent YAML files from the Rancher server.
 
 1. Create a local admin user for use with this tutorial or generate an API Bearer Token.  Without this, the script cannot login to get the new deployment file.  You cannot use user accounts that are tied to third party authentication such as LDAP, Active Directory or GitHub to name a few.
 2. Login to a single controlplane node of the cluster you need to redeploy your agent YAML to.
