@@ -274,13 +274,20 @@ docker update --restart=always etcd
 #PRINT OUT MEMBER LIST
 #CHECK IF WE NEED TO ADD --endpoints TO THE COMMAND
 grecho "Running an 'etcdctl member list' as a final test."
-REQUIRE_ENDPOINT=$(docker exec etcd netstat -lpna | grep \:2379 | grep tcp | grep LISTEN | tr -s ' ' | cut -d' ' -f4)
-if [[ $REQUIRE_ENDPOINT =~ ":::" ]]; then
-        echo "${green}etcd is listening on ${REQUIRE_ENDPOINT}, no need to pass --endpoints${reset}"
+
+if [[ ! "${ETCD_IMAGE}" =~ "v3.0" ]] && [[ ! "${ETCD_IMAGE}" =~ "v3.1" ]] && [[ ! "${ETCD_IMAGE}" =~ "v3.2" ]] && [[ ! "${ETCD_IMAGE}" =~ "v3.3" ]]; then
+        grecho "We're running etcd 3.4 or newer, automatically omitting endpoints."
         docker exec etcd etcdctl member list
-else
-        echo "${green}etcd is only listening on ${REQUIRE_ENDPOINT}, we need to pass --endpoints${reset}"
-        docker exec etcd etcdctl --endpoints ${REQUIRE_ENDPOINT} member list
+        else
+        
+                REQUIRE_ENDPOINT=$(docker exec etcd netstat -lpna | grep \:2379 | grep tcp | grep LISTEN | tr -s ' ' | cut -d' ' -f4)
+                if [[ $REQUIRE_ENDPOINT =~ ":::" ]]; then
+                        grecho "etcd is listening on ${REQUIRE_ENDPOINT}, no need to pass --endpoints"
+                        docker exec etcd etcdctl member list
+                else
+                        grecho "etcd is only listening on ${REQUIRE_ENDPOINT}, we need to pass --endpoints"
+                        docker exec etcd etcdctl --endpoints ${REQUIRE_ENDPOINT} member list
+                fi
 fi
 
 grecho "Single restore has completed, please be sure to restart kubelet and kube-apiserver on other nodes."
