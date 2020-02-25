@@ -80,6 +80,10 @@ function setendpoint() {
     if [[ "$REQUIRE_ENDPOINT" =~ ":::" ]]; then
         grecho "etcd is listening on ${REQUIRE_ENDPOINT}, no need to pass --endpoints"
         ETCD_ADD_MEMBER_CMD="etcdctl --cacert $ETCDCTL_CACERT --cert ${ETCDCTL_CERT} --key ${ETCDCTL_KEY} member add ${ETCD_NAME} --peer-urls=${INITIAL_ADVERTISE_PEER_URL}"
+    elif [[ -z "$REQUIRE_ENDPOINT" ]]; then
+        #etcd 3.4 removed netstat from the image and join cmd now fails if you pass any environment variables that are already set.
+        grecho "No return on REQUIRE_ENDPOINT, no need to set any environment variables."
+        ETCD_ADD_MEMBER_CMD="etcdctl member add ${ETCD_NAME} --peer-urls=${INITIAL_ADVERTISE_PEER_URL}"
     else
         grecho "etcd is only listening on ${REQUIRE_ENDPOINT}, we need to pass --endpoints"
         ETCD_ADD_MEMBER_CMD="etcdctl --cacert $ETCDCTL_CACERT --cert ${ETCDCTL_CERT} --key ${ETCDCTL_KEY} member --endpoints ${REQUIRE_ENDPOINT} add ${ETCD_NAME} --peer-urls=${INITIAL_ADVERTISE_PEER_URL}"
@@ -309,6 +313,10 @@ if [[ "${MANUAL_MODE}" != "yes" ]]; then
     grecho "checking members list on remote etcd host."
     if [[ $REQUIRE_ENDPOINT =~ ":::" ]]; then
         grecho "etcd is listening on ${REQUIRE_ENDPOINT}, no need to pass --endpoints"
+        sshcmd "docker exec etcd etcdctl member list"
+    elif [[ -z "$REQUIRE_ENDPOINT" ]]; then
+        #etcd 3.4 removed netstat from the image and join cmd now fails if you pass any environment variables that are already set.
+        grecho "No return on REQUIRE_ENDPOINT, no need to set any environment variables."
         sshcmd "docker exec etcd etcdctl member list"
     else
         grecho "etcd is only listening on ${REQUIRE_ENDPOINT}, we need to pass --endpoints"
