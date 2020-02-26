@@ -25,7 +25,7 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 #set os and install dependencies
-if [[ -f /etc/lsb_release ]]; then
+if [[ -f /etc/lsb-release ]]; then
     OS=ubuntu
     echo You are using Ubuntu
     apt install -y gcc zlib1g-dev make git
