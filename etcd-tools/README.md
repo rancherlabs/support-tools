@@ -16,7 +16,7 @@ docker update --restart=no etcd && docker stop etcd
 
 3. Run the restore:
 ```bash
-curl -LO https://github.com/patrick0057/etcd-tools/raw/master/restore-etcd-single.sh
+curl -LO curl -LO https://github.com/rancherlabs/support-tools/raw/master/etcd-tools/restore-etcd-single.sh
 bash ./restore-etcd-single.sh </path/to/snapshot>
 ```
 
@@ -35,7 +35,7 @@ bash ./etcd-join.sh <ssh user> <remote etcd IP> [path to ssh key for remote box]
 
 Manual mode (good for scenarios where you can't setup ssh keys between etcd nodes):
 ```bash
-curl -LO https://github.com/patrick0057/etcd-tools/raw/master/etcd-join.sh
+curl -LO curl -LO https://github.com/rancherlabs/support-tools/raw/master/etcd-tools/etcd-join.sh
 bash ./etcd-join.sh MANUAL_MODE
 ```
 
