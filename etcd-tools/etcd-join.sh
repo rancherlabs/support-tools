@@ -205,16 +205,16 @@ docker stop etcd
 recho "Moving old etcd data from ${ETCD_DIR} to ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}"
 rootcmd "mkdir ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}"
 checkpipecmd "Failed to created backup etcd directory, exiting script!"
-if [[ "$(rootcmd ls -A ${ETCD_DIR})" ]]; then
+if [[ "$(rootcmd "ls -A ${ETCD_DIR}")" ]]; then
         if uname -r | grep rancher; then
             recho "${ETCD_DIR} is not empty, moving files out into ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}"
             rootcmd "mv ${ETCD_DIR} ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}/"
             checkpipecmd "Failed to move etcd directory into backup directory ${ETCD_DIR} -> ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}/, exiting script!"
-            rootcmd mkdir ${ETCD_DIR}
+            rootcmd "mkdir ${ETCD_DIR}"
             checkpipecmd "Failed to recreate etcd directory, exiting script."
-            rootcmd chmod 700 ${ETCD_DIR}
+            rootcmd "chmod 700 ${ETCD_DIR}"
             checkpipecmd "Failed to set permissions on etcd directory to 700, exiting script."
-            rootcmd chown root:root ${ETCD_DIR}
+            rootcmd "chown root:root ${ETCD_DIR}"
             checkpipecmd "Failed to set ownership on etcd directory to root:root, exiting script."
             else        
                 recho "${ETCD_DIR} is not empty, moving files out into ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}"
