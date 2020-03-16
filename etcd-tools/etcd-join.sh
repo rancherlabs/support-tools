@@ -206,7 +206,7 @@ recho "Moving old etcd data from ${ETCD_DIR} to ${ETCD_DIR}-old--${ETCD_BACKUP_T
 rootcmd "mkdir ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}"
 checkpipecmd "Failed to created backup etcd directory, exiting script!"
 if [[ "$(rootcmd ls -A ${ETCD_DIR})" ]]; then
-        if uname -r | grep rancher1; then
+        if uname -r | grep rancher; then
             recho "${ETCD_DIR} is not empty, moving files out into ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}"
             rootcmd "mv ${ETCD_DIR} ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}/"
             checkpipecmd "Failed to move etcd directory into backup directory ${ETCD_DIR} -> ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}/, exiting script!"
