@@ -16,8 +16,12 @@ rootcmd() {
     if [[ $EUID -ne 0 ]]; then
         grecho "Running as non root user, issuing command with sudo."
         sudo $1
+        EXITCODE="$?"
+        return ${EXITCODE}
     else
         $1
+        EXITCODE="$?"
+        return ${EXITCODE}
     fi
 }
 sshcmd() {
