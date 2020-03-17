@@ -169,7 +169,7 @@ ETCDCTL_KEY=$(sed 's,^.*ETCDCTL_KEY=\([^ ]*\).*,\1,g' <<<${RUNLIKE})
 ETCD_VERSION=$(sed 's,^.*rancher/coreos-etcd:\([^ ]*\).*,\1,g' <<<${RUNLIKE})
 INITIAL_ADVERTISE_PEER_URL=$(sed 's,^.*initial-advertise-peer-urls=\([^ ]*\).*,\1,g' <<<${RUNLIKE})
 ETCD_NAME=$(sed 's,^.*name=\([^ ]*\).*,\1,g' <<<${RUNLIKE})
-INITIAL_CLUSTER=$(sed 's,^.*--initial-cluster=.*\('"${ETCD_NAME}"'\)=\([^,^ ]*\).*,\1=\2,g' <<<${RUNLIKE})
+INITIAL_CLUSTER=$(echo $RUNLIKE | sed 's/\s\+/\n/g' | grep -- '--initial-cluster=' | sed 's,--initial-cluster=,,g')
 #ETCD_SNAPSHOT_LOCATION="snapshot.db"
 INITIAL_CLUSTER_TOKEN=$(sed 's,^.*initial-cluster-token=\([^ ]*\).*,\1,g' <<<${RUNLIKE})
 ETCD_IMAGE="$(docker inspect etcd-old--${ETCD_BACKUP_TIME} --format='{{.Config.Image}}')"
