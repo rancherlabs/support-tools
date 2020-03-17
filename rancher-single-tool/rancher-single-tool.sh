@@ -10,6 +10,18 @@ function grecho() {
 function recho() {
     echo "${red}$1${reset}"
 }
+
+grecho "Testing for the existance of ubuntu:18:04 in your docker repository..."
+if docker run -i --rm --name grep ubuntu:18.04 echo ... &> /dev/null; then
+    grecho "Success!"
+    else
+    grecho "Docker is unable to pull ubuntu:18.04, ensure it is in your repository then try again."
+    exit 1
+fi
+function grep {
+    docker run -i --rm --name grep ubuntu:18.04 grep "$@"
+}
+
 function createbackupimagesfromvolumes() {
     if [[ "${DOCKER_VOLUME_BASE}" == "" ]]; then
         grecho "No directory was specified for docker volumes, using default of ${red}\"/var/lib/docker/volumes/\""
