@@ -76,4 +76,4 @@ chmod 600 ~/.ssh/authorized_keys
 
 ## Troubleshooting
 
-- If etcd-join fails to join for any reason, your etcd container may be renamed to something like etcd-old--2020-03-20--031746.  Before re-running the script, you'll want to rename that container back to etcd so that the script can find the container again.
+- If etcd-join.sh or restore-etcd-single.sh fails for any reason, your etcd container may be renamed to something like etcd-old--2020-03-20--031746.  Before re-running either script, ensure that the etcd container exists.  If it does not, docker rename the most recently time stamped etcd-old container back to etcd.
