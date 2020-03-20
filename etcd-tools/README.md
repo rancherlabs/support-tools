@@ -73,3 +73,7 @@ Copy output and on the other host paste it in like so
 cat >> ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
 ```
+
+## Troubleshooting
+
+- If etcd-join fails to join for any reason, your etcd container may be renamed to something like etcd-old--2020-03-20--031746.  Before re-running the script, you'll want to rename that container back to etcd so that the script can find the container again.
