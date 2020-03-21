@@ -16,8 +16,12 @@ rootcmd() {
     if [[ $EUID -ne 0 ]]; then
         grecho "Running as non root user, issuing command with sudo."
         sudo $1
+        EXITCODE="$?"
+        return ${EXITCODE}
     else
         $1
+        EXITCODE="$?"
+        return ${EXITCODE}
     fi
 }
 sshcmd() {
@@ -80,6 +84,10 @@ function setendpoint() {
     if [[ "$REQUIRE_ENDPOINT" =~ ":::" ]]; then
         grecho "etcd is listening on ${REQUIRE_ENDPOINT}, no need to pass --endpoints"
         ETCD_ADD_MEMBER_CMD="etcdctl --cacert $ETCDCTL_CACERT --cert ${ETCDCTL_CERT} --key ${ETCDCTL_KEY} member add ${ETCD_NAME} --peer-urls=${INITIAL_ADVERTISE_PEER_URL}"
+    elif [[ -z "$REQUIRE_ENDPOINT" ]]; then
+        #etcd 3.4 removed netstat from the image and join cmd now fails if you pass any environment variables that are already set.
+        grecho "No return on REQUIRE_ENDPOINT, no need to set any environment variables."
+        ETCD_ADD_MEMBER_CMD="etcdctl member add ${ETCD_NAME} --peer-urls=${INITIAL_ADVERTISE_PEER_URL}"
     else
         grecho "etcd is only listening on ${REQUIRE_ENDPOINT}, we need to pass --endpoints"
         ETCD_ADD_MEMBER_CMD="etcdctl --cacert $ETCDCTL_CACERT --cert ${ETCDCTL_CERT} --key ${ETCDCTL_KEY} member --endpoints ${REQUIRE_ENDPOINT} add ${ETCD_NAME} --peer-urls=${INITIAL_ADVERTISE_PEER_URL}"
@@ -197,10 +205,22 @@ docker stop etcd
 recho "Moving old etcd data from ${ETCD_DIR} to ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}"
 rootcmd "mkdir ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}"
 checkpipecmd "Failed to created backup etcd directory, exiting script!"
-if [[ "$(ls -A ${ETCD_DIR})" ]]; then
-        recho "${ETCD_DIR} is not empty, moving files out into ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}"
-        rootcmd "mv ${ETCD_DIR}/* ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}/"
-        checkpipecmd "Failed to move etcd data files to backup directory ${ETCD_DIR}/* -> ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}/, exiting script!"
+if [[ "$(rootcmd "ls -A ${ETCD_DIR}")" ]]; then
+        if uname -r | grep rancher; then
+            recho "${ETCD_DIR} is not empty, moving files out into ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}"
+            rootcmd "mv ${ETCD_DIR} ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}/"
+            checkpipecmd "Failed to move etcd directory into backup directory ${ETCD_DIR} -> ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}/, exiting script!"
+            rootcmd "mkdir ${ETCD_DIR}"
+            checkpipecmd "Failed to recreate etcd directory, exiting script."
+            rootcmd "chmod 700 ${ETCD_DIR}"
+            checkpipecmd "Failed to set permissions on etcd directory to 700, exiting script."
+            rootcmd "chown root:root ${ETCD_DIR}"
+            checkpipecmd "Failed to set ownership on etcd directory to root:root, exiting script."
+            else        
+                recho "${ETCD_DIR} is not empty, moving files out into ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}"
+                rootcmd "mv ${ETCD_DIR}/* ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}/"
+                checkpipecmd "Failed to move etcd data files to backup directory ${ETCD_DIR}/* -> ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}/, exiting script!"
+            fi
         else
         grecho "${ETCD_DIR} is empty, no need to move any files out."
 fi
@@ -214,7 +234,7 @@ ETCDCTL_KEY=$(sed 's,^.*ETCDCTL_KEY=\([^ ]*\).*,\1,g' <<<$RUNLIKE)
 ETCD_VERSION=$(sed 's,^.*rancher/coreos-etcd:\([^ ]*\).*,\1,g' <<<$RUNLIKE)
 INITIAL_ADVERTISE_PEER_URL=$(sed 's,^.*initial-advertise-peer-urls=\([^ ]*\).*,\1,g' <<<$RUNLIKE)
 ETCD_NAME=$(sed 's,^.*name=\([^ ]*\).*,\1,g' <<<$RUNLIKE)
-INITIAL_CLUSTER=$(sed 's,^.*--initial-cluster=.*\('"$ETCD_NAME"'\)=\([^,^ ]*\).*,\1=\2,g' <<<$RUNLIKE)
+ETCD_INITIAL_CLUSTER=$(echo $RUNLIKE | sed 's/\s\+/\n/g' | grep -- '--initial-cluster=' | sed 's,--initial-cluster=,,g')
 INITIAL_CLUSTER_TOKEN=$(sed 's,^.*initial-cluster-token=\([^ ]*\).*,\1,g' <<<$RUNLIKE)
 ADVERTISE_CLIENT_URLS=$(sed 's,^.*advertise-client-urls=\([^ ]*\).*,\1,g' <<<$RUNLIKE)
 ETCD_IMAGE=$(docker inspect etcd --format='{{.Config.Image}}')
@@ -309,6 +329,10 @@ if [[ "${MANUAL_MODE}" != "yes" ]]; then
     grecho "checking members list on remote etcd host."
     if [[ $REQUIRE_ENDPOINT =~ ":::" ]]; then
         grecho "etcd is listening on ${REQUIRE_ENDPOINT}, no need to pass --endpoints"
+        sshcmd "docker exec etcd etcdctl member list"
+    elif [[ -z "$REQUIRE_ENDPOINT" ]]; then
+        #etcd 3.4 removed netstat from the image and join cmd now fails if you pass any environment variables that are already set.
+        grecho "No return on REQUIRE_ENDPOINT, no need to set any environment variables."
         sshcmd "docker exec etcd etcdctl member list"
     else
         grecho "etcd is only listening on ${REQUIRE_ENDPOINT}, we need to pass --endpoints"

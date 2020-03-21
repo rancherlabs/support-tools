@@ -16,7 +16,7 @@ docker update --restart=no etcd && docker stop etcd
 
 3. Run the restore:
 ```bash
-curl -LO https://github.com/patrick0057/etcd-tools/raw/master/restore-etcd-single.sh
+curl -LO https://github.com/rancherlabs/support-tools/raw/master/etcd-tools/restore-etcd-single.sh
 bash ./restore-etcd-single.sh </path/to/snapshot>
 ```
 
@@ -25,17 +25,17 @@ You can also restore lost quorum with the following command instead:
 bash ./restore-etcd-single.sh FORCE_NEW_CLUSTER
 ```
 
-4. Rejoin etcd nodes by running the following commands.  SSH key is optional if you have a default one already set on your ssh account.
+4. Rejoin etcd nodes by running the following commands.  SSH key is optional if you have a default one already set on your ssh account.  You must run these on each of the nodes that you shutdown etcd on in step 2.  This should not be run on the node that you performed the restore on.
 
 Automatic mode:
 ```bash
-curl -LO https://github.com/patrick0057/etcd-tools/raw/master/etcd-join.sh
-bash ./etcd-join.sh <ssh user> <remote etcd IP> [path to ssh key for remote box]
+curl -LO https://github.com/rancherlabs/support-tools/raw/master/etcd-tools/etcd-join.sh
+bash ./etcd-join.sh <ssh user> <recently restored etcd node IP> [path to ssh key for remote box]
 ```
 
 Manual mode (good for scenarios where you can't setup ssh keys between etcd nodes):
 ```bash
-curl -LO https://github.com/patrick0057/etcd-tools/raw/master/etcd-join.sh
+curl -LO https://github.com/rancherlabs/support-tools/raw/master/etcd-tools/etcd-join.sh
 bash ./etcd-join.sh MANUAL_MODE
 ```
 
@@ -73,3 +73,7 @@ Copy output and on the other host paste it in like so
 cat >> ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
 ```
+
+## Troubleshooting
+
+- If etcd-join.sh or restore-etcd-single.sh fails for any reason, your etcd container may be renamed to something like etcd-old--2020-03-20--031746.  Before re-running either script, ensure that the etcd container exists.  If it does not, docker rename the most recently time stamped etcd-old container back to etcd.  Depending on where the failure occurred, you may have to remove the pending etcd node from the recently restored node.  It is recommended to run an "docker exec etcd etcdctl member list" on the recently restored node after a failure.  If you see the pending node, go ahead and remove it with "docker exec etcd etcdctl member remove <member id>".
