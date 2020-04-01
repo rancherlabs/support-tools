@@ -120,24 +120,93 @@ if $(command -v rpm >/dev/null 2>&1); then
   rpm -qa > $TMPDIR/systeminfo/packages-rpm 2>&1
 fi
 
-# Docker
-echo "Collecting Docker info"
-mkdir -p $TMPDIR/docker
+# Docker info and info gathered using `docker` command (Rancher 2 custom cluster/RKE)
+if $(command -v docker >/dev/null 2>&1); then
+  echo "Collecting Docker info"
+  mkdir -p $TMPDIR/docker
 
-timeout_start_msg "docker info"
-docker info >$TMPDIR/docker/dockerinfo 2>&1 & timeout_cmd
-timeout_done_msg
+  timeout_start_msg "docker info"
+  docker info >$TMPDIR/docker/dockerinfo 2>&1 & timeout_cmd
+  timeout_done_msg
 
-timeout_start_msg "docker ps -a"
-docker ps -a >$TMPDIR/docker/dockerpsa 2>&1
-timeout_done_msg
+  timeout_start_msg "docker ps -a"
+  docker ps -a >$TMPDIR/docker/dockerpsa 2>&1
+  timeout_done_msg
 
-timeout_start_msg "docker stats"
-docker stats -a --no-stream >$TMPDIR/docker/dockerstats 2>&1 & timeout_cmd
-timeout_done_msg
+  timeout_start_msg "docker stats"
+  docker stats -a --no-stream >$TMPDIR/docker/dockerstats 2>&1 & timeout_cmd
+  timeout_done_msg
 
-if [ -f /etc/docker/daemon.json ]; then
-  cat /etc/docker/daemon.json > $TMPDIR/docker/etcdockerdaemon.json
+  if [ -f /etc/docker/daemon.json ]; then
+    cat /etc/docker/daemon.json > $TMPDIR/docker/etcdockerdaemon.json
+  fi
+
+  # Rancher logging
+  echo "Collecting Rancher logs"
+  # Discover any server or agent running
+  mkdir -p $TMPDIR/rancher/containerinspect
+  mkdir -p $TMPDIR/rancher/containerlogs
+  RANCHERSERVERS=$(docker ps -a | grep -E "rancher/rancher:|rancher/rancher " | awk '{ print $1 }')
+  RANCHERAGENTS=$(docker ps -a | grep -E "rancher/rancher-agent:|rancher/rancher-agent " | awk '{ print $1 }')
+
+  for RANCHERSERVER in $RANCHERSERVERS; do
+    docker inspect $RANCHERSERVER > $TMPDIR/rancher/containerinspect/server-$RANCHERSERVER 2>&1
+    docker logs $DOCKER_LOGOPTS -t $RANCHERSERVER > $TMPDIR/rancher/containerlogs/server-$RANCHERSERVER 2>&1
+  done
+
+  for RANCHERAGENT in $RANCHERAGENTS; do
+    docker inspect $RANCHERAGENT > $TMPDIR/rancher/containerinspect/agent-$RANCHERAGENT 2>&1
+    docker logs $DOCKER_LOGOPTS -t $RANCHERAGENT > $TMPDIR/rancher/containerlogs/agent-$RANCHERAGENT 2>&1
+  done
+
+  echo "Collecting k8s container logging"
+  mkdir -p $TMPDIR/k8s/containerlogs
+  mkdir -p $TMPDIR/k8s/containerinspect
+  KUBECONTAINERS=(etcd etcd-rolling-snapshots kube-apiserver kube-controller-manager kubelet kube-scheduler kube-proxy nginx-proxy)
+  for KUBECONTAINER in "${KUBECONTAINERS[@]}"; do
+    if [ "$(docker ps -a -q -f name=$KUBECONTAINER)" ]; then
+      docker inspect $KUBECONTAINER > $TMPDIR/k8s/containerinspect/$KUBECONTAINER 2>&1
+      docker logs $DOCKER_LOGOPTS -t $KUBECONTAINER > $TMPDIR/k8s/containerlogs/$KUBECONTAINER 2>&1
+    fi
+  done
+
+  echo "Collecting system pods logging"
+  mkdir -p $TMPDIR/k8s/podlogs
+  mkdir -p $TMPDIR/k8s/podinspect
+  SYSTEMNAMESPACES=(kube-system kube-public cattle-system cattle-alerting cattle-logging cattle-pipeline ingress-nginx cattle-prometheus istio-system)
+  for SYSTEMNAMESPACE in "${SYSTEMNAMESPACES[@]}"; do
+    CONTAINERS=$(docker ps -a --filter name=$SYSTEMNAMESPACE --format "{{.Names}}")
+    for CONTAINER in $CONTAINERS; do
+      docker inspect $CONTAINER > $TMPDIR/k8s/podinspect/$CONTAINER 2>&1
+      docker logs $DOCKER_LOGOPTS -t $CONTAINER > $TMPDIR/k8s/podlogs/$CONTAINER 2>&1
+    done
+  done
+
+  # etcd
+  if docker ps --format='{{.Names}}' | grep -q ^etcd$ >/dev/null 2>&1; then
+    echo "Collecting etcdctl output"
+    mkdir -p $TMPDIR/etcd
+    PARAM=""
+    # Check for older versions with incorrectly set ETCDCTL_ENDPOINT vs the correct ETCDCTL_ENDPOINTS
+    # If ETCDCTL_ENDPOINTS is empty, its an older version
+    if [ -z $(docker exec etcd printenv ETCDCTL_ENDPOINTS) ]; then
+      ENDPOINT=$(docker exec etcd printenv ETCDCTL_ENDPOINT)
+      if echo $ENDPOINT | grep -vq 0.0.0.0; then
+        PARAM="--endpoints=$(docker exec etcd printenv ETCDCTL_ENDPOINT)"
+      fi
+    fi
+    docker exec etcd sh -c "etcdctl $PARAM member list"  > $TMPDIR/etcd/memberlist 2>&1
+    docker exec etcd etcdctl endpoint status --endpoints=$(docker exec etcd /bin/sh -c "etcdctl $PARAM member list | cut -d, -f5 | sed -e 's/ //g' | paste -sd ','") --write-out table > $TMPDIR/etcd/endpointstatus 2>&1
+    docker exec etcd etcdctl endpoint health --endpoints=$(docker exec etcd /bin/sh -c "etcdctl $PARAM member list | cut -d, -f5 | sed -e 's/ //g' | paste -sd ','") > $TMPDIR/etcd/endpointhealth 2>&1
+    docker exec etcd sh -c "etcdctl $PARAM alarm list" > $TMPDIR/etcd/alarmlist 2>&1
+  fi
+
+  # nginx-proxy
+  echo "Collecting nginx-proxy info"
+  if docker inspect nginx-proxy >/dev/null 2>&1; then
+    mkdir -p $TMPDIR/k8s/nginx-proxy
+    docker exec nginx-proxy cat /etc/nginx/nginx.conf > $TMPDIR/k8s/nginx-proxy/nginx.conf 2>&1
+  fi
 fi
 
 # Networking
@@ -172,66 +241,19 @@ echo "Collecting systemlogs"
 mkdir -p $TMPDIR/systemlogs
 cp /var/log/syslog* /var/log/messages* /var/log/kern* /var/log/docker* /var/log/system-docker* /var/log/audit/* $TMPDIR/systemlogs 2>/dev/null
 
-# Rancher logging
-echo "Collecting Rancher logs"
-# Discover any server or agent running
-mkdir -p $TMPDIR/rancher/containerinspect
-mkdir -p $TMPDIR/rancher/containerlogs
-RANCHERSERVERS=$(docker ps -a | grep -E "rancher/rancher:|rancher/rancher " | awk '{ print $1 }')
-RANCHERAGENTS=$(docker ps -a | grep -E "rancher/rancher-agent:|rancher/rancher-agent " | awk '{ print $1 }')
-
-for RANCHERSERVER in $RANCHERSERVERS; do
-  docker inspect $RANCHERSERVER > $TMPDIR/rancher/containerinspect/server-$RANCHERSERVER 2>&1
-  docker logs $DOCKER_LOGOPTS -t $RANCHERSERVER > $TMPDIR/rancher/containerlogs/server-$RANCHERSERVER 2>&1
-done
-
-for RANCHERAGENT in $RANCHERAGENTS; do
-  docker inspect $RANCHERAGENT > $TMPDIR/rancher/containerinspect/agent-$RANCHERAGENT 2>&1
-  docker logs $DOCKER_LOGOPTS -t $RANCHERAGENT > $TMPDIR/rancher/containerlogs/agent-$RANCHERAGENT 2>&1
-done
-
-# K8s Docker container logging
-echo "Collecting k8s container logging"
-mkdir -p $TMPDIR/k8s/containerlogs
-mkdir -p $TMPDIR/k8s/containerinspect
-KUBECONTAINERS=(etcd etcd-rolling-snapshots kube-apiserver kube-controller-manager kubelet kube-scheduler kube-proxy nginx-proxy)
-for KUBECONTAINER in "${KUBECONTAINERS[@]}"; do
-  if [ "$(docker ps -a -q -f name=$KUBECONTAINER)" ]; then
-          docker inspect $KUBECONTAINER > $TMPDIR/k8s/containerinspect/$KUBECONTAINER 2>&1
-	  docker logs $DOCKER_LOGOPTS -t $KUBECONTAINER > $TMPDIR/k8s/containerlogs/$KUBECONTAINER 2>&1
-  fi
-done
 if $(grep "kubelet.service" $TMPDIR/systeminfo/systemd-units > /dev/null 2>&1); then
   journalctl --unit=kubelet > $TMPDIR/k8s/containerlogs/journalctl-kubelet
   journalctl --unit=kubeproxy > $TMPDIR/k8s/containerlogs/journalctl-kubeproxy
 fi
 
-# System pods
-echo "Collecting system pods logging"
-mkdir -p $TMPDIR/k8s/podlogs
-mkdir -p $TMPDIR/k8s/podinspect
-SYSTEMNAMESPACES=(kube-system kube-public cattle-system cattle-alerting cattle-logging cattle-pipeline ingress-nginx cattle-prometheus istio-system)
-for SYSTEMNAMESPACE in "${SYSTEMNAMESPACES[@]}"; do
-  CONTAINERS=$(docker ps -a --filter name=$SYSTEMNAMESPACE --format "{{.Names}}")
-  for CONTAINER in $CONTAINERS; do
-    docker inspect $CONTAINER > $TMPDIR/k8s/podinspect/$CONTAINER 2>&1
-    docker logs $DOCKER_LOGOPTS -t $CONTAINER > $TMPDIR/k8s/podlogs/$CONTAINER 2>&1
-  done
-done
-
-# K8s directory state
-echo "Collecting k8s directory state"
-mkdir -p $TMPDIR/k8s/directories
+# K8s directory/certificates
 if [ -d /opt/rke/etc/kubernetes/ssl ]; then
+  echo "Collecting k8s state"
+  mkdir -p $TMPDIR/k8s/directories
+
   find /opt/rke/etc/kubernetes/ssl -type f -exec ls -la {} \; > $TMPDIR/k8s/directories/findoptrkeetckubernetesssl 2>&1
-elif [ -d /etc/kubernetes/ssl ]; then
-  find /etc/kubernetes/ssl -type f -exec ls -la {} \; > $TMPDIR/k8s/directories/findetckubernetesssl 2>&1
-fi
 
-# K8s certs
-echo "Collecting k8s certificates"
-mkdir -p $TMPDIR/k8s/certs
-if [ -d /opt/rke/etc/kubernetes/ssl ]; then
+  mkdir -p $TMPDIR/k8s/certs
   CERTS=$(find /opt/rke/etc/kubernetes/ssl -type f -name *.pem | grep -v "\-key\.pem$")
   for CERT in $CERTS; do
     openssl x509 -in $CERT -text -noout > $TMPDIR/k8s/certs/$(basename $CERT) 2>&1
@@ -243,7 +265,14 @@ if [ -d /opt/rke/etc/kubernetes/ssl ]; then
       openssl x509 -in $TMPCERT -text -noout > $TMPDIR/k8s/tmpcerts/$(basename $TMPCERT) 2>&1
     done
   fi
+
 elif [ -d /etc/kubernetes/ssl ]; then
+  echo "Collecting k8s state"
+  mkdir -p $TMPDIR/k8s/directories
+
+  find /etc/kubernetes/ssl -type f -exec ls -la {} \; > $TMPDIR/k8s/directories/findetckubernetesssl 2>&1
+
+  mkdir -p $TMPDIR/k8s/certs
   CERTS=$(find /etc/kubernetes/ssl -type f -name *.pem | grep -v "\-key\.pem$")
   for CERT in $CERTS; do
     openssl x509 -in $CERT -text -noout > $TMPDIR/k8s/certs/$(basename $CERT) 2>&1
@@ -258,43 +287,52 @@ elif [ -d /etc/kubernetes/ssl ]; then
 fi
 
 # etcd
-echo "Collecting etcd info"
-mkdir -p $TMPDIR/etcd
 # /var/lib/etcd contents
 if [ -d /var/lib/etcd ]; then
+  echo "Collecting etcd info"
+  mkdir -p $TMPDIR/etcd
+
   find /var/lib/etcd -type f -exec ls -la {} \; > $TMPDIR/etcd/findvarlibetcd 2>&1
 elif [ -d /opt/rke/var/lib/etcd ]; then
+  echo "Collecting etcd info"
+  mkdir -p $TMPDIR/etcd
+
   find /opt/rke/var/lib/etcd -type f -exec ls -la {} \; > $TMPDIR/etcd/findoptrkevarlibetcd 2>&1
 fi
 
 # /opt/rke contents
 if [ -d /opt/rke/etcd-snapshots ]; then
+  mkdir -p $TMPDIR/etcd
+
   find /opt/rke/etcd-snapshots -type f -exec ls -la {} \; > $TMPDIR/etcd/findoptrkeetcdsnaphots 2>&1
 fi
 
-# etcd
-if docker ps --format='{{.Names}}' | grep -q ^etcd$ >/dev/null 2>&1; then
-  echo "Collecting etcdctl output"
-  PARAM=""
-  # Check for older versions with incorrectly set ETCDCTL_ENDPOINT vs the correct ETCDCTL_ENDPOINTS
-  # If ETCDCTL_ENDPOINTS is empty, its an older version
-  if [ -z $(docker exec etcd printenv ETCDCTL_ENDPOINTS) ]; then
-    ENDPOINT=$(docker exec etcd printenv ETCDCTL_ENDPOINT)
-    if echo $ENDPOINT | grep -vq 0.0.0.0; then
-      PARAM="--endpoints=$(docker exec etcd printenv ETCDCTL_ENDPOINT)"
-    fi
+# k3s
+if $(command -v k3s >/dev/null 2>&1); then
+  echo "Collecting k3s info"
+  mkdir -p $TMPDIR/k3s/crictl
+  mkdir -p $TMPDIR/k3s/logs
+  mkdir -p $TMPDIR/k3s/podlogs
+  mkdir -p $TMPDIR/k3s/kubectl
+  k3s check-config > $TMPDIR/k3s/check-config 2>&1
+  k3s kubectl get nodes -o json > $TMPDIR/k3s/kubectl/nodes 2>&1
+  k3s kubectl version > $TMPDIR/k3s/kubectl/version 2>&1
+  k3s kubectl get pods --all-namespaces > $TMPDIR/k3s/kubectl/pods 2>&1
+  if $(grep "k3s.service" $TMPDIR/systeminfo/systemd-units > /dev/null 2>&1); then
+    journalctl --unit=k3s > $TMPDIR/k3s/logs/journalctl-k3s
   fi
-  docker exec etcd sh -c "etcdctl $PARAM member list"  > $TMPDIR/etcd/memberlist 2>&1
-  docker exec etcd etcdctl endpoint status --endpoints=$(docker exec etcd /bin/sh -c "etcdctl $PARAM member list | cut -d, -f5 | sed -e 's/ //g' | paste -sd ','") --write-out table > $TMPDIR/etcd/endpointstatus 2>&1
-  docker exec etcd etcdctl endpoint health --endpoints=$(docker exec etcd /bin/sh -c "etcdctl $PARAM member list | cut -d, -f5 | sed -e 's/ //g' | paste -sd ','") > $TMPDIR/etcd/endpointhealth 2>&1
-  docker exec etcd sh -c "etcdctl $PARAM alarm list" > $TMPDIR/etcd/alarmlist 2>&1
-fi
-
-# nginx-proxy
-echo "Collecting nginx-proxy info"
-if docker inspect nginx-proxy >/dev/null 2>&1; then
-  mkdir -p $TMPDIR/k8s/nginx-proxy
-  docker exec nginx-proxy cat /etc/nginx/nginx.conf > $TMPDIR/k8s/nginx-proxy/nginx.conf 2>&1
+  for SYSTEMNAMESPACE in "${SYSTEMNAMESPACES[@]}"; do
+    for SYSTEMPOD in $(k3s kubectl -n $SYSTEMNAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
+      k3s kubectl -n $SYSTEMNAMESPACE logs $SYSTEMPOD > $TMPDIR/k3s/podlogs/$SYSTEMNAMESPACE-$SYSTEMPOD 2>&1
+    done
+  done
+  k3s crictl ps -a > $TMPDIR/k3s/crictl/psa 2>&1
+  k3s crictl pods > $TMPDIR/k3s/crictl/pods 2>&1
+  k3s crictl info > $TMPDIR/k3s/crictl/info 2>&1
+  k3s crictl stats -a > $TMPDIR/k3s/crictl/statsa 2>&1
+  k3s crictl version > $TMPDIR/k3s/crictl/version 2>&1
+  k3s crictl images > $TMPDIR/k3s/crictl/images 2>&1
+  k3s crictl imagefsinfo > $TMPDIR/k3s/crictl/imagefsinfo 2>&1
 fi
 
 FILEDIR=$(dirname $TMPDIR)
