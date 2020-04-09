@@ -1,6 +1,8 @@
 #!/bin/bash
 
-echo "Report run on `date`"
+echo "Rancher Systems Summary Report"
+echo "=============================="
+echo "Run on `date`"
 echo
 
 # Get docker id for rancher single node install
