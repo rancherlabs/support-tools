@@ -174,7 +174,7 @@ networking() {
   cat /proc/net/xfrm_stat > $TMPDIR/networking/procnetxfrmstat 2>&1
   if $(command -v ip >/dev/null 2>&1); then
     ip addr show > $TMPDIR/networking/ipaddrshow 2>&1
-    ip route sgiw table all > $TMPDIR/networking/iproute 2>&1
+    ip route show table all > $TMPDIR/networking/iproute 2>&1
     ip rule show > $TMPDIR/networking/iprule 2>&1
 
   fi
@@ -269,6 +269,8 @@ docker-rancher() {
   docker exec -it kubelet kubectl get pods -o wide --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/pods 2>&1
   docker exec -it kubelet kubectl get svc -o wide --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/services 2>&1
   docker exec -it kubelet kubectl get endpoints -o wide --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/endpoints 2>&1
+  docker exec -it kubelet kubectl get configmaps --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/configmaps 2>&1
+  docker exec -it kubelet kubectl get namespaces --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/namespaces 2>&1
 
   techo "Collecting nginx-proxy info"
   if docker inspect nginx-proxy >/dev/null 2>&1; then
@@ -291,6 +293,8 @@ k3s-rancher() {
   k3s kubectl get events --all-namespaces > $TMPDIR/k3s/kubectl/events 2>&1
   k3s kubectl get svc -o wide --all-namespaces $TMPDIR/k3s/kubectl/services 2>&1
   k3s kubectl get endpoints -o wide --all-namespaces $TMPDIR/k3s/kubectl/endpoints 2>&1
+  k3s kubectl get configmaps --all-namespaces $TMPDIR/k3s/kubectl/configmaps 2>&1
+  k3s kubectl get namespaces --all-namespaces $TMPDIR/k3s/kubectl/namespaces 2>&1
   techo "Collecting Rancher logs"
   for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
     for SYSTEM_POD in $(k3s kubectl -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
@@ -432,9 +436,9 @@ help() {
 
   All flags are optional
 
-  -d    Output directory for temporary storage and .tgz archive (-d /var/tmp)
-  -s    Number of days history to collect from container and journald logs (-s 7)
-  -r    Set container runtime (docker|k3s)
+  -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
+  -s    Number of days history to collect from container and journald logs (ex: -s 7)
+  -r    Override container runtime if not automatically detected (docker|k3s)
   -f    Force log collection if the minimum space isn't available"
 
 }
