@@ -13,7 +13,7 @@ The script will create a .tar.gz log collection in /tmp by default, all flags ar
 ## Flags
 
 ```
-Rancher 2.x log-collector
+Rancher 2.x logs-collector
   Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -r <container runtime> -f ]
 
   All flags are optional

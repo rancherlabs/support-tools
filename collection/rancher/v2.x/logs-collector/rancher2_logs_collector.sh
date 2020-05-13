@@ -1,5 +1,5 @@
 #!/bin/bash
-# Rancher log collector for supported Linux distributions
+# Rancher 2.x logs collector for supported Linux distributions
 # https://rancher.com/support-maintenance-terms#rancher-support-matrix
 
 # Included namespaces
@@ -54,14 +54,31 @@ sherlock() {
       echo -n "$(timestamp): Detecting container runtime... "
       if $(command -v docker >/dev/null 2>&1)
         then
-          RUNTIME=docker
-          echo "docker"
-      elif $(command -v k3s >/dev/null 2>&1)
+          if $(docker ps >/dev/null 2>&1)
+            then
+              RUNTIME=docker
+              echo "docker"
+            else
+              FOUND="docker "
+          fi
+      fi
+      if $(command -v k3s >/dev/null 2>&1)
         then
-          RUNTIME=k3s
-          echo "k3s"
-      else
-        echo -e "\n$(timestamp): couldn't detect container runtime"
+          if $(k3s crictl ps >/dev/null 2>&1)
+            then
+              RUNTIME=k3s
+              echo "k3s"
+            else
+              FOUND+="k3s"
+          fi
+      fi
+      if [ -z $RUNTIME ]
+        then
+          echo -e "\n$(timestamp): couldn't detect container runtime"
+          if [ -n "${FOUND}" ]
+            then
+              techo "Found ${FOUND} but could not execute commands successfully"
+          fi
       fi
   fi
   echo -n "$(timestamp): Detecting init type... "
@@ -107,7 +124,7 @@ system-all() {
   cat /proc/sys/fs/file-max > $TMPDIR/systeminfo/file-max 2>&1
   ulimit -aH > $TMPDIR/systeminfo/ulimit-hard 2>&1
   uname -a > $TMPDIR/systeminfo/uname 2>&1
-  cat /etc/*release > $TMPDIR/systeminfo/osrelease 2>&1
+  cp -p /etc/*release > $TMPDIR/systeminfo/osrelease 2>&1
   if $(command -v lsblk >/dev/null 2>&1); then
     lsblk > $TMPDIR/systeminfo/lsblk 2>&1
   fi
@@ -156,9 +173,13 @@ networking() {
   techo "Collecting network output"
   mkdir -p $TMPDIR/networking
   iptables-save > $TMPDIR/networking/iptablessave 2>&1
-  iptables --wait 1 --numeric --verbose --list --table mangle > $TMPDIR/networking/iptablesmangle 2>&1
-  iptables --wait 1 --numeric --verbose --list --table nat > $TMPDIR/networking/iptablesnat 2>&1
-  iptables --wait 1 --numeric --verbose --list > $TMPDIR/networking/iptables 2>&1
+  if [ ! "${OSRELEASE}" = "sles" ]
+    then
+      IPTABLES_FLAGS="--wait 1"
+  fi
+  iptables $IPTABLES_FLAGS --numeric --verbose --list --table mangle > $TMPDIR/networking/iptablesmangle 2>&1
+  iptables $IPTABLES_FLAGS --numeric --verbose --list --table nat > $TMPDIR/networking/iptablesnat 2>&1
+  iptables $IPTABLES_FLAGS --numeric --verbose --list > $TMPDIR/networking/iptables 2>&1
   if $(command -v netstat >/dev/null 2>&1); then
     if [ "${OSRELEASE}" = "rancheros" ]
       then
@@ -171,12 +192,14 @@ networking() {
   if $(command -v ipvsadm >/dev/null 2>&1); then
     ipvsadm -ln > $TMPDIR/networking/ipvsadm 2>&1
   fi
-  cat /proc/net/xfrm_stat > $TMPDIR/networking/procnetxfrmstat 2>&1
+  if [ -f /proc/net/xfrm_stat ]
+    then
+      cat /proc/net/xfrm_stat > $TMPDIR/networking/procnetxfrmstat 2>&1
+  fi
   if $(command -v ip >/dev/null 2>&1); then
     ip addr show > $TMPDIR/networking/ipaddrshow 2>&1
     ip route show table all > $TMPDIR/networking/iproute 2>&1
     ip rule show > $TMPDIR/networking/iprule 2>&1
-
   fi
   if $(command -v ifconfig >/dev/null 2>&1); then
     ifconfig -a > $TMPDIR/networking/ifconfiga
@@ -199,7 +222,7 @@ docker-logs() {
   docker images > $TMPDIR/docker/dockerstats 2>&1 & timeout_cmd
 
   if [ -f /etc/docker/daemon.json ]; then
-    cat /etc/docker/daemon.json > $TMPDIR/docker/etcdockerdaemon.json
+    cp -p /etc/docker/daemon.json > $TMPDIR/docker/etcdockerdaemon.json
   fi
 
 }
@@ -216,6 +239,10 @@ k3s-logs() {
   k3s crictl version > $TMPDIR/k3s/crictl/version 2>&1
   k3s crictl images > $TMPDIR/k3s/crictl/images 2>&1
   k3s crictl imagefsinfo > $TMPDIR/k3s/crictl/imagefsinfo 2>&1
+  if [ -f /etc/systemd/system/k3s.service ]
+    then
+      cp -p /etc/systemd/system/k3s.service $TMPDIR/k3s/k3s.service
+  fi
 
 }
 
@@ -291,10 +318,10 @@ k3s-rancher() {
   k3s kubectl version > $TMPDIR/k3s/kubectl/version 2>&1
   k3s kubectl get pods -o wide --all-namespaces > $TMPDIR/k3s/kubectl/pods 2>&1
   k3s kubectl get events --all-namespaces > $TMPDIR/k3s/kubectl/events 2>&1
-  k3s kubectl get svc -o wide --all-namespaces $TMPDIR/k3s/kubectl/services 2>&1
-  k3s kubectl get endpoints -o wide --all-namespaces $TMPDIR/k3s/kubectl/endpoints 2>&1
-  k3s kubectl get configmaps --all-namespaces $TMPDIR/k3s/kubectl/configmaps 2>&1
-  k3s kubectl get namespaces --all-namespaces $TMPDIR/k3s/kubectl/namespaces 2>&1
+  k3s kubectl get svc -o wide --all-namespaces > $TMPDIR/k3s/kubectl/services 2>&1
+  k3s kubectl get endpoints -o wide --all-namespaces > $TMPDIR/k3s/kubectl/endpoints 2>&1
+  k3s kubectl get configmaps --all-namespaces > $TMPDIR/k3s/kubectl/configmaps 2>&1
+  k3s kubectl get namespaces > $TMPDIR/k3s/kubectl/namespaces 2>&1
   techo "Collecting Rancher logs"
   for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
     for SYSTEM_POD in $(k3s kubectl -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
@@ -308,7 +335,7 @@ var-log() {
 
   techo "Collecting system logs from /var/log"
   mkdir -p $TMPDIR/systemlogs
-  cp /var/log/syslog* /var/log/messages* /var/log/kern* /var/log/docker* /var/log/system-docker* /var/log/cloud-init* /var/log/audit/* $TMPDIR/systemlogs 2>/dev/null
+  cp -p /var/log/syslog* /var/log/messages* /var/log/kern* /var/log/docker* /var/log/system-docker* /var/log/cloud-init* /var/log/audit/* $TMPDIR/systemlogs 2>/dev/null
 
 }
 
@@ -317,14 +344,14 @@ journald-log() {
   techo "Collecting system logs from journald"
   mkdir -p $TMPDIR/journald
   for JOURNALD_LOG in "${JOURNALD_LOGS[@]}"; do
-    if "$(grep $JOURNALD_LOG $TMPDIR/systeminfo/systemd-units > /dev/null 2>&1)"; then
+    if $(grep $JOURNALD_LOG.service $TMPDIR/systeminfo/systemd-units > /dev/null 2>&1); then
       journalctl $SINCE_FLAG --unit=$JOURNALD_LOG > $TMPDIR/journald/$JOURNALD_LOG
     fi
   done
 
 }
 
-certs() {
+rke-certs() {
 
   # K8s directory state
   techo "Collecting k8s directory state"
@@ -361,6 +388,33 @@ certs() {
         openssl x509 -in $TMPCERT -text -noout > $TMPDIR/k8s/tmpcerts/$(basename $TMPCERT) 2>&1
       done
     fi
+  fi
+
+}
+
+k3s-certs() {
+
+  if [ -d /var/lib/rancher/k3s ]
+    then
+      techo "Collecting k3s directory state"
+      mkdir -p $TMPDIR/k3s/directories
+      if [ -d /var/lib/rancher/k3s ]; then
+        ls -lah /var/lib/rancher/k3s/agent > $TMPDIR/k3s/directories/k3sagent 2>&1
+        ls -lah /var/lib/rancher/k3s/server/manifests > $TMPDIR/k3s/directories/k3sservermanifests 2>&1
+        ls -lah /var/lib/rancher/k3s/server/tls > $TMPDIR/k3s/directories/k3sservertls 2>&1
+      fi
+      techo "Collecting k3s certificates"
+      mkdir -p {$TMPDIR/k3s/certs/agent,$TMPDIR/k3s/certs/server}
+      AGENT_CERTS=$(find /var/lib/rancher/k3s/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+      for CERT in $AGENT_CERTS
+        do
+          openssl x509 -in $CERT -text -noout > $TMPDIR/k3s/certs/agent/$(basename $CERT) 2>&1
+      done
+      SERVER_CERTS=$(find /var/lib/rancher/k3s/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+      for CERT in $AGENT_CERTS
+        do
+          openssl x509 -in $CERT -text -noout > $TMPDIR/k3s/certs/server/$(basename $CERT) 2>&1
+      done
   fi
 
 }
@@ -431,7 +485,7 @@ cleanup() {
 
 help() {
 
-  echo "Rancher 2.x log-collector
+  echo "Rancher 2.x logs-collector
   Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -r <container runtime> -f ]
 
   All flags are optional
@@ -516,17 +570,18 @@ if [ "${RUNTIME}" = "docker" ]
   then
     docker-logs
     docker-rancher
+    rke-certs
     etcd
 elif [ "${RUNTIME}" = "k3s" ]
   then
     k3s-logs
     k3s-rancher
+    k3s-certs
 fi
 var-log
-if [ "${INIT}" = " systemd" ]
+if [ "${INIT}" = "systemd" ]
   then
     journald-log
 fi
-certs
 archive
 cleanup
