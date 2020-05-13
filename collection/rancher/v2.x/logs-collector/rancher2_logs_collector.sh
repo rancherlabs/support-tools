@@ -124,7 +124,7 @@ system-all() {
   cat /proc/sys/fs/file-max > $TMPDIR/systeminfo/file-max 2>&1
   ulimit -aH > $TMPDIR/systeminfo/ulimit-hard 2>&1
   uname -a > $TMPDIR/systeminfo/uname 2>&1
-  cp -p /etc/*release > $TMPDIR/systeminfo/osrelease 2>&1
+  cat /etc/*release > $TMPDIR/systeminfo/osrelease 2>&1
   if $(command -v lsblk >/dev/null 2>&1); then
     lsblk > $TMPDIR/systeminfo/lsblk 2>&1
   fi
