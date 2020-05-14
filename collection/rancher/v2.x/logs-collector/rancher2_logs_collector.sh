@@ -308,27 +308,27 @@ docker-rancher() {
 }
 
 k3s-rancher() {
-
-  techo "Collecting k3s logs"
-  mkdir -p $TMPDIR/k3s/logs
-  mkdir -p $TMPDIR/k3s/podlogs
-  mkdir -p $TMPDIR/k3s/kubectl
-  k3s kubectl get nodes -o yaml > $TMPDIR/k3s/kubectl/nodes 2>&1
-  k3s kubectl describe nodes > $TMPDIR/k3s/kubectl/nodesdescribe 2>&1
-  k3s kubectl version > $TMPDIR/k3s/kubectl/version 2>&1
-  k3s kubectl get pods -o wide --all-namespaces > $TMPDIR/k3s/kubectl/pods 2>&1
-  k3s kubectl get events --all-namespaces > $TMPDIR/k3s/kubectl/events 2>&1
-  k3s kubectl get svc -o wide --all-namespaces > $TMPDIR/k3s/kubectl/services 2>&1
-  k3s kubectl get endpoints -o wide --all-namespaces > $TMPDIR/k3s/kubectl/endpoints 2>&1
-  k3s kubectl get configmaps --all-namespaces > $TMPDIR/k3s/kubectl/configmaps 2>&1
-  k3s kubectl get namespaces > $TMPDIR/k3s/kubectl/namespaces 2>&1
-  techo "Collecting Rancher logs"
-  for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-    for SYSTEM_POD in $(k3s kubectl -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
-      k3s kubectl -n $SYSTEM_NAMESPACE logs $SYSTEM_POD > $TMPDIR/k3s/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
+  if [ -d /var/lib/rancher/k3s/server ]; then  
+    techo "Collecting k3s Cluster logs"
+    mkdir -p $TMPDIR/k3s/logs
+    mkdir -p $TMPDIR/k3s/podlogs
+    mkdir -p $TMPDIR/k3s/kubectl
+    k3s kubectl get nodes -o yaml > $TMPDIR/k3s/kubectl/nodes 2>&1
+    k3s kubectl describe nodes > $TMPDIR/k3s/kubectl/nodesdescribe 2>&1
+    k3s kubectl version > $TMPDIR/k3s/kubectl/version 2>&1
+    k3s kubectl get pods -o wide --all-namespaces > $TMPDIR/k3s/kubectl/pods 2>&1
+    k3s kubectl get events --all-namespaces > $TMPDIR/k3s/kubectl/events 2>&1
+    k3s kubectl get svc -o wide --all-namespaces > $TMPDIR/k3s/kubectl/services 2>&1
+    k3s kubectl get endpoints -o wide --all-namespaces > $TMPDIR/k3s/kubectl/endpoints 2>&1
+    k3s kubectl get configmaps --all-namespaces > $TMPDIR/k3s/kubectl/configmaps 2>&1
+    k3s kubectl get namespaces > $TMPDIR/k3s/kubectl/namespaces 2>&1
+    techo "Collecting Rancher logs"
+    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
+      for SYSTEM_POD in $(k3s kubectl -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
+        k3s kubectl -n $SYSTEM_NAMESPACE logs $SYSTEM_POD > $TMPDIR/k3s/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
+      done
     done
-  done
-
+  fi
 }
 
 var-log() {
@@ -410,11 +410,14 @@ k3s-certs() {
         do
           openssl x509 -in $CERT -text -noout > $TMPDIR/k3s/certs/agent/$(basename $CERT) 2>&1
       done
-      SERVER_CERTS=$(find /var/lib/rancher/k3s/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
-      for CERT in $AGENT_CERTS
-        do
-          openssl x509 -in $CERT -text -noout > $TMPDIR/k3s/certs/server/$(basename $CERT) 2>&1
-      done
+      if [ -d /var/lib/rancher/k3s/server ]; then
+         techo "Collecting k3s Server certificates"
+	 SERVER_CERTS=$(find /var/lib/rancher/k3s/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+         for CERT in $AGENT_CERTS
+           do
+             openssl x509 -in $CERT -text -noout > $TMPDIR/k3s/certs/server/$(basename $CERT) 2>&1
+         done
+      fi
   fi
 
 }
