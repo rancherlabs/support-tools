@@ -170,7 +170,7 @@ system-rhel() {
 
 networking() {
 
-  techo "Collecting network output"
+  techo "Collecting network info"
   mkdir -p $TMPDIR/networking
   iptables-save > $TMPDIR/networking/iptablessave 2>&1
   if [ ! "${OSRELEASE}" = "sles" ]
@@ -206,14 +206,14 @@ networking() {
   fi
   if [ -d /etc/cni/net.d/ ]; then
     mkdir -p $TMPDIR/networking/cni
-    cp -r /etc/cni/net.d/* $TMPDIR/networking/cni 2>&1
+    cp -r -p /etc/cni/net.d/* $TMPDIR/networking/cni 2>&1
   fi
 
 }
 
 docker-logs() {
 
-  techo "Collecting Docker info"
+  techo "Collecting docker info"
   mkdir -p $TMPDIR/docker
 
   docker info > $TMPDIR/docker/dockerinfo 2>&1 & timeout_cmd
@@ -248,11 +248,10 @@ k3s-logs() {
 
 docker-rancher() {
 
-  techo "Collecting Rancher logs"
+  techo "Collecting rancher logs"
   # Discover any server or agent running
-  mkdir -p $TMPDIR/rancher/containerinspect
-  mkdir -p $TMPDIR/rancher/containerlogs
-  RANCHERSERVERS=$(docker ps -a | grep -E "rancher/rancher:|rancher/rancher " | awk '{ print $1 }')
+  mkdir -p $TMPDIR/rancher/{containerlogs,containerinspect}
+  RANCHERSERVERS=$(docker ps -a | grep -E "k8s_rancher_rancher" | awk '{ print $1 }')
   RANCHERAGENTS=$(docker ps -a | grep -E "rancher/rancher-agent:|rancher/rancher-agent " | awk '{ print $1 }')
 
   for RANCHERSERVER in $RANCHERSERVERS; do
@@ -267,19 +266,17 @@ docker-rancher() {
 
   # K8s Docker container logging
   techo "Collecting k8s component logs"
-  mkdir -p $TMPDIR/k8s/containerlogs
-  mkdir -p $TMPDIR/k8s/containerinspect
+  mkdir -p $TMPDIR/k8s/{containerlogs,containerinspect}
   for KUBE_CONTAINER in "${KUBE_CONTAINERS[@]}"; do
     if [ "$(docker ps -a -q -f name=$KUBE_CONTAINER)" ]; then
-            docker inspect $KUBE_CONTAINER > $TMPDIR/k8s/containerinspect/$KUBE_CONTAINER 2>&1
+      docker inspect $KUBE_CONTAINER > $TMPDIR/k8s/containerinspect/$KUBE_CONTAINER 2>&1
       docker logs $SINCE_FLAG -t $KUBE_CONTAINER > $TMPDIR/k8s/containerlogs/$KUBE_CONTAINER 2>&1
     fi
   done
 
   # System pods
   techo "Collecting system pod logs"
-  mkdir -p $TMPDIR/k8s/podlogs
-  mkdir -p $TMPDIR/k8s/podinspect
+  mkdir -p $TMPDIR/k8s/{podlogs,podinspect}
   for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
     CONTAINERS=$(docker ps -a --filter name=$SYSTEM_NAMESPACE --format "{{.Names}}")
     for CONTAINER in $CONTAINERS; do
@@ -291,13 +288,13 @@ docker-rancher() {
   # Node and pod overview
   mkdir -p $TMPDIR/k8s/kubectl
   KUBECONFIG=/etc/kubernetes/ssl/kubecfg-kube-node.yaml
-  docker exec -it kubelet kubectl get nodes -o wide --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/nodes 2>&1
-  docker exec -it kubelet kubectl describe nodes --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/nodesdescribe 2>&1
-  docker exec -it kubelet kubectl get pods -o wide --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/pods 2>&1
-  docker exec -it kubelet kubectl get svc -o wide --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/services 2>&1
-  docker exec -it kubelet kubectl get endpoints -o wide --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/endpoints 2>&1
-  docker exec -it kubelet kubectl get configmaps --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/configmaps 2>&1
-  docker exec -it kubelet kubectl get namespaces --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/namespaces 2>&1
+  docker exec kubelet kubectl get nodes -o wide --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/nodes 2>&1
+  docker exec kubelet kubectl describe nodes --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/nodesdescribe 2>&1
+  docker exec kubelet kubectl get pods -o wide --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/pods 2>&1
+  docker exec kubelet kubectl get svc -o wide --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/services 2>&1
+  docker exec kubelet kubectl get endpoints -o wide --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/endpoints 2>&1
+  docker exec kubelet kubectl get configmaps --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/configmaps 2>&1
+  docker exec kubelet kubectl get namespaces --all-namespaces --kubeconfig=$KUBECONFIG > $TMPDIR/k8s/kubectl/namespaces 2>&1
 
   techo "Collecting nginx-proxy info"
   if docker inspect nginx-proxy >/dev/null 2>&1; then
@@ -309,25 +306,35 @@ docker-rancher() {
 
 k3s-rancher() {
 
-  techo "Collecting k3s logs"
-  mkdir -p $TMPDIR/k3s/logs
+  techo "Collecting k3s cluster logs"
+  if [ -d /var/lib/rancher/k3s/server ]; then
+    mkdir -p $TMPDIR/k3s/kubectl
+    k3s kubectl get nodes -o yaml > $TMPDIR/k3s/kubectl/nodes 2>&1
+    k3s kubectl describe nodes > $TMPDIR/k3s/kubectl/nodesdescribe 2>&1
+    k3s kubectl version > $TMPDIR/k3s/kubectl/version 2>&1
+    k3s kubectl get pods -o wide --all-namespaces > $TMPDIR/k3s/kubectl/pods 2>&1
+    k3s kubectl get events --all-namespaces > $TMPDIR/k3s/kubectl/events 2>&1
+    k3s kubectl get svc -o wide --all-namespaces > $TMPDIR/k3s/kubectl/services 2>&1
+    k3s kubectl get endpoints -o wide --all-namespaces > $TMPDIR/k3s/kubectl/endpoints 2>&1
+    k3s kubectl get configmaps --all-namespaces > $TMPDIR/k3s/kubectl/configmaps 2>&1
+    k3s kubectl get namespaces > $TMPDIR/k3s/kubectl/namespaces 2>&1
+  fi
+
   mkdir -p $TMPDIR/k3s/podlogs
-  mkdir -p $TMPDIR/k3s/kubectl
-  k3s kubectl get nodes -o yaml > $TMPDIR/k3s/kubectl/nodes 2>&1
-  k3s kubectl describe nodes > $TMPDIR/k3s/kubectl/nodesdescribe 2>&1
-  k3s kubectl version > $TMPDIR/k3s/kubectl/version 2>&1
-  k3s kubectl get pods -o wide --all-namespaces > $TMPDIR/k3s/kubectl/pods 2>&1
-  k3s kubectl get events --all-namespaces > $TMPDIR/k3s/kubectl/events 2>&1
-  k3s kubectl get svc -o wide --all-namespaces > $TMPDIR/k3s/kubectl/services 2>&1
-  k3s kubectl get endpoints -o wide --all-namespaces > $TMPDIR/k3s/kubectl/endpoints 2>&1
-  k3s kubectl get configmaps --all-namespaces > $TMPDIR/k3s/kubectl/configmaps 2>&1
-  k3s kubectl get namespaces > $TMPDIR/k3s/kubectl/namespaces 2>&1
   techo "Collecting Rancher logs"
-  for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-    for SYSTEM_POD in $(k3s kubectl -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
-      k3s kubectl -n $SYSTEM_NAMESPACE logs $SYSTEM_POD > $TMPDIR/k3s/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
+  if [ -d /var/lib/rancher/k3s/server ]; then
+    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
+      for SYSTEM_POD in $(k3s kubectl -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
+        k3s kubectl -n $SYSTEM_NAMESPACE logs --all-containers $SYSTEM_POD > $TMPDIR/k3s/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
+      done
     done
-  done
+  elif [ -d /var/lib/rancher/k3s/agent ]; then
+    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
+      if ls -d /var/log/pods/$SYSTEM_NAMESPACE* > /dev/null 2>&1; then
+        cp -r -p /var/log/pods/$SYSTEM_NAMESPACE* $TMPDIR/k3s/podlogs/
+      fi
+    done
+  fi
 
 }
 
@@ -410,11 +417,14 @@ k3s-certs() {
         do
           openssl x509 -in $CERT -text -noout > $TMPDIR/k3s/certs/agent/$(basename $CERT) 2>&1
       done
-      SERVER_CERTS=$(find /var/lib/rancher/k3s/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
-      for CERT in $AGENT_CERTS
-        do
-          openssl x509 -in $CERT -text -noout > $TMPDIR/k3s/certs/server/$(basename $CERT) 2>&1
-      done
+      if [ -d /var/lib/rancher/k3s/server ]; then
+         techo "Collecting k3s Server certificates"
+         SERVER_CERTS=$(find /var/lib/rancher/k3s/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+         for CERT in $SERVER_CERTS
+           do
+             openssl x509 -in $CERT -text -noout > $TMPDIR/k3s/certs/server/$(basename $CERT) 2>&1
+         done
+      fi
   fi
 
 }
@@ -479,7 +489,7 @@ archive() {
 cleanup() {
 
   techo "Removing ${TMPDIR}"
-  rm --recursive --force "${TMPDIR}" >/dev/null 2>&1
+  rm -r -f "${TMPDIR}" >/dev/null 2>&1
 
 }
 
