@@ -10,7 +10,7 @@ Windows log collector for Rancher Windows Worker Nodes
 ```ps1
 Set-ExecutionPolicy Bypass
 Start-BitsTransfer https://raw.githubusercontent.com/rancherlabs/support-tools/windows-log-collect/collection/rancher/v2.x/windows-log-collector/win-log-collect.ps1
-.\log-collect-beta.ps1
+.\win-log-collect.ps1
 ```
 
 ### Expected output
