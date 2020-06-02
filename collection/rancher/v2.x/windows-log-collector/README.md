@@ -4,9 +4,12 @@ Windows log collector for Rancher Windows Worker Nodes
 
 ## How To Run the Script
 
+- Open a new Powershell window with Administrator Privileges (Find Windows Powershell in Start Menu, right click, Run As Administrator)
+- run the following commands in your Powershell window
+
 ```ps1
 Set-ExecutionPolicy Bypass
-Start-BitsTransfer https://raw.githubusercontent.com/rosskirkpat/rancher-windows-log-collector/master/log-collect-beta.ps1
+Start-BitsTransfer https://raw.githubusercontent.com/rancherlabs/support-tools/windows-log-collect/collection/rancher/v2.x/windows-log-collector/win-log-collect.ps1
 .\log-collect-beta.ps1
 ```
 
