@@ -17,7 +17,6 @@ Start-BitsTransfer https://raw.githubusercontent.com/rancherlabs/support-tools/w
 #### Note: The `Unable to Collect Windows Firewall information` error is expected if it there are not Domain specific firewall rules pushed out by the customer
 
 ```ps1
- .\log-collect-beta.ps1
 Running Rancher Log Collection
 Creating temporary directory
 OK
