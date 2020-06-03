@@ -368,7 +368,7 @@ Function compress{
              Write-Host "tar is not a valid command"
         }
         #Compress-Archive -Path $directory\* -CompressionLevel Optimal -DestinationPath $basedir\$outfilename
-        Write-Host "Done. Your log bundle is located in " $basedir\$outfilename
+        Write-Host "Done. Your log bundle is located in " "C:\"$outfilename
         Write-Host "Please supply the log bundle(s) to Rancher Support"
     }
     catch {
