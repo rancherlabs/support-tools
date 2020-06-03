@@ -73,7 +73,7 @@ Collecting proxy information
 OK
 Archiving Rancher log collection script data
 OK
-Done. Your log bundle is located in  C:\rancher\rancher_EC2AMAZ-ENEJ0H8_20200602T1704290242Z
+Done. Your log bundle is located in  C:\rancher_EC2AMAZ-ENEJ0H8_20200602T1704290242Z
 Please supply the log bundle(s) to Rancher Support
 Cleaning up directory
 OK
