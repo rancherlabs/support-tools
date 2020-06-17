@@ -222,7 +222,7 @@ docker-logs() {
   docker images > $TMPDIR/docker/dockerstats 2>&1 & timeout_cmd
 
   if [ -f /etc/docker/daemon.json ]; then
-    cp -p /etc/docker/daemon.json > $TMPDIR/docker/etcdockerdaemon.json
+    cp -p /etc/docker/daemon.json $TMPDIR/docker/etcdockerdaemon.json
   fi
 
 }
