@@ -1,0 +1,40 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: rancher-systems-information
+  namespace: cattle-system
+spec:
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: system-info
+            env:
+            - name: RANCHER_NAME
+              value: "rancher-a1.support.tools"
+            - name: SMTP_HOST
+              value: "mail.support.tools"
+            - name: SMTP_PORT
+              value: "587"
+            - name: TO_ADDRESS
+              value: "mmattox@support.tools"
+            - name: FROM_ADDRESS
+              value: "rancher@support.tools"
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  key: MAIL_RELAY_USER
+                  name: mail-connection
+                  optional: false
+            - name: SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  key: MAIL_RELAY_PASS
+                  name: mail-connection
+                  optional: false
+            image: cube8021/rancher-systems-information:v0.0.1-rc5
+          restartPolicy: Never
+          serviceAccount: rancher
+          serviceAccountName: rancher
