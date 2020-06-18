@@ -5,25 +5,28 @@ echo "=============================="
 echo "Run on `date`"
 echo
 
-if $(command -v k3s >/dev/null 2>&1)
+if [[ ! -z $KUBERNETES_PORT ]];
 then
-  KUBECTL_CMD="k3s kubectl"
+  KUBECTL_CMD="kubectl"
 else
-  # Get docker id for rancher single node install
-  DOCKER_ID=$(docker ps | grep "rancher/rancher:" | cut -d' ' -f1)
-
-  if [ -z "${DOCKER_ID}" ]
+  if $(command -v k3s >/dev/null 2>&1)
   then
-    # Get docker id for rancher ha install
-    DOCKER_ID=$(docker ps | grep "k8s_rancher_rancher" | cut -d' ' -f1 | head -1)
-
+    KUBECTL_CMD="k3s kubectl"
+  else
+    # Get docker id for rancher single node install
+    DOCKER_ID=$(docker ps | grep "rancher/rancher:" | cut -d' ' -f1)
     if [ -z "${DOCKER_ID}" ]
     then
-      echo "Could not find Rancher 2 container, exiting..."
-      exit -1
-     fi
+      # Get docker id for rancher ha install
+      DOCKER_ID=$(docker ps | grep "k8s_rancher_rancher" | cut -d' ' -f1 | head -1)
+      if [ -z "${DOCKER_ID}" ]
+      then
+        echo "Could not find Rancher 2 container, exiting..."
+        exit -1
+       fi
+    fi
+    KUBECTL_CMD="docker exec ${DOCKER_ID} kubectl"
   fi
-  KUBECTL_CMD="docker exec ${DOCKER_ID} kubectl"
 fi
 
 echo "Rancher version: $(${KUBECTL_CMD} get settings.management.cattle.io server-version --no-headers -o custom-columns=version:value)"
