@@ -1,0 +1,32 @@
+replicaCount: 1
+
+image:
+  repository: docker.io/cube8021/rancher-systems-information
+  tag: v0.0.1-rc1
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: "systems-information"
+fullnameOverride: "rancher-systems-information"
+namespace: "cattle-system"
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 100Mi
+  requests:
+    cpu: 100m
+    memory: 100Mi
+
+secrets:
+  smtp_user: ""
+  smtp_pass: ""
+
+configs:
+  rancher_name: ""
+  schedule: "0 0 * * 1"
+  smpt_host: ""
+  smtp_port: "587"
+  to_address: ""
+  from_address: ""
+  send_to_support: "true"

@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rancher-systems-information
+  namespace:  {{ .Values.Namespace }}
+  labels:
+    app: systems-information
+spec:
+  schedule: {{ .Values.configs.schedule }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: system-information
+              env:
+              - name: rancher_name
+                value: {{ .Values.configs.rancher_name }}
+              - name: smtp_host
+                value: {{ .Values.configs.smtp_host }}
+              - name: smtp_port
+                value: {{ .Values.configs.smtp_port }}
+              - name: to_address
+                value: {{ .Values.configs.to_address }}
+              - name: from_address
+                value: {{ .Values.configs.from_address }}
+              - name: send_to_support
+                value: {{ .Values.configs.send_to_support }}
+              - name: smtp_user
+                valueFrom:
+                  secretKeyRef:
+                    key: smtp_user
+                    name: {{ .Values.secretName }}
+                    optional: false
+              - name: smtp_pass
+                valueFrom:
+                  secretKeyRef:
+                    key: smtp_pass
+                    name: {{ .Values.secretName }}
+                    optional: false
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              restartPolicy: Always
+              serviceAccountName: rancher
+              serviceAccountName: rancher
