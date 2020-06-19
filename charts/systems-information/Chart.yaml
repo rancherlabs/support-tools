@@ -1,4 +1,4 @@
-apiVersion: v2
+apiVersion: v1
 name: systems-information
 description: Rancher Systems Summary Report
 
@@ -14,16 +14,16 @@ type: application
 
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
-version: 0.0.1-rc1
+version: 0.0.1-rc3
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
-appVersion: 0.0.1-rc1
+appVersion: 0.0.1-rc3
 
 keywords:
 - rancher
 - support
-home: support.rancher.com
+home: https://support.rancher.com
 sources:
 - https://github.com/rancherlabs/support-tools
 maintainers:
