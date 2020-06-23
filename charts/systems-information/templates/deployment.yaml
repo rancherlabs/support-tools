@@ -1,0 +1,43 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: systems-information
+spec:
+  schedule: {{ .Values.schedule | quote }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - env:
+            - name: from_address
+              value: {{ .Values.from_address | quote }}
+            - name: rancher_name
+              value: {{ .Values.rancher_name | quote }}
+            - name: send_to_support
+              value: {{ .Values.send_to_support | quote }}
+            - name: smtp_host
+              value: {{ .Values.smtp_host | quote }}
+            - name: smtp_port
+              value: {{ .Values.smtp_port | quote }}
+            - name: to_address
+              value: {{ .Values.to_address | quote }}
+            - name: smtp_user
+              valueFrom:
+                secretKeyRef:
+                  key: smtp_user
+                  name: mail-config
+                  optional: false
+            - name: smtp_pass
+              valueFrom:
+                secretKeyRef:
+                  key: smtp_pass
+                  name: mail-config
+                  optional: false
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            name: system-information
+          dnsPolicy: ClusterFirst
+          restartPolicy: Never
+          schedulerName: default-scheduler
+          serviceAccountName: systems-information

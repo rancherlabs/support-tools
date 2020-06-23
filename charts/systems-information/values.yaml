@@ -1,0 +1,39 @@
+replicaCount: 1
+
+image:
+  repository: docker.io/cube8021/rancher-systems-information
+  tag: v0.0.1-rc2
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+Name: systems-information
+Namespace: systems-information
+
+rbac:
+  create: true
+  clusterAdminRole: true
+
+serviceAccount:
+  create: true
+  name: systems-information
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 100Mi
+  requests:
+    cpu: 100m
+    memory: 100Mi
+
+secretName: "mail-config"
+smtp_user: ""
+smtp_pass: ""
+
+rancher_name: ""
+schedule: "0 0 * * 1"
+smtp_host: ""
+smtp_port: "587"
+to_address: ""
+from_address: ""
+send_to_support: "true"

@@ -1,0 +1,87 @@
+labels:
+  io.cattle.role: project # options are cluster/project
+categories:
+  - Support
+Name: systems-information
+Namespace: systems-information
+questions:
+- variable: defaultImage
+  default: true
+  description: "Use default Docker image"
+  label: Use Default Image
+  type: boolean
+  show_subquestion_if: false
+  group: "Container Images"
+  subquestions:
+  - variable: image.repository
+    default: "docker.io/cube8021/rancher-systems-information"
+    description: "Docker image repository"
+    type: string
+    label: Image Repository
+  - variable: image.tag
+    default: "v0.0.1-rc1"
+    description: "Docker image tag"
+    type: string
+    label: Image Tag
+- variable: schedule
+  required: true
+  default: '0 0 * * 1'
+  description: "Backup schedule in crontab format"
+  type: string
+  label: "Backup schedule"
+- variable: rancher_name
+  default: "Rancher"
+  description: "Your human readable for this install"
+  type: string
+  label: Rancher Name
+  required: true
+  group: "General Settings"
+- variable: to_address
+  default: ""
+  description: "Email address for sending report to"
+  type: string
+  label: To address
+  required: true
+  group: "General Settings"
+- variable: send_to_support
+  default: "true"
+  description: "Would you like this report sent to Rancher Support?"
+  type: string
+  label: Send report to Rancher Support
+  required: false
+  group: "General Settings"
+- variable: smtp_host
+  default: ""
+  description: "SMTP server hostname"
+  type: string
+  label: SMTP Server
+  required: true
+  group: "Mail Server Settings"
+- variable: smtp_port
+  default: "587"
+  description: "SMTP server port"
+  type: string
+  label: SMTP port
+  required: true
+  group: "Mail Server Settings"
+- variable: smtp_user
+  default: ""
+  description: "SMTP username"
+  type: string
+  label: SMTP username
+  required: true
+  group: "Mail Server Settings"
+- variable: smtp_pass
+  default: ""
+  description: "SMTP password"
+  type: password
+  label: SMTP password
+  required: true
+  group: "Mail Server Settings"
+- variable: from_address
+  default: ""
+  description: "From address"
+  type: string
+  label: From address
+  required: true
+  group: "Mail Server Settings"
