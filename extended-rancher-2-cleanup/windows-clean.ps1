@@ -149,6 +149,7 @@ Get-Service -Name "rancher-wins" -ErrorAction Ignore | Where-Object {$_.Status -
 }
 
 # clean up the stale HNS network if required
+# uncomment this at your own risk, you may nuke your node
 # try
 # {
 #     # warm up HNS network
@@ -176,11 +177,6 @@ try {
     Get-HnsNetwork | Where { $_.Name -eq 'vxlan0' -or $_.Name -eq 'cbr0' -or $_.Name -eq 'nat'} | Select Name, ID | ForEach-Object {
         Log-Info "Cleaning up HnsNetwork $($_.Name) ..."
         hnsdiag delete networks ($_.ID)
-    }
-
-    Invoke-HNSRequest -Method "GET" -Type "policylists" | Where-Object {-not [string]::IsNullOrEmpty(`$_.Id)} | ForEach-Object {
-        Log-Info "Cleaning up HNSPolicyList `$(`$_.Id) ..."
-        Invoke-HNSRequest -Method "DELETE" -Type "policylists" -Id `$_.Id
     }
 
     Get-HnsEndpoint  | Select Name, ID | ForEach-Object {
