@@ -19,7 +19,7 @@ entries:
     - https://github.com/rancherlabs/support-tools
     type: application
     urls:
-    - http://github.com/rancherlabs/support-tools/charts/systems-information-0.0.1-rc3.tgz
+    - https://rancherlabs.github.io/support-tools/charts/systems-information-0.0.1-rc3.tgz
     version: 0.0.1-rc3
   - apiVersion: v2
     appVersion: 0.0.1-rc2
@@ -39,7 +39,7 @@ entries:
     - https://github.com/rancherlabs/support-tools
     type: application
     urls:
-    - http://github.com/rancherlabs/support-tools/charts/systems-information-0.0.1-rc2.tgz
+    - https://rancherlabs.github.io/support-tools/charts/systems-information-0.0.1-rc2.tgz
     version: 0.0.1-rc2
   - apiVersion: v2
     appVersion: 0.0.1-rc1
@@ -59,6 +59,6 @@ entries:
     - https://github.com/rancherlabs/support-tools
     type: application
     urls:
-    - http://github.com/rancherlabs/support-tools/charts/systems-information-0.0.1-rc1.tgz
+    - https://rancherlabs.github.io/support-tools/charts/systems-information-0.0.1-rc1.tgz
     version: 0.0.1-rc1
 generated: "2020-06-23T00:07:10.358757938-05:00"
