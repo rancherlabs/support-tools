@@ -5,7 +5,7 @@
 
 FlushIptables="false"
 RemoveImages="false"
-while getopts ":f:i:" opt; do
+while getopts ":f.i." opt; do
   case $opt in
     f)
       FlushIptables="true"
@@ -25,7 +25,7 @@ while getopts ":f:i:" opt; do
 done
 
 docker rm -f $(docker ps -qa)
-if [[ "$RemoveImages" == "true" ]]
+if [[ $RemoveImages == 'true' ]]
 then
   docker rmi -f $(docker images -q)
 fi
