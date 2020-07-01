@@ -219,7 +219,7 @@ docker-logs() {
   docker info > $TMPDIR/docker/dockerinfo 2>&1 & timeout_cmd
   docker ps -a > $TMPDIR/docker/dockerpsa 2>&1
   docker stats -a --no-stream > $TMPDIR/docker/dockerstats 2>&1 & timeout_cmd
-  docker images > $TMPDIR/docker/dockerstats 2>&1 & timeout_cmd
+  docker images > $TMPDIR/docker/dockerimages 2>&1 & timeout_cmd
 
   if [ -f /etc/docker/daemon.json ]; then
     cp -p /etc/docker/daemon.json $TMPDIR/docker/etcdockerdaemon.json
