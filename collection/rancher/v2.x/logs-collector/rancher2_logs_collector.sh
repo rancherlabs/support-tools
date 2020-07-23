@@ -136,7 +136,7 @@ system-all() {
     systemctl list-units > $TMPDIR/systeminfo/systemd-units 2>&1
   fi
   if $(command -v iostat >/dev/null 2>&1); then
-    iostat -h > $TMPDIR/systeminfo/iostath 2>&1
+    iostat -h -x > $TMPDIR/systeminfo/iostathx 2>&1
   fi
   if $(command -v service >/dev/null 2>&1); then
     service --status-all > $TMPDIR/systeminfo/service-statusall 2>&1
