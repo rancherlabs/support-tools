@@ -128,6 +128,9 @@ system-all() {
   if $(command -v lsblk >/dev/null 2>&1); then
     lsblk > $TMPDIR/systeminfo/lsblk 2>&1
   fi
+  if $(command -v iostat >/dev/null 2>&1); then
+    iostat -h -x 2 5 > $TMPDIR/systeminfo/iostathx 2>&1
+  fi
   lsof -Pn > $TMPDIR/systeminfo/lsof 2>&1 & timeout_cmd
   if $(command -v sysctl >/dev/null 2>&1); then
     sysctl -a > $TMPDIR/systeminfo/sysctla 2>/dev/null
@@ -135,8 +138,8 @@ system-all() {
   if $(command -v systemctl >/dev/null 2>&1); then
     systemctl list-units > $TMPDIR/systeminfo/systemd-units 2>&1
   fi
-  if $(command -v iostat >/dev/null 2>&1); then
-    iostat -h -x 2 5 > $TMPDIR/systeminfo/iostathx 2>&1
+  if $(command -v systemctl >/dev/null 2>&1); then
+    systemctl list-unit-files > $TMPDIR/systeminfo/systemd-unit-files 2>&1
   fi
   if $(command -v service >/dev/null 2>&1); then
     service --status-all > $TMPDIR/systeminfo/service-statusall 2>&1
