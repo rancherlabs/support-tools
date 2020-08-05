@@ -242,6 +242,7 @@ k3s-logs() {
   k3s crictl version > $TMPDIR/k3s/crictl/version 2>&1
   k3s crictl images > $TMPDIR/k3s/crictl/images 2>&1
   k3s crictl imagefsinfo > $TMPDIR/k3s/crictl/imagefsinfo 2>&1
+  k3s crictl stats -a > $TMPDIR/k3s/crictl/statsa 2>&1
   if [ -f /etc/systemd/system/k3s.service ]
     then
       cp -p /etc/systemd/system/k3s.service $TMPDIR/k3s/k3s.service
@@ -310,14 +311,19 @@ docker-rancher() {
 k3s-rancher() {
 
   techo "Collecting k3s cluster logs"
-  if [ -d /var/lib/rancher/k3s/server ]; then
+  if [ -d /var/lib/rancher/k3s/agent ]; then
     mkdir -p $TMPDIR/k3s/kubectl
-    k3s kubectl get nodes -o yaml > $TMPDIR/k3s/kubectl/nodes 2>&1
-    k3s kubectl describe nodes > $TMPDIR/k3s/kubectl/nodesdescribe 2>&1
-    k3s kubectl version > $TMPDIR/k3s/kubectl/version 2>&1
-    k3s kubectl get pods -o wide --all-namespaces > $TMPDIR/k3s/kubectl/pods 2>&1
+    KUBECONFIG=/var/lib/rancher/k3s/agent/kubelet.kubeconfig
+    k3s kubectl --kubeconfig=$KUBECONFIG get nodes -o yaml > $TMPDIR/k3s/kubectl/nodes 2>&1
+    k3s kubectl --kubeconfig=$KUBECONFIG describe nodes > $TMPDIR/k3s/kubectl/nodesdescribe 2>&1
+    k3s kubectl --kubeconfig=$KUBECONFIG version > $TMPDIR/k3s/kubectl/version 2>&1
+    k3s kubectl --kubeconfig=$KUBECONFIG get pods -o wide --all-namespaces > $TMPDIR/k3s/kubectl/pods 2>&1
+    k3s kubectl --kubeconfig=$KUBECONFIG get svc -o wide --all-namespaces > $TMPDIR/k3s/kubectl/services 2>&1
+  fi
+
+  if [ -d /var/lib/rancher/k3s/server ]; then
+    unset KUBECONFIG
     k3s kubectl get events --all-namespaces > $TMPDIR/k3s/kubectl/events 2>&1
-    k3s kubectl get svc -o wide --all-namespaces > $TMPDIR/k3s/kubectl/services 2>&1
     k3s kubectl get endpoints -o wide --all-namespaces > $TMPDIR/k3s/kubectl/endpoints 2>&1
     k3s kubectl get configmaps --all-namespaces > $TMPDIR/k3s/kubectl/configmaps 2>&1
     k3s kubectl get namespaces > $TMPDIR/k3s/kubectl/namespaces 2>&1
