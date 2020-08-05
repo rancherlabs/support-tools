@@ -128,6 +128,9 @@ system-all() {
   if $(command -v lsblk >/dev/null 2>&1); then
     lsblk > $TMPDIR/systeminfo/lsblk 2>&1
   fi
+  if $(command -v iostat >/dev/null 2>&1); then
+    iostat -h -x 2 5 > $TMPDIR/systeminfo/iostathx 2>&1
+  fi
   lsof -Pn > $TMPDIR/systeminfo/lsof 2>&1 & timeout_cmd
   if $(command -v sysctl >/dev/null 2>&1); then
     sysctl -a > $TMPDIR/systeminfo/sysctla 2>/dev/null
