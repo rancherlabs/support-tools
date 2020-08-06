@@ -211,14 +211,15 @@ networking() {
     ifconfig -a > $TMPDIR/networking/ifconfiga
   fi
   if $(command -v ss >/dev/null 2>&1); then
-    ss -itan > $TMPDIR/networking/ssitan
-    ss -uapn > $TMPDIR/networking/ssuapn
-    ss -wapn > $TMPDIR/networking/sswapn
-    ss -xapn > $TMPDIR/networking/ssxapn
-    ss -4apn > $TMPDIR/networking/ss4apn
-    ss -6apn > $TMPDIR/networking/ss6apn
-    ss -tunlp6 > $TMPDIR/networking/sstunlp6
-    ss -tunlp4 > $TMPDIR/networking/sstunlp4
+    ss -anp > $TMPDIR/networking/ssanp 2>&1
+    ss -itan > $TMPDIR/networking/ssitan 2>&1
+    ss -uapn > $TMPDIR/networking/ssuapn 2>&1
+    ss -wapn > $TMPDIR/networking/sswapn 2>&1
+    ss -xapn > $TMPDIR/networking/ssxapn 2>&1
+    ss -4apn > $TMPDIR/networking/ss4apn 2>&1
+    ss -6apn > $TMPDIR/networking/ss6apn 2>&1
+    ss -tunlp6 > $TMPDIR/networking/sstunlp6 2>&1
+    ss -tunlp4 > $TMPDIR/networking/sstunlp4 2>&1
   fi
   if [ -d /etc/cni/net.d/ ]; then
     mkdir -p $TMPDIR/networking/cni
