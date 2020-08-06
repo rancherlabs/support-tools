@@ -210,6 +210,16 @@ networking() {
   if $(command -v ifconfig >/dev/null 2>&1); then
     ifconfig -a > $TMPDIR/networking/ifconfiga
   fi
+  if $(command -v ss >/dev/null 2>&1); then
+    ss -itan > $TMPDIR/networking/ssitan
+    ss -uapn > $TMPDIR/networking/ssuapn
+    ss -wapn > $TMPDIR/networking/sswapn
+    ss -xapn > $TMPDIR/networking/ssxapn
+    ss -4apn > $TMPDIR/networking/ss4apn
+    ss -6apn > $TMPDIR/networking/ss6apn
+    ss -tunlp6 > $TMPDIR/networking/sstunlp6
+    ss -tunlp4 > $TMPDIR/networking/sstunlp4
+  fi
   if [ -d /etc/cni/net.d/ ]; then
     mkdir -p $TMPDIR/networking/cni
     cp -r -p /etc/cni/net.d/* $TMPDIR/networking/cni 2>&1
