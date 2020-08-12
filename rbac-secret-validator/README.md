@@ -12,4 +12,7 @@ Pre-requisites:
 - Create API key using admin user and replace 'adminToken' with that value
 - Create API key using readonly user and replace 'userToken' with that value 
 
+Screenshot:
+![](image.png)
+
 Note: This script can be used as a framework to validate other object access as well 
