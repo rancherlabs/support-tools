@@ -1,5 +1,7 @@
 ### This script will generate kubeconfig file using certificates
 
+This script should be executed from a working control plane node.
+
 The generated kubeconfig file will authenticate directly with the k8s API server.
 
 ![](image.png)
