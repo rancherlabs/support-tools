@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Getting IPs from endpoint..."
-EndPointIPs=`kubectl get endpoints kubernetes -o json | jq .subsets[].addresses[].ip | tr -d '"'`
+EndPointIPs=`kubectl get endpoints kubernetes -o jsonpath='{.subsets[].addresses[*].ip}'`
 
 for EndPointIP in $EndPointIPs
 do
