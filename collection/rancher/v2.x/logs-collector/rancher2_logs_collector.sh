@@ -279,7 +279,7 @@ docker-rancher() {
 
   for RANCHERAGENT in $RANCHERAGENTS; do
     docker inspect $RANCHERAGENT > $TMPDIR/rancher/containerinspect/agent-$RANCHERAGENT 2>&1
-    docker logs $SINCE_FLAG -t $RANCHERAGENT > $TMPDIR/rancher/containerlogs/agent-$RANCHERAGENT 2>&1
+    docker logs $SINCE_FLAG -t $RANCHERAGENT 2>&1 | sed 's/with token.*/with token REDACTED/g' > $TMPDIR/rancher/containerlogs/agent-$RANCHERAGENT 2>&1
   done
 
   # K8s Docker container logging
