@@ -3,7 +3,7 @@
 ## kube-scheduler
 
 ### Finding the current leader
-Command(s): `curl -s https://raw.githubusercontent.com/support-tools/troubleshooting-scripts/kube-scheduler/find-leader.sh | bash`
+Command(s): `curl -s https://raw.githubusercontent.com/rancherlabs/support-tools/master/troubleshooting-scripts/kube-scheduler/find-leader.sh | bash`
 
 **Example Output**
 ```bash
