@@ -11,7 +11,7 @@ bd37bc0dc2e990b6, started, etcd-a1ubrkeat02, https://172.27.5.32:2380, https://1
 ```
 
 ## Check etcd endpoints
-Command(s): `curl https://raw.githubusercontent.com/mattmattox/etcd-troubleshooting/master/etcd-endpoints | bash `
+Command(s): `curl https://raw.githubusercontent.com/rancherlabs/support-tools/master/troubleshooting-scripts/etcd/check-endpoints.sh | bash `
 
 **Example Output of a healthy cluster**
 ```bash
@@ -23,7 +23,7 @@ Validating connection to https://172.27.5.32:2379/health
 {"health":"true"}
 ```
 
-## Common errors
+## Check etcd logs
 
 `health check for peer xxx could not connect: dial tcp IP:2380: getsockopt: connection refused`
 
@@ -42,12 +42,12 @@ The host firewall is preventing network communication.
 
 `rafthttp: request cluster ID mismatch`
 
-The node with the etcd instance logging rafthttp: request cluster ID mismatch is trying to join a cluster that has already been formed with another peer. The node should be removed from the cluster, and re-added.
+The node with the etcd instance logging `rafthttp: request cluster ID mismatch` is trying to join a cluster that has already been formed with another peer. The node should be removed from the cluster, and re-added.
 
 
 `rafthttp: failed to find member`
 
-The cluster state (/var/lib/etcd) contains wrong information to join the cluster. The node should be removed from the cluster, the state directory should be cleaned and the node should be re-added.
+The cluster state (`/var/lib/etcd`) contains wrong information to join the cluster. The node should be removed from the cluster, the state directory should be cleaned and the node should be re-added.
 
 ## Enabling debug logging
 `curl -XPUT -d '{"Level":"DEBUG"}' --cacert $(docker exec etcd printenv ETCDCTL_CACERT) --cert $(docker exec etcd printenv ETCDCTL_CERT) --key $(docker exec etcd printenv ETCDCTL_KEY) https://localhost:2379/config/local/log`
