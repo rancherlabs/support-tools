@@ -77,7 +77,7 @@ Function create_working_dir{
 Function get_sysinfo{
     try {
         Write-Host "Collecting System information"
-        systeminfo.exe > $directory\sysinfo
+        #systeminfo.exe > $directory\sysinfo
         systeminfo > $directory/system/systeminfo
         msinfo32 /nfo $directory/system/msinfo32-report.nfo /report $directory/system/msinfo32-report.txt
         (Get-Date) - (Get-CimInstance Win32_OperatingSystem).LastBootupTime > $directory/system/uptime
@@ -262,7 +262,7 @@ Function get_windows_event_logs {
 Function get_k8s_logs{
     try {
         Write-Host "Collecting Kubernetes Logs"
-        $logfile =@(get-childitem -Recurse C:\var\lib\rancher\rke\log\ | Foreach-Object {$_.FullName})
+        $logfile =@(get-childitem -Recurse 'C:\var\lib\rancher\rke\log\' | Foreach-Object {$_.FullName})
         $symlink = (Get-Item $logfile |  Select-Object -ExpandProperty Target)
         $workinglink =  @(Get-Item $symlink  -ErrorAction SilentlyContinue| Where-Object {$_.Length -ne $null} | Foreach-Object {$_.FullName})
         foreach ($file in $workinglink){
@@ -296,8 +296,8 @@ Function get_network_info{
         
         Get-NetRoute > $directory\network\networkroutes
 
-        vfpctrl.exe /list-vmswitch-port > $directory\network\ports.txt
-        ipconfig /allcompartments /all > $directory\network\ip.txt
+        vfpctrl.exe /list-vmswitch-port > $directory\network\vfpports.txt
+        ipconfig /allcompartments /all > $directory\network\ipconfigall.txt
         route PRINT -4 > $directory/network/ipv4routes.txt
         route PRINT -6 > $directory/network/ipv6routes.txt
         netsh interface ipv4 show subinterface > $directory/network/ipv4subinterfaces
