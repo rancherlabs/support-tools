@@ -5,6 +5,5 @@ Note: Backup your data, use at your own risk.
 
 ```
 curl -LO https://github.com/rancherlabs/support-tools/raw/master/extended-rancher-2-cleanup/extended-cleanup-rancher2.sh
-chmod +x extended-cleanup-rancher2.sh
-./extended-cleanup-rancher2.sh
+chmod +x extended-cleanup-rancher2.sh --flush-images --flush-iptables
 ```
