@@ -4,7 +4,7 @@
 
 ### Finding the current leader
 
-Command(s): `curl -s https://raw.githubusercontent.com/support-tools/troubleshooting-scripts/kube-scheduler/find-leader.sh | bash`
+Command(s): `curl -s https://raw.githubusercontent.com/rancherlabs/support-tools/master/troubleshooting-scripts/kube-scheduler/find-leader.sh | bash`
 
 **Example Output**
 
@@ -14,7 +14,7 @@ kube-scheduler is the leader on node a1ubk8slabl03
 
 ## determine-leader
 
-Command(s): `curl -s https://raw.githubusercontent.com/support-tools/troubleshooting-scripts/determine-leader/rancher2_determine_leader.sh | bash`
+Command(s): `curl -s https://raw.githubusercontent.com/rancherlabs/support-tools/master/troubleshooting-scripts/determine-leader/rancher2_determine_leader.sh | bash`
 
 **Example Output**
 
