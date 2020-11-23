@@ -1,3 +1,5 @@
 #!/bin/bash
-LEADER="$(kubectl -n kube-system get configmap cattle-controllers -o jsonpath='{.metadata.annotations.control-plane\.alpha\.kubernetes\.io/leader}' | jq . 2>/dev/null | grep 'holderIdentity' | awk '{print $2}' | tr -d ",\"" | awk -F '_' '{print $1}')"
-echo "$LEADER is the leader in this Rancher instance"
+RANCHER_LEADER="$(kubectl -n kube-system get configmap cattle-controllers -o json | jq -r '.metadata.annotations."control-plane.alpha.kubernetes.io/leader"' | jq -r '.holderIdentity')"
+# Display Rancher Pods Information
+kubectl get pod -n cattle-system $LEADER -o custom-columns=NAME:.metadata.name,POD-IP:.status.podIP,HOST-IP:.status.hostIP
+printf "\n$RANCHER_LEADER is the leader in this Rancher instance\n"
