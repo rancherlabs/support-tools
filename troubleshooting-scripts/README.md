@@ -18,7 +18,8 @@ Command(s): `curl -s https://raw.githubusercontent.com/support-tools/troubleshoo
 
 **Example Output**
 
-```bashNAME                                    POD-IP         HOST-IP
+```bash
+NAME                                    POD-IP         HOST-IP
 cattle-cluster-agent-776d795ff8-x77nq   10.42.0.93     10.10.100.83
 cattle-node-agent-4bsx6                 10.10.100.83   10.10.100.83
 rancher-54d47dc9cf-d4qt9                10.42.0.92     10.10.100.83
