@@ -8,6 +8,6 @@ Simple script to install fio from source.  It does the following:
 
 Usage:
 ```
-curl -LO https://github.com/patrick0057/instant-fio-master/raw/master/instant-fio-master.sh
+curl -LO https://raw.githubusercontent.com/rancherlabs/support-tools/master/instant-fio-master/instant-fio-master.sh
 bash instant-fio-master.sh
 ```
