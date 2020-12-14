@@ -328,7 +328,7 @@ k3s-rancher() {
   if [ -d /var/lib/rancher/k3s/agent ]; then
     mkdir -p $TMPDIR/k3s/kubectl
     KUBECONFIG=/var/lib/rancher/k3s/agent/kubelet.kubeconfig
-    k3s kubectl --kubeconfig=$KUBECONFIG get nodes -o yaml > $TMPDIR/k3s/kubectl/nodes 2>&1
+    k3s kubectl --kubeconfig=$KUBECONFIG get nodes -o wide > $TMPDIR/k3s/kubectl/nodes 2>&1
     k3s kubectl --kubeconfig=$KUBECONFIG describe nodes > $TMPDIR/k3s/kubectl/nodesdescribe 2>&1
     k3s kubectl --kubeconfig=$KUBECONFIG version > $TMPDIR/k3s/kubectl/version 2>&1
     k3s kubectl --kubeconfig=$KUBECONFIG get pods -o wide --all-namespaces > $TMPDIR/k3s/kubectl/pods 2>&1
