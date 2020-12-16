@@ -19,8 +19,8 @@ Rancher 2.x extended cleanup
 
   All flags are optional
 
-  -f | --flush-images       Cleanup all container images
-  -i | --flush-iptables     Flush all iptables rules (includes a Docker restart)
+  -f | --flush-iptables     Flush all iptables rules (includes a Docker restart)
+  -i | --flush-images       Cleanup all container images
   -h                        This help menu
 
   !! Warning, this script removes containers and all data specific to Kubernetes and Rancher
