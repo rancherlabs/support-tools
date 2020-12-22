@@ -101,7 +101,12 @@ flush-iptables() {
   iptables -F
   iptables -X
   techo "Restarting Docker..."
-  /etc/init.d/docker restart
+  if systemctl list-units --full -all | grep -q docker.service
+    then
+      systemctl restart docker
+    else
+      /etc/init.d/docker restart
+  fi
 
 }
 
@@ -112,8 +117,8 @@ help() {
 
   All flags are optional
 
-  -f | --flush-images       Cleanup all container images
-  -i | --flush-iptables     Flush all iptables rules (includes a Docker restart)
+  -f | --flush-iptables     Flush all iptables rules (includes a Docker restart)
+  -i | --flush-images       Cleanup all container images
   -h                        This help menu
 
   !! Warning, this script removes containers and all data specific to Kubernetes and Rancher
