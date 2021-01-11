@@ -1,0 +1,70 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: alt-etcd-s3-sync
+  name: etcd-s3
+  namespace: kube-system
+type: Opaque
+data:
+  # all values should be base64 encoded (ie: echo -n '123456' | base64)
+  S3_ACCESS_KEY:
+  S3_BACKUP:
+  S3_BUCKET_NAME:
+  S3_BUCKET_REGION:
+  S3_ENDPOINT:
+  S3_FOLDER:
+  S3_SECRET_KEY:
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  labels:
+    app: alt-etcd-s3-sync
+  name: alt-etcd-s3-sync
+  namespace: kube-system
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 0
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - args:
+            - /opt/rke-tools/rke-etcd-backup
+            - etcd-backup
+            - save
+            - --cacert
+            - /etc/kubernetes/ssl/kube-ca.pem
+            - --cert
+            - /etc/kubernetes/ssl/kube-node.pem
+            - --key
+            - /etc/kubernetes/ssl/kube-node-key.pem
+            - --s3-backup
+            envFrom:
+            - secretRef:
+                name: etcd-s3
+                optional: false
+            image: rancher/rke-tools:v0.1.66
+            name: alt-etcd-s3-sync
+            volumeMounts:
+            - mountPath: /backup
+              name: rke-tools
+            - mountPath: /etc/kubernetes
+              name: certs
+              readOnly: true
+          hostNetwork: true
+          restartPolicy: Never
+          volumes:
+          - hostPath:
+              path: /opt/rke/etcd-snapshots
+              type: ""
+            name: rke-tools
+          - hostPath:
+              path: /etc/kubernetes
+              type: ""
+            name: certs
+  schedule: '0 */12 * * *'
+  successfulJobsHistoryLimit: 3

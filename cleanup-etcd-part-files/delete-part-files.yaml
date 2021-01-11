@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cleanup-etcd
+  namespace: kube-system
+  labels:
+    app: cleanup-etcd
+spec:
+  selector:
+    matchLabels:
+      app: cleanup-etcd
+  template:
+    metadata:
+      labels:
+        app: cleanup-etcd
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: node-role.kubernetes.io/etcd
+                operator: In
+                values:
+                - "true"
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/os
+                operator: NotIn
+                values:
+                - windows
+      containers:
+      - args:
+        - while true;
+          do
+            echo "Before cleanup";
+            ls -lh /opt/rke/etcd-snapshots/;
+            find /opt/rke/etcd-snapshots/ -mindepth 1 -type f -name *.* -mmin +15 | grep -v '.zip' | xargs rm -f;
+            echo "Post cleanup";
+            ls -lh /opt/rke/etcd-snapshots/;
+            echo "Sleeping...";
+            sleep 360;
+          done;
+        command:
+        - /bin/sh
+        - -c
+        image: busybox
+        name: cleanup-etcd
+        volumeMounts:
+        - mountPath: /opt/rke
+          name: rke
+      volumes:
+      - hostPath:
+          path: /opt/rke
+          type: ""
+        name: rke
