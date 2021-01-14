@@ -34,19 +34,20 @@ spec:
           affinity:
             nodeAffinity:
               preferredDuringSchedulingIgnoredDuringExecution:
-                - preference:
+              - preference:
                   matchExpressions:
                   - key: node-role.kubernetes.io/etcd
                     operator: In
                     values:
                     - "true"
+                weight: 100
               requiredDuringSchedulingIgnoredDuringExecution:
                 nodeSelectorTerms:
                 - matchExpressions:
                   - key: beta.kubernetes.io/os
                     operator: NotIn
                     values:
-                    - windows        
+                    - windows
           containers:
           - args:
             - /opt/rke-tools/rke-etcd-backup
