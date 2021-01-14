@@ -10,7 +10,6 @@ type: Opaque
 data:
   # all values should be base64 encoded (ie: echo -n '123456' | base64)
   S3_ACCESS_KEY:
-  S3_BACKUP:
   S3_BUCKET_NAME:
   S3_BUCKET_REGION:
   S3_ENDPOINT:
