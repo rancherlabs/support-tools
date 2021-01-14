@@ -31,11 +31,28 @@ spec:
     spec:
       template:
         spec:
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - preference:
+                  matchExpressions:
+                  - key: node-role.kubernetes.io/etcd
+                    operator: In
+                    values:
+                    - "true"
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: beta.kubernetes.io/os
+                    operator: NotIn
+                    values:
+                    - windows        
           containers:
           - args:
             - /opt/rke-tools/rke-etcd-backup
             - etcd-backup
             - save
+            - --once            
             - --cacert
             - /etc/kubernetes/ssl/kube-ca.pem
             - --cert
