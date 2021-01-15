@@ -23,6 +23,7 @@ spec:
                 operator: In
                 values:
                 - "true"
+            weight: 100    
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
