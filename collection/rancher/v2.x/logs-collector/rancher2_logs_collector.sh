@@ -337,6 +337,7 @@ k3s-rancher() {
 
   if [ -d /var/lib/rancher/k3s/server ]; then
     unset KUBECONFIG
+    kubectl api-resources > $TMPDIR/k3s/kubectl/api-resources 2>&1
     K3S_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations)
     K3S_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases pods pvc replicasets roles rolebindings statefulsets)
     for OBJECT in "${K3S_OBJECTS[@]}"; do
