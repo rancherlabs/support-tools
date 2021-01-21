@@ -337,10 +337,15 @@ k3s-rancher() {
 
   if [ -d /var/lib/rancher/k3s/server ]; then
     unset KUBECONFIG
-    k3s kubectl get events --all-namespaces > $TMPDIR/k3s/kubectl/events 2>&1
-    k3s kubectl get endpoints -o wide --all-namespaces > $TMPDIR/k3s/kubectl/endpoints 2>&1
-    k3s kubectl get configmaps --all-namespaces > $TMPDIR/k3s/kubectl/configmaps 2>&1
-    k3s kubectl get namespaces > $TMPDIR/k3s/kubectl/namespaces 2>&1
+    kubectl api-resources > $TMPDIR/k3s/kubectl/api-resources 2>&1
+    K3S_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations)
+    K3S_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases pods pvc replicasets roles rolebindings statefulsets)
+    for OBJECT in "${K3S_OBJECTS[@]}"; do
+      k3s kubectl get ${OBJECT} -o wide > $TMPDIR/k3s/kubectl/${OBJECT} 2>&1
+    done
+    for OBJECT in "${K3S_OBJECTS_NAMESPACED[@]}"; do
+      k3s kubectl get ${OBJECT} --all-namespaces -o wide > $TMPDIR/k3s/kubectl/${OBJECT} 2>&1
+    done
   fi
 
   mkdir -p $TMPDIR/k3s/podlogs
