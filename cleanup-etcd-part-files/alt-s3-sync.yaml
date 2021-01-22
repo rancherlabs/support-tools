@@ -32,14 +32,6 @@ spec:
         spec:
           affinity:
             nodeAffinity:
-              preferredDuringSchedulingIgnoredDuringExecution:
-              - preference:
-                  matchExpressions:
-                  - key: node-role.kubernetes.io/etcd
-                    operator: In
-                    values:
-                    - "true"
-                weight: 100
               requiredDuringSchedulingIgnoredDuringExecution:
                 nodeSelectorTerms:
                 - matchExpressions:
@@ -47,6 +39,10 @@ spec:
                     operator: NotIn
                     values:
                     - windows
+                  - key: node-role.kubernetes.io/etcd
+                    operator: In
+                    values:
+                    - "true"
           containers:
           - args:
             - /opt/rke-tools/rke-etcd-backup
@@ -78,6 +74,11 @@ spec:
               readOnly: true
           hostNetwork: true
           restartPolicy: Never
+          tolerations:
+          - effect: NoExecute
+            key: node-role.kubernetes.io/etcd
+            operator: Equal
+            value: "true"          
           volumes:
           - hostPath:
               path: /opt/rke/etcd-snapshots
