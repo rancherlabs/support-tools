@@ -269,7 +269,7 @@ docker-rancher() {
   techo "Collecting rancher logs"
   # Discover any server or agent running
   mkdir -p $TMPDIR/rancher/{containerlogs,containerinspect}
-  RANCHERSERVERS=$(docker ps -a | grep -E "k8s_rancher_rancher" | awk '{ print $1 }')
+  RANCHERSERVERS=$(docker ps -a | grep -E "k8s_rancher_rancher|rancher/rancher:|rancher/rancher " | awk '{ print $1 }')
   RANCHERAGENTS=$(docker ps -a | grep -E "rancher/rancher-agent:|rancher/rancher-agent " | awk '{ print $1 }')
 
   for RANCHERSERVER in $RANCHERSERVERS; do
