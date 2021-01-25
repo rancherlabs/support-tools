@@ -16,77 +16,74 @@ data:
   S3_FOLDER:
   S3_SECRET_KEY:
 ---
-apiVersion: batch/v1beta1
-kind: CronJob
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   labels:
-    app: alt-etcd-s3-sync
-  name: alt-etcd-s3-sync
+    app: rolling-etcd-snapshots
+  name: rolling-etcd-snapshots
   namespace: kube-system
 spec:
-  concurrencyPolicy: Forbid
-  failedJobsHistoryLimit: 0
-  jobTemplate:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rolling-etcd-snapshots
+  template:
+    metadata:
+      labels:
+        app: rolling-etcd-snapshots
     spec:
-      template:
-        spec:
-          affinity:
-            nodeAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-                nodeSelectorTerms:
-                - matchExpressions:
-                  - key: beta.kubernetes.io/os
-                    operator: NotIn
-                    values:
-                    - windows
-                  - key: node-role.kubernetes.io/etcd
-                    operator: In
-                    values:
-                    - "true"
-          containers:
-          - args:
-            - /opt/rke-tools/rke-etcd-backup
-            - etcd-backup
-            - save
-            - --cacert
-            - /etc/kubernetes/ssl/kube-ca.pem
-            - --cert
-            - /etc/kubernetes/ssl/kube-node.pem
-            - --key
-            - /etc/kubernetes/ssl/kube-node-key.pem
-            - --s3-backup=true
-            - --name
-            - etcd-rolling-snapshots
-            - --creation=12h
-            - --retention=72h
-            - --once
-            envFrom:
-            - secretRef:
-                name: etcd-s3
-                optional: false
-            image: rancher/rke-tools:v0.1.66
-            name: alt-etcd-s3-sync
-            volumeMounts:
-            - mountPath: /backup
-              name: rke-tools
-            - mountPath: /etc/kubernetes
-              name: certs
-              readOnly: true
-          hostNetwork: true
-          restartPolicy: Never
-          tolerations:
-          - effect: NoExecute
-            key: node-role.kubernetes.io/etcd
-            operator: Equal
-            value: "true"          
-          volumes:
-          - hostPath:
-              path: /opt/rke/etcd-snapshots
-              type: ""
-            name: rke-tools
-          - hostPath:
-              path: /etc/kubernetes
-              type: ""
-            name: certs
-  schedule: '0 */12 * * *'
-  successfulJobsHistoryLimit: 3
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/os
+                operator: NotIn
+                values:
+                - windows
+              - key: node-role.kubernetes.io/etcd
+                operator: In
+                values:
+                - "true"
+      containers:
+      - args:
+        - /opt/rke-tools/rke-etcd-backup
+        - etcd-backup
+        - save
+        - --cacert
+        - /etc/kubernetes/ssl/kube-ca.pem
+        - --cert
+        - /etc/kubernetes/ssl/kube-node.pem
+        - --key
+        - /etc/kubernetes/ssl/kube-node-key.pem
+        - --s3-backup=true
+        - --creation=12h
+        - --retention=72h
+        envFrom:
+        - secretRef:
+            name: etcd-s3
+            optional: false
+        image: rancher/rke-tools:v0.1.66
+        imagePullPolicy: IfNotPresent
+        name: rolling-etcd-snapshots
+        volumeMounts:
+        - mountPath: /backup
+          name: rke-tools
+        - mountPath: /etc/kubernetes
+          name: k8s-certs
+      hostNetwork: true
+      tolerations:
+      - effect: NoExecute
+        key: node-role.kubernetes.io/etcd
+        operator: Equal
+        value: "true"
+      volumes:
+      - hostPath:
+          path: /opt/rke/etcd-snapshots
+          type: ""
+        name: rke-tools
+      - hostPath:
+          path: /etc/kubernetes
+          type: ""
+        name: k8s-certs
