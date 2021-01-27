@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ingress-scanner
+  namespace: ingress-nginx
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ingress-scanner
+  namespace: ingress-nginx
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/log
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - list
+  - watch
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ingress-scanner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ingress-scanner
+subjects:
+- kind: ServiceAccount
+  name: ingress-scanner
+  namespace: ingress-nginx
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ingress-scanner
+  namespace: ingress-nginx
+spec:
+  backoffLimit: 10
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      labels:
+        app: ingress-scanner
+        job-name: ingress-scanner
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/os
+                operator: NotIn
+                values:
+                - windows
+              - key: node-role.kubernetes.io/worker
+                operator: Exists
+      containers:
+      - image: cube8021/bad-ingress-scanner:v0.1
+        imagePullPolicy: IfNotPresent
+        name: ingress-scanner
+      restartPolicy: Never
+      serviceAccount: ingress-scanner
+      serviceAccountName: ingress-scanner
+      tolerations:
+      - effect: NoExecute
+        operator: Exists
+      - effect: NoSchedule
+        operator: Exists

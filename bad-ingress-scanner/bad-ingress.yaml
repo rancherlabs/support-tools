@@ -1,0 +1,47 @@
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: test-01
+spec:
+  rules:
+  - host: test-01.example.com
+    http:
+      paths:
+      - backend:
+          serviceName: test-01-example-com
+          servicePort: 80
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: test-02
+spec:
+  rules:
+  - host: test-02.example.com
+    http:
+      paths:
+      - backend:
+          serviceName: test-02-example-com
+          servicePort: 80
+  tls:
+  - hosts:
+    - test-02.example.com
+    secretName: test-02-example-com
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: test-02-dup
+spec:
+  rules:
+  - host: test-02.example.com
+    http:
+      paths:
+      - backend:
+          serviceName: test-02-example-com
+          servicePort: 80
+  tls:
+  - hosts:
+    - test-02.example.com
+    secretName: test-02-example-com
