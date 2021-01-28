@@ -22,7 +22,7 @@ spec:
           value: https://<user>:<password>@<ip_addr>:<port>/
         - name: HTTP_PROXY
           value: http://<user>:<password>@<ip_addr>:<port>/
-        image: cube8021/rancher-metadata-airgap:latest
+        image: rancher/metadata-syncer:latest
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3
