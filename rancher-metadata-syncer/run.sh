@@ -2,7 +2,7 @@
 echo "Starting webserver..."
 apachectl start
 echo "ok" > /var/www/src/healthz
-if [[ ! -z $HTTP_PROXY ]] || [[ ! -z $http_prozy ]] || [[ ! -z $HTTPS_PROXY ]] || [[ ! -z $https_prozy ]]
+if [[ ! -z $HTTP_PROXY ]] || [[ ! -z $HTTPS_PROXY ]]
 then
   echo "Detected proxy settings."
   echo "Starting downloader..."
