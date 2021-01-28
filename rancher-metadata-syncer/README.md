@@ -6,7 +6,7 @@ Rancher Metadata Syncer is a simple pod for publishing the Rancher metadata.json
 Note: The following tool should only be deployed on the Rancher Local cluster and not on a downstream cluster.
 
 ### Option A - Configmap
-The configmap option is used when you would like to add the metadata files via a Configmap.
+The Configmap option is used when you would like to add the metadata files via a Configmap.
 Note: The following steps should be run from a server/workstation with internet access.
 
 - Download the metadata file(s)
