@@ -1,5 +1,5 @@
 ---
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: test-01
@@ -9,10 +9,14 @@ spec:
     http:
       paths:
       - backend:
-          serviceName: test-01-example-com
-          servicePort: 80
+          service:
+            name: test-01-example-com
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
 ---
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: test-02
@@ -22,14 +26,18 @@ spec:
     http:
       paths:
       - backend:
-          serviceName: test-02-example-com
-          servicePort: 80
+          service:
+            name: test-02-example-com
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
   tls:
   - hosts:
     - test-02.example.com
     secretName: test-02-example-com
 ---
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: test-02-dup
@@ -39,8 +47,12 @@ spec:
     http:
       paths:
       - backend:
-          serviceName: test-02-example-com
-          servicePort: 80
+          service:
+            name: test-02-example-com
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
   tls:
   - hosts:
     - test-02.example.com
