@@ -10,16 +10,17 @@ The Configmap option is used when you would like to add the metadata files via a
 Note: The following steps should be run from a server/workstation with internet access.
 
 - Download the metadata file(s)
-
 ```bash
 wget --no-check-certificate -O v2-4.json https://releases.rancher.com/kontainer-driver-metadata/release-v2.4/data.json
 wget --no-check-certificate -O v2-5.json https://releases.rancher.com/kontainer-driver-metadata/release-v2.5/data.json
+tar -czvf v2-4.json.tar.gz v2-4.json
+tar -czvf v2-5.json.tar.gz v2-5.json
 ```
 
 - Create the Configmap with the metadata files.
 
 ```bash
-kubectl -n cattle-system create configmap rancher-metadata --from-file=v2-4.json=./v2-4.json --from-file=v2-4.json=./v2-5.json
+kubectl -n cattle-system create configmap rancher-metadata --from-file=v2-4.json=./v2-4.json.tar.gz --from-file=v2-5.json=./v2-5.json.tar.gz
 ```
 
 - Deploy the workload
@@ -28,11 +29,14 @@ kubectl apply -f deployment-configmap.yaml
 ```
 
 - If you would update the metadata file, please do the following.
+
 ```bash
 wget --no-check-certificate -O v2-4.json https://releases.rancher.com/kontainer-driver-metadata/release-v2.4/data.json
 wget --no-check-certificate -O v2-5.json https://releases.rancher.com/kontainer-driver-metadata/release-v2.5/data.json
+tar -czvf v2-4.json.tar.gz v2-4.json
+tar -czvf v2-5.json.tar.gz v2-5.json
 kubectl -n cattle-system delete configmap rancher-metadata
-kubectl -n cattle-system create configmap rancher-metadata --from-file=v2-4.json=./v2-4.json --from-file=v2-4.json=./v2-5.json
+kubectl -n cattle-system create configmap rancher-metadata --from-file=v2-4.json.tar.gz=./v2-4.json.tar.gz --from-file=v2-5.json.tar.gz=./v2-5.json.tar.gz
 kubectl -n cattle-system patch deployment rancher-metadata -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"$(date +%s)\"}}}}}"
 ```
 

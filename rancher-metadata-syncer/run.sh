@@ -1,7 +1,7 @@
 #!/bin/bash
 echo "Starting webserver..."
 apachectl start
-echo "ok" > /var/www/src/healthz
+echo "ok" > /usr/local/apache2/htdocs/healthz
 if [[ ! -z $HTTP_PROXY ]] || [[ ! -z $HTTPS_PROXY ]]
 then
   echo "Detected proxy settings."
@@ -17,7 +17,8 @@ fi
 if [[ -d /data ]]
 then
   echo "Configmap detected, loading json files from Configmap..."
-  cp -f /data/*.json /var/www/src/
+  tar -zvxf v2-5.json.tar.gz -C /usr/local/apache2/htdocs/
+  tar -zvxf v2-5.json.tar.gz -C /usr/local/apache2/htdocs/
 fi
 
 echo "Starting in static mode"
