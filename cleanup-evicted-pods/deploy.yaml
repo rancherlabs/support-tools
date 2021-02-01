@@ -1,0 +1,19 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: cleanup-evicted-pods
+  namespace: kube-system
+spec:
+  schedule: "*/30 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cleanup-evicted-pods
+            image: rancher/hyperkube:v1.19.6-rancher1
+            imagePullPolicy: IfNotPresent
+            command: ["sh", "-c", "kubectl get pods --all-namespaces --field-selector 'status.phase==Failed' -o json | kubectl delete -f -"]
+          restartPolicy: OnFailure
+          serviceAccount: rke-job-deployer
+          serviceAccountName: rke-job-deployer
