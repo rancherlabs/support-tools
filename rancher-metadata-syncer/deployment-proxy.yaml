@@ -54,7 +54,7 @@ metadata:
   namespace: cattle-system
 spec:
   selector:
-    app: rancher-metadata-airgap
+    app: rancher-metadata
   ports:
     - protocol: TCP
       port: 80
