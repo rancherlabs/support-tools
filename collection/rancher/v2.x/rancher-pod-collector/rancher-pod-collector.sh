@@ -1,12 +1,6 @@
 #!/bin/bash
-# Rancher 2.x Pod collector for supported Linux distributions
-# https://rancher.com/support-maintenance-terms#rancher-support-matrix
-
-# Minimum space needed to run the script (MB)
-SPACE=512
-
-# Set TIMEOUT in seconds for select commands
-TIMEOUT=60
+SPACE="512"
+TIMEOUT="60"
 
 setup() {
 
@@ -39,7 +33,7 @@ verify-access() {
     ## We are inside the k8s cluster or we're using the local kubeconfig
     RANCHER_POD=$(kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=id:metadata.name | head -n1)
     KUBECTL_CMD="kubectl -n cattle-system exec -c rancher ${RANCHER_POD} -- kubectl"
-  elif$(command -v k3s >/dev/null 2>&1)
+  elif $(command -v k3s >/dev/null 2>&1)
   then
     ## We are on k3s node
     KUBECTL_CMD="k3s kubectl"
