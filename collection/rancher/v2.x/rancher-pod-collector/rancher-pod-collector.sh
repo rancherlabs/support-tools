@@ -77,17 +77,22 @@ enable-debug() {
   techo "Enabling debug for Rancher pods"
   for POD in $(${KUBECTL_CMD} get pods -n cattle-system -l app=rancher --no-headers | awk '{print $1}');
   do
-    ${KUBECTL_CMD} exec -n cattle-system -c rancher $POD -- loglevel --set debug
+    if [ ! -z "${TRACE}" ]
+    then
+      techo "Pod: $POD `${KUBECTL_CMD} exec -n cattle-system -c rancher $POD -- loglevel --set trace`"
+    else
+      techo "Pod: $POD `${KUBECTL_CMD} exec -n cattle-system -c rancher $POD -- loglevel --set debug`"
+    fi
   done
 
 }
 
 disable-debug() {
 
-  techo "Enabling debug for Rancher pods"
+  techo "Disabling debug for Rancher pods"
   for POD in $(${KUBECTL_CMD} get pods -n cattle-system -l app=rancher --no-headers | awk '{print $1}');
   do
-    ${KUBECTL_CMD} exec -n cattle-system -c rancher $POD -- loglevel --set info
+    techo "Pod: $POD `${KUBECTL_CMD} exec -n cattle-system -c rancher $POD -- loglevel --set debug`"
   done
 
 }
@@ -98,7 +103,8 @@ capture-logs() {
   mkdir -p $TMPDIR/rancher-logs/
   for POD in $(${KUBECTL_CMD} get pods -n cattle-system -l app=rancher --no-headers | awk '{print $1}');
   do
-    ${KUBECTL_CMD} -n cattle-system -c rancher $POD logs > $TMPDIR/rancher-logs/$POD
+    techo "Pod: $POD"
+    ${KUBECTL_CMD} -n cattle-system logs -c rancher $POD > $TMPDIR/rancher-logs/$POD
   done
 
 }
@@ -129,13 +135,14 @@ cleanup() {
 help() {
 
   echo "Rancher Pod Collector
-  Usage: rancher-pod-collector.sh [ -d <directory> -r <container runtime> -k KUBECONFIG -f ]
+  Usage: rancher-pod-collector.sh [ -d <directory> -r <container runtime> -k KUBECONFIG -t -f ]
 
   All flags are optional
 
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -r    Override container runtime if not automatically detected (docker|k3s)
   -k    Override the kubeconfig (ex: ~/.kube/custom)
+  -t    Enable tracve logs
   -f    Force log collection if the minimum space isn't available"
 
 }
@@ -152,7 +159,7 @@ techo() {
 
 }
 
-while getopts ":d:r:k:fh" opt; do
+while getopts ":d:r:k:fth" opt; do
   case $opt in
     d)
       MKTEMP_BASEDIR="-p ${OPTARG}"
@@ -165,6 +172,9 @@ while getopts ":d:r:k:fh" opt; do
       ;;
     f)
       FORCE=1
+      ;;
+    t)
+      TRACE=1
       ;;
     h)
       help && exit 0
@@ -192,6 +202,11 @@ if [ -n "${DISK_FULL}" ]
     fi
 fi
 
+if [ ! -z "${TRACE}" ]
+then
+  techo "WARNING: Trace logging has been set. Please confirm that you understand this may capture sensitive information."
+  pause
+fi
 verify-access
 cluster-info
 enable-debug
