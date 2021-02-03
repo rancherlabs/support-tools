@@ -1,5 +1,5 @@
 # NGINX-to-pods-check
-This script is designed to walk through all the ingresses in a cluster and test that it can curl the backend pods from the NGINX pods. This is mainly done to verify the overlay network is working along with checking the overall configurtion.
+This script is designed to walk through all the ingresses in a cluster and test that it can curl the backend pods from the NGINX pods. This is mainly done to verify the overlay network is working along with checking the overall configuration.
 
 ## Run script
 ```
