@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: glusterfs-testvol01
+spec:
+  accessModes:
+  - ReadWriteMany
+  glusterfs:
+    endpoints: glusterfs-cluster
+    path: testvol01
+  persistentVolumeReclaimPolicy: Recycle
+  selector:
+    matchLabels:
+      id: testvol01

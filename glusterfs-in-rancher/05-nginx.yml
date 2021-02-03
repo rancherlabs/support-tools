@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: List
+items:
+- apiVersion: extensions/v1beta1
+  kind: Deployment
+  metadata:
+    name: nginx-glusterfs
+  spec:
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          app: nginx-glusterfs
+      spec:
+        containers:
+        - name: nginx-glusterfs
+          image: nginx
+          volumeMounts:
+          - mountPath: /mnt/
+            name: dir-1   
+        volumes:
+          - name: dir-1
+            persistentVolumeClaim:
+              claimName: glusterfs-testvol01-claim

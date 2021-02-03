@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: glusterfs-testvol01-claim
+spec:
+  accessModes:
+  - ReadWriteMany
+  selector:
+    matchLabels:
+      id: testvol01
