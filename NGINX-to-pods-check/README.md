@@ -52,7 +52,7 @@ Checking Pod webserver-good-65644cffd4-gbpkj PodIP 10.42.0.251 on Port 80 in end
 
 ## Testing
 
-The following commands will deploy two workloads and ingresses. One that is working with a webserver that is responding on port 80. And the other will have the webserver disabled so it will fail to connect.
+The following commands will deploy two workloads and ingresses. One that is working with a web server that is responding on port 80. And the other will have the webserver disabled, so it will fail to connect.
 
 ```
 kubectl apply -f https://raw.githubusercontent.com/rancherlabs/support-tools/master/NGINX-to-pods-check/example-deployment.yml
