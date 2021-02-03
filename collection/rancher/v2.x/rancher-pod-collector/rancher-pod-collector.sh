@@ -142,7 +142,7 @@ help() {
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -r    Override container runtime if not automatically detected (docker|k3s)
   -k    Override the kubeconfig (ex: ~/.kube/custom)
-  -t    Enable tracve logs
+  -t    Enable trace logs
   -f    Force log collection if the minimum space isn't available"
 
 }
