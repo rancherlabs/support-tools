@@ -109,6 +109,16 @@ capture-logs() {
 
 }
 
+watch-logs() {
+
+  techo "Live tailing debug logs from Rancher pods"
+  techo "Please use Ctrl+C to continue"
+  mkdir -p $TMPDIR/rancher-logs/
+  ${KUBECTL_CMD} -n cattle-system logs -f -l app=rancher -c rancher | tee $TMPDIR/rancher-logs/live-logs
+
+}
+
+
 pause(){
  read -n1 -rsp $'Press any key to continue or Ctrl+C to exit...\n'
 }
@@ -135,7 +145,7 @@ cleanup() {
 help() {
 
   echo "Rancher Pod Collector
-  Usage: rancher-pod-collector.sh [ -d <directory> -r <container runtime> -k KUBECONFIG -t -f ]
+  Usage: rancher-pod-collector.sh [ -d <directory> -r <container runtime> -k KUBECONFIG -t -w -f ]
 
   All flags are optional
 
@@ -143,6 +153,7 @@ help() {
   -r    Override container runtime if not automatically detected (docker|k3s)
   -k    Override the kubeconfig (ex: ~/.kube/custom)
   -t    Enable trace logs
+  -w    Live tailing Rancher logs
   -f    Force log collection if the minimum space isn't available"
 
 }
@@ -159,7 +170,7 @@ techo() {
 
 }
 
-while getopts ":d:r:k:fth" opt; do
+while getopts ":d:r:k:ftwh" opt; do
   case $opt in
     d)
       MKTEMP_BASEDIR="-p ${OPTARG}"
@@ -175,6 +186,9 @@ while getopts ":d:r:k:fth" opt; do
       ;;
     t)
       TRACE=1
+      ;;
+    w)
+      WATCH=1
       ;;
     h)
       help && exit 0
@@ -210,7 +224,12 @@ fi
 verify-access
 cluster-info
 enable-debug
-pause
+if [ ! -z "${WATCH}" ]
+then
+  watch-logs
+else
+  pause
+fi
 disable-debug
 capture-logs
 archive
