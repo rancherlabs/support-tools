@@ -15,8 +15,8 @@ spec:
         app: webserver-good
     spec:
       containers:
-      - name: webserver-good
-        image: httpd
+      - image: httpd
+        name: webserver-good
 
 ---
 apiVersion: apps/v1
@@ -40,8 +40,9 @@ spec:
         command:
         - /bin/sh
         - -c
-      - name: webserver-bad
         image: httpd
+        imagePullPolicy: Always
+        name: webserver-bad
 
 ---
 apiVersion: v1
