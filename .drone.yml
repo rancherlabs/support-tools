@@ -21,6 +21,11 @@ steps:
         from_secret: docker_password
       context: ./bad-ingress-scanner/
       dockerfile: ./bad-ingress-scanner/Dockerfile
+    when:
+      branch: master
+      event:
+        include:
+        - push
 
   - name: docker-build--change-nodetemplate-owner
     image: plugins/docker
@@ -36,3 +41,8 @@ steps:
         from_secret: docker_password
       context: ./change-nodetemplate-owner/
       dockerfile: ./change-nodetemplate-owner/Dockerfile
+    when:
+      branch: master
+      event:
+        include:
+        - push
