@@ -1,0 +1,48 @@
+---
+kind: pipeline
+name: default-linux-amd64
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+  - name: docker-build--bad-ingress-scanner
+    image: plugins/docker
+    settings:
+      repo: rancher/bad-ingress-scanner
+      tags:
+        - ${DRONE_BUILD_NUMBER}
+        - ${DRONE_COMMIT_BRANCH}
+        - latest
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      context: ./bad-ingress-scanner/
+      dockerfile: ./bad-ingress-scanner/Dockerfile
+    when:
+      branch: master
+      event:
+        include:
+        - push
+
+  - name: docker-build--change-nodetemplate-owner
+    image: plugins/docker
+    settings:
+      repo: rancher/change-nodetemplate-owner
+      tags:
+        - ${DRONE_BUILD_NUMBER}
+        - ${DRONE_COMMIT_BRANCH}
+        - latest
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      context: ./change-nodetemplate-owner/
+      dockerfile: ./change-nodetemplate-owner/Dockerfile
+    when:
+      branch: master
+      event:
+        include:
+        - push
