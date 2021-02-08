@@ -262,12 +262,16 @@ Function get_windows_event_logs {
 Function get_k8s_logs{
     try {
         Write-Host "Collecting Kubernetes Logs"
-        $logfile =@(get-childitem -Recurse 'C:\var\lib\rancher\rke\log\' | Foreach-Object {$_.FullName})
-        $symlink = (Get-Item $logfile |  Select-Object -ExpandProperty Target)
-        $workinglink =  @(Get-Item $symlink  -ErrorAction SilentlyContinue| Where-Object {$_.Length -ne $null} | Foreach-Object {$_.FullName})
-        foreach ($file in $workinglink){
-            Copy-Item -Path $workinglink -Destination "$directory/containerlogs/rke"
+        $logPath =@(docker inspect -f '{{.LogPath}}' @(docker container ls --no-trunc --format '{{json .Names}}'))
+        foreach ($file in $logPath){
+            Copy-Item -Path $logPath -Destination "$directory/containerlogs/rke"
         }
+        # $logfile =@(get-childitem -Recurse 'C:\var\lib\rancher\rke\log\' | Foreach-Object {$_.FullName})
+        # $symlink = (Get-Item $logfile |  Select-Object -ExpandProperty Target)
+        # $workinglink =  @(Get-Item $symlink  -ErrorAction SilentlyContinue| Where-Object {$_.Length -ne $null} | Foreach-Object {$_.FullName})
+        # foreach ($file in $workinglink){
+        #     Copy-Item -Path $workinglink -Destination "$directory/containerlogs/rke"
+        # }
         Copy-Item -Path "C:\var\log\containers\*" -Destination "$directory/containerlogs" -Recurse
         Copy-Item -Path "C:\var\log\pods\*" -Destination "$directory/podlogs" -Recurse
         Copy-Item -Path "C:\etc\nginx\logs\*" -Destination "$directory/nginx/logs" -Recurse
