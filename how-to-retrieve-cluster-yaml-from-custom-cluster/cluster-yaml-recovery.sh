@@ -6,6 +6,12 @@ then
   exit 1
 fi
 
+if [[ -f cluster.yml ]]
+then
+  echo "cluster.yml exists, please move or rename this file."
+  exit 1
+fi
+
 echo "Checking that jq is installed"
 if ! jq -V
 then
