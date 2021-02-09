@@ -144,12 +144,11 @@ cleanup() {
 help() {
 
   echo "Rancher Pod Collector
-  Usage: rancher-pod-collector.sh [ -d <directory> -r <container runtime> -k KUBECONFIG -t -w -f ]
+  Usage: rancher-pod-collector.sh [ -d <directory> -k KUBECONFIG -t -w -f ]
 
   All flags are optional
 
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
-  -r    Override container runtime if not automatically detected (docker|k3s)
   -k    Override the kubeconfig (ex: ~/.kube/custom)
   -t    Enable trace logs
   -w    Live tailing Rancher logs
@@ -169,13 +168,10 @@ techo() {
 
 }
 
-while getopts ":d:r:k:ftwh" opt; do
+while getopts ":d:k:ftwh" opt; do
   case $opt in
     d)
       MKTEMP_BASEDIR="-p ${OPTARG}"
-      ;;
-    r)
-      RUNTIME_FLAG="${OPTARG}"
       ;;
     k)
       OVERRIDE_KUBECONFIG="${OPTARG}"
