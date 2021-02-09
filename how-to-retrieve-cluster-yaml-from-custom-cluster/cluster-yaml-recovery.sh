@@ -13,7 +13,7 @@ then
 fi
 
 echo "Checking that jq is installed"
-if ! jq -V
+if [ -x jq ]
 then
   echo "Please download jq from https://github.com/stedolan/jq/releases/tag/jq-1.6 and install it"
   exti 1
