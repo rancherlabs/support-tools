@@ -9,7 +9,7 @@ fi
 echo "Building cluster.yml..."
 echo "Working on Nodes..."
 echo 'nodes:' > cluster.yml
-kubectl --kubeconfig kube_config_cluster.yml -n kube-system get configmap full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | jq -r .desiredState.rkeConfig.nodes | yq r - | sed 's/^/  /' | \
+kubectl --kubeconfig kube_config_cluster.yml -n kube-system get configmap full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | jq -r .desiredState.rkeConfig.nodes | yq r -P - | sed 's/^/  /' | \
 sed -e 's/internalAddress/internal_address/g' | \
 sed -e 's/hostnameOverride/hostname_override/g' | \
 sed -e 's/sshKeyPath/ssh_key_path/g' >> cluster.yml
@@ -17,22 +17,22 @@ echo "" >> cluster.yml
 
 echo "Working on services..."
 echo 'services:' >> cluster.yml
-kubectl --kubeconfig kube_config_cluster.yml -n kube-system get configmap full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | jq -r .desiredState.rkeConfig.services | yq r - | sed 's/^/  /' >> cluster.yml
+kubectl --kubeconfig kube_config_cluster.yml -n kube-system get configmap full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | jq -r .desiredState.rkeConfig.services | yq r -P - | sed 's/^/  /' >> cluster.yml
 echo "" >> cluster.yml
 
 echo "Working on network..."
 echo 'network:' >> cluster.yml
-kubectl --kubeconfig kube_config_cluster.yml -n kube-system get configmap full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | jq -r .desiredState.rkeConfig.network | yq r - | sed 's/^/  /' >> cluster.yml
+kubectl --kubeconfig kube_config_cluster.yml -n kube-system get configmap full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | jq -r .desiredState.rkeConfig.network | yq r -P - | sed 's/^/  /' >> cluster.yml
 echo "" >> cluster.yml
 
 echo "Working on authentication..."
 echo 'authentication:' >> cluster.yml
-kubectl --kubeconfig kube_config_cluster.yml -n kube-system get configmap full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | jq -r .desiredState.rkeConfig.authentication | yq r - | sed 's/^/  /' >> cluster.yml
+kubectl --kubeconfig kube_config_cluster.yml -n kube-system get configmap full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | jq -r .desiredState.rkeConfig.authentication | yq r -P - | sed 's/^/  /' >> cluster.yml
 echo "" >> cluster.yml
 
 echo "Working on systemImages..."
 echo 'system_images:' >> cluster.yml
-kubectl --kubeconfig kube_config_cluster.yml -n kube-system get configmap full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | jq -r .desiredState.rkeConfig.systemImages | yq r - | sed 's/^/  /' >> cluster.yml
+kubectl --kubeconfig kube_config_cluster.yml -n kube-system get configmap full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | jq -r .desiredState.rkeConfig.systemImages | yq r -P - | sed 's/^/  /' >> cluster.yml
 echo "" >> cluster.yml
 
 echo "Building cluster.rkestate..."
