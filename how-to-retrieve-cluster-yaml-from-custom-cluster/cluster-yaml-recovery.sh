@@ -6,6 +6,12 @@ then
   exit 1
 fi
 
+echo "Checking is yq v3.x is installed"
+if ! `yq -V | grep 'yq version 3'`
+then
+  echo "Please download yq v3.x from https://github.com/mikefarah/yq/releases/tag/3.4.1 and install it"
+fi
+
 echo "Building cluster.yml..."
 echo "Working on Nodes..."
 echo 'nodes:' > cluster.yml
