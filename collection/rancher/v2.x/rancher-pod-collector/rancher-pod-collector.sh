@@ -67,7 +67,7 @@ cluster-info() {
   ${KUBECTL_CMD} get endpoints -n cattle-system -o wide > $TMPDIR/cattle-system/get-endpoints 2>&1
   ## Grabbing kube-system items
   mkdir -p $TMPDIR/kube-system/
-  ${KUBECTL_CMD} get configmap -n cattle-system cattle-controllers -o yaml > $TMPDIR/kube-system/get-configmap-cattle-controllers.yaml 2>&1
+  ${KUBECTL_CMD} get configmap -n kube-system cattle-controllers -o yaml > $TMPDIR/kube-system/get-configmap-cattle-controllers.yaml 2>&1
 
 }
 
