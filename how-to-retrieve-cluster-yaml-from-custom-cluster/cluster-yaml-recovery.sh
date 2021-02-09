@@ -6,10 +6,18 @@ then
   exit 1
 fi
 
-echo "Checking is yq v3.x is installed"
+echo "Checking that jq is installed"
+if ! jq -V
+then
+  echo "Please download jq from https://github.com/stedolan/jq/releases/tag/jq-1.6 and install it"
+  exti 1
+fi
+
+echo "Checking that yq v3.x is installed"
 if ! `yq -V | grep 'yq version 3'`
 then
   echo "Please download yq v3.x from https://github.com/mikefarah/yq/releases/tag/3.4.1 and install it"
+  exit 1
 fi
 
 echo "Building cluster.yml..."
