@@ -1,6 +1,5 @@
 #!/bin/bash
 SPACE="512"
-TIMEOUT="60"
 
 setup() {
 
