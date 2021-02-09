@@ -3,6 +3,8 @@ kind: CronJob
 metadata:
   name: cleanup-evicted-pods
   namespace: kube-system
+  labels:
+    app: cleanup-evicted-pods
 spec:
   schedule: "*/30 * * * *"
   jobTemplate:
