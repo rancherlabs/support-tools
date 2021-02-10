@@ -11,8 +11,15 @@ kubectl get pods --all-namespaces -ojson | jq -r '.items[] | select(.status.reas
 ### Automatic cleanup
 This is a cronjob that runs every 30 mins inside the cluster that will find and remove any pods with the status of "Evicted."
 
-NOTE: Uses the image `rancher/hyperkube:v1.19.6-rancher1`. This can be changed to match your cluster version by matching the same image tag rke addon jobs in the kube-system.
-
 ```bash
 kubectl apply -f deploy.yaml
 ```
+
+NOTE: This YAML uses the image `rancher/hyperkube:v1.19.6-rancher1`. 
+Use below command to get the image path for your cluster and modify the YAML if needed.
+```
+kubectl get jobs -n kube-system rke-network-plugin-deploy-job -o jsonpath='{.spec.template.spec.containers[].image}' && echo
+```
+Also make sure to modify the image after every Kubernetes version upgrade.
+
+
