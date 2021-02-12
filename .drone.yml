@@ -46,3 +46,23 @@ steps:
       event:
         include:
         - push
+
+  - name: docker-build--etcd-tools
+    image: plugins/docker
+    settings:
+      repo: rancher/etcd-tools
+      tags:
+        - ${DRONE_BUILD_NUMBER}
+        - ${DRONE_COMMIT_BRANCH}
+        - latest
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      context: ./etcd-tools/
+      dockerfile: ./etcd-tools/Dockerfile
+    when:
+      branch: master
+      event:
+        include:
+        - push
