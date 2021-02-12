@@ -67,7 +67,7 @@ spec:
               - key: node-role.kubernetes.io/worker
                 operator: Exists
       containers:
-      - image: cube8021/bad-ingress-scanner:v0.1
+      - image: rancher/bad-ingress-scanner:latest
         imagePullPolicy: IfNotPresent
         name: ingress-scanner
       restartPolicy: Never

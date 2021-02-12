@@ -1,4 +1,5 @@
-[![Docker Pulls](https://img.shields.io/docker/pulls/cube8021/bad-ingress-scanner.svg)](https://hub.docker.com/r/cube8021/bad-ingress-scanner)
+[![Docker Pulls](https://img.shields.io/docker/pulls/cube8021/bad-ingress-scanner.svg)](https://hub.docker.com/r/rancher/bad-ingress-scanner)
+[![Build Status](https://drone-publish.rancher.io/api/badges/rancherlabs/support-tools/status.svg)](https://drone-publish.rancher.io/rancherlabs/support-tools)
 
 # Bad ingress scanner
 This tool is designed to scan for misbehaving ingresses. An example being an ingress that was deployed referencing a non-existent SSL cert or an ingress with an empty/missing backend service.
