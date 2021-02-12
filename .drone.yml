@@ -66,3 +66,23 @@ steps:
       event:
         include:
         - push
+
+  - name: docker-build--system-info
+    image: plugins/docker
+    settings:
+      repo: rancher/system-info
+      tags:
+        - ${DRONE_BUILD_NUMBER}
+        - ${DRONE_COMMIT_BRANCH}
+        - latest
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      context: ./collection/rancher/v2.x/systems-information/
+      dockerfile: ./collection/rancher/v2.x/systems-information/Dockerfile
+    when:
+      branch: master
+      event:
+        include:
+        - push
