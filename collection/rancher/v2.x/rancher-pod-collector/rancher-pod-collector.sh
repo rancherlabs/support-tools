@@ -25,9 +25,11 @@ verify-access() {
   if [[ ! -z $OVERRIDE_KUBECONFIG ]];
   then
     ## Just use the kubeconfig that was set by the user
-    RANCHER_POD=$(kubectl --kubeconfig $OVERRIDE_KUBECONFIG -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=id:metadata.name | head -n1)
-    KUBECTL_CMD="kubectl --kubeconfig $OVERRIDE_KUBECONFIG -n cattle-system exec -c rancher ${RANCHER_POD} -- kubectl"
-  elif [[ ! -z $KUBERNETES_PORT ]] || [[ ! -z $KUBECONFIG ]];
+    KUBECTL_CMD="kubectl --kubeconfig $OVERRIDE_KUBECONFIG"
+  elif [[ ! -z $KUBECONFIG ]];
+  then
+    KUBECTL_CMD="kubectl"
+  elif [[ ! -z $KUBERNETES_PORT ]];
   then
     ## We are inside the k8s cluster or we're using the local kubeconfig
     RANCHER_POD=$(kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=id:metadata.name | head -n1)
