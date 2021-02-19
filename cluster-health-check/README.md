@@ -4,7 +4,7 @@ The script needs to be downloaded and run on one of the following servers.
 
 * A server or workstation with kubectl access to the local cluster.
 * Directly on one of the local cluster nodes using the `root` user or using `sudo`.
-* As a k8s deployment on the local cluster.
+* As a k8s deployment on the cluster.
 
 ## How to use
 
