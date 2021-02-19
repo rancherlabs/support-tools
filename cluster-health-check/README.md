@@ -26,7 +26,3 @@ All flags are optional
 -f    Force collection if the minimum space isn't available
 -D    Enable debug logging"
 ```
-
-## Important disclaimer
-
-The flag `-t` will enables trace logging. This can capture sensitive information about your Rancher install, including but not limited to usernames, passwords, encryption keys, etc.
