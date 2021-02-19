@@ -332,8 +332,8 @@ cleanup() {
 
 help() {
 
-  echo "Rancher Cluster Health Check
-  Usage: cluster-health-check.sh [ -d <directory> -k ~/.kube/config -f -D ]
+  echo "Cluster Health Check
+  Usage: cluster-health.sh [ -d <directory> -k ~/.kube/config -f -D ]
 
   All flags are optional
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
