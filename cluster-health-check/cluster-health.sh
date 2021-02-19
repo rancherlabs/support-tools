@@ -114,21 +114,50 @@ nodes() {
   done
 }
 
-get-hyperkube-image() {
-  HyperKubeImage=`${KUBECTL_CMD} -n kube-system get pod -l job-name=rke-network-plugin-deploy-job -o jsonpath={..image} | tr -s '[[:space:]]' '\n' | sort | uniq`
-  if [[ -z $HyperKubeImage ]]
+get-debug-tool-image() {
+  DebugToolImage=`${KUBECTL_CMD} -n kube-system get pod -l job-name=rke-network-plugin-deploy-job -o jsonpath={..image} | tr -s '[[:space:]]' '\n' | sort | uniq`
+  if [[ -z $DebugToolImage ]]
   then
-    HyperKubeImage="rancher/hyperkube:v1.19.7-rancher1"
+    DebugToolImage="rancher/hyperkube:v1.19.7-rancher1"
   fi
-  echo $HyperKubeImage
+  echo $DebugToolImage
+}
+
+deploy-serviceaccount() {
+  techo "Deploying serviceaccount"
+  ${KUBECTL_CMD} -n kube-system create serviceaccount cluster-health-check
+  techo "Deploying clusterrole"
+  cat <<EOF | ${KUBECTL_CMD} -n kube-system apply -f -
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cluster-health-check
+rules:
+- apiGroups: [""] # core API group
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+EOF
+  techo "Deploying clusterrolebinding"
+  ${KUBECTL_CMD} create clusterrolebinding cluster-health-check \
+  --clusterrole=cluster-health-check \
+  --serviceaccount=kube-system:cluster-health-check
+}
+
+cleanup-serviceaccount() {
+  techo "Deleting clusterrolebinding"
+  ${KUBECTL_CMD} delete clusterrolebinding cluster-health-check
+  techo "Deleting clusterrole"
+  ${KUBECTL_CMD} delete clusterrole cluster-health-check
+  techo "Deleting serviceaccount"
+  ${KUBECTL_CMD} -n kube-system delete serviceaccount cluster-health-check
 }
 
 overlay-test() {
   mkdir -p $TMPDIR/overlaytest/
   techo "Deploying overlay test containers"
-  get-hyperkube-image HyperKubeImage > /dev/null 2>&1
-  decho "HyperKubeImage: $HyperKubeImage"
-  cat <<EOF | sed -e "s/HyperKubeImage/${HyperKubeImage//\//\\/}/g" | tee $TMPDIR/overlaytest/overlay-test.yaml | ${KUBECTL_CMD} -n kube-system apply -f -
+  get-debug-tool-image DebugToolImage > /dev/null 2>&1
+  decho "DebugToolImage: $DebugToolImage"
+  cat <<EOF | sed -e "s/DebugToolImage/${DebugToolImage//\//\\/}/g" | tee $TMPDIR/overlaytest/overlay-test.yaml | ${KUBECTL_CMD} -n kube-system apply -f -
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -144,8 +173,9 @@ spec:
     spec:
       tolerations:
       - operator: Exists
+      serviceAccountName: cluster-health-check
       containers:
-      - image: HyperKubeImage
+      - image: DebugToolImage
         imagePullPolicy: Always
         name: overlaytest
         command: ["sh", "-c", "tail -f /dev/null"]
@@ -182,9 +212,9 @@ EOF
 dns-test() {
   mkdir -p $TMPDIR/dnstest/
   techo "Deploying DNS test containers"
-  get-hyperkube-image HyperKubeImage > /dev/null 2>&1
-  decho "HyperKubeImage: $HyperKubeImage"
-  cat <<EOF | sed -e "s/HyperKubeImage/${HyperKubeImage//\//\\/}/g" | tee $TMPDIR/dnstest/dns-test.yaml | ${KUBECTL_CMD} -n kube-system apply -f -
+  get-debug-tool-image DebugToolImage > /dev/null 2>&1
+  decho "DebugToolImage: $DebugToolImage"
+  cat <<EOF | sed -e "s/DebugToolImage/${DebugToolImage//\//\\/}/g" | tee $TMPDIR/dnstest/dns-test.yaml | ${KUBECTL_CMD} -n kube-system apply -f -
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -200,8 +230,9 @@ spec:
     spec:
       tolerations:
       - operator: Exists
+      serviceAccountName: cluster-health-check
       containers:
-      - image: HyperKubeImage
+      - image: DebugToolImage
         imagePullPolicy: Always
         name: dnstest
         command: ["sh", "-c", "tail -f /dev/null"]
@@ -414,7 +445,9 @@ for Namespace in $Namespaces
 do
   get-namespace-all $Namespace
 done
+deploy-serviceaccount
 overlay-test
 dns-test
+cleanup-serviceaccount
 archive
 cleanup
