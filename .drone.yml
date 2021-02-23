@@ -70,7 +70,7 @@ steps:
   - name: docker-build--system-info
     image: plugins/docker
     settings:
-      repo: rancher/system-info
+      repo: rancher/systems-info
       tags:
         - ${DRONE_BUILD_NUMBER}
         - ${DRONE_COMMIT_BRANCH}
