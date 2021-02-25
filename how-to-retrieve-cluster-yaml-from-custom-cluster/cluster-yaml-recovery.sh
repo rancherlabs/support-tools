@@ -13,24 +13,24 @@ then
 fi
 
 echo "Checking that kubectl is installed"
-if [ ! -x kubectl ]
+if [ ! -x "$(which kubectl)" ]
 then
-  echo "Please download kubectl and install it"
+  echo "Please download kubectl and install it and make sure the command is available in $PATH"
   echo 'curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"'
   exit 1
 fi
 
 echo "Checking that jq is installed"
-if [ ! -x jq ]
+if [ ! -x "$(which jq)" ]
 then
-  echo "Please download jq from https://github.com/stedolan/jq/releases/tag/jq-1.6 and install it"
+  echo "Please download jq from https://github.com/stedolan/jq/releases/tag/jq-1.6 and install it and make sure the command is available in $PATH"
   exit 1
 fi
 
 echo "Checking that yq v3.x is installed"
 if [  -z  "`yq -V |grep "yq version 3"`" ]
 then
-  echo "Please download yq v3.x from https://github.com/mikefarah/yq/releases/tag/3.4.1 and install it"
+  echo "Please download yq v3.x from https://github.com/mikefarah/yq/releases/tag/3.4.1 and install it and make sure the command is available in $PATH"
   exit 1
 fi
 
