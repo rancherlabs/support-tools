@@ -13,7 +13,7 @@ then
 fi
 
 echo "Checking that kubectl is installed"
-if [ -x kubectl ]
+if [ ! -x kubectl ]
 then
   echo "Please download kubectl and install it"
   echo 'curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"'
@@ -21,7 +21,7 @@ then
 fi
 
 echo "Checking that jq is installed"
-if [ -x jq ]
+if [ ! -x jq ]
 then
   echo "Please download jq from https://github.com/stedolan/jq/releases/tag/jq-1.6 and install it"
   exti 1
