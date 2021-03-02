@@ -18,11 +18,12 @@ The script will create a .tar.gz log collection in /tmp by default, all flags ar
 
 ```
 Rancher Cluster Health Check
-Usage: cluster-health.sh [ -d <directory> -k ~/.kube/config -f -D ]
+Usage: cluster-health.sh [ -d <directory> -k ~/.kube/config -i rancherlabs/swiss-army-knife -f -D ]
 
 All flags are optional
 -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
 -k    Override the kubeconfig (ex: ~/.kube/custom)
 -f    Force collection if the minimum space isn't available
+-i    Override the debug image (ex: registry.example.com/rancherlabs/swiss-army-knife)
 -D    Enable debug logging"
 ```
