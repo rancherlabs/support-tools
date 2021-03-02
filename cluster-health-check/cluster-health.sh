@@ -115,10 +115,11 @@ nodes() {
 }
 
 get-debug-tool-image() {
-  DebugToolImage=`${KUBECTL_CMD} -n kube-system get pod -l job-name=rke-network-plugin-deploy-job -o jsonpath={..image} | tr -s '[[:space:]]' '\n' | sort | uniq`
-  if [[ -z $DebugToolImage ]]
+  if [[ -z $IMAGE_FLAG ]]
   then
-    DebugToolImage="rancher/hyperkube:v1.19.7-rancher1"
+    DebugToolImage=$IMAGE_FLAG
+  else
+    DebugToolImage="rancherlabs/swiss-army-knife:latest"
   fi
   echo $DebugToolImage
 }
@@ -364,12 +365,13 @@ cleanup() {
 help() {
 
   echo "Cluster Health Check
-  Usage: cluster-health.sh [ -d <directory> -k ~/.kube/config -f -D ]
+  Usage: cluster-health.sh [ -d <directory> -k ~/.kube/config -i rancherlabs/swiss-army-knife -f -D ]
 
   All flags are optional
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -k    Override the kubeconfig (ex: ~/.kube/custom)
   -f    Force collection if the minimum space isn't available
+  -i    Override the debug image (ex: registry.example.com/rancherlabs/swiss-army-knife)
   -D    Enable debug logging"
 
 }
@@ -391,7 +393,7 @@ decho() {
   fi
 }
 
-while getopts ":d:s:r:fhD" opt; do
+while getopts ":d:s:r:i:fhD" opt; do
   case $opt in
     d)
       MKTEMP_BASEDIR="-p ${OPTARG}"
@@ -402,6 +404,9 @@ while getopts ":d:s:r:fhD" opt; do
       ;;
     r)
       RUNTIME_FLAG="${OPTARG}"
+      ;;
+    i)
+      IMAGE_FLAG="${OPTARG}"
       ;;
     f)
       FORCE=1
