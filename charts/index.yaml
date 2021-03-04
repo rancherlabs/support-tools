@@ -1,84 +1,23 @@
 apiVersion: v1
 entries:
-  systems-information:
+  rancher:
   - apiVersion: v1
     appVersion: 0.0.1
-    created: "2021-02-12T10:50:22.0760161-06:00"
-    description: Rancher Systems Summary Report
-    digest: a083bb93acb1ae560e49423a72d2dcea340d1487b296a152beb1893b1301a1f5
-    home: https://support.rancher.com
-    icon: https://rancher.com/img/brand-guidelines/assets/logos/png/color/rancher-logo-stacked-color.png
+    created: "2021-03-04T11:39:06.0872245-06:00"
+    description: Rancher Systems Info
+    digest: b2d217c3c7ab839bb11151cdd1d99ab8920f0241dcda74764e3932969f17fe0c
+    home: https://rancher.com
+    icon: https://github.com/rancher/ui/blob/master/public/assets/images/logos/welcome-cow.svg
     keywords:
     - rancher
     - support
     maintainers:
-    - email: Matthew.Mattox@rancher.com
-      name: mattmattox
-    name: systems-information
+    - email: charts@rancher.com
+      name: Rancher Labs
+    name: rancher
     sources:
-    - https://github.com/rancherlabs/support-tools
-    type: application
+    - https://github.com/rancherlabs/systems-info
     urls:
-    - systems-information-0.0.1.tgz
+    - https://rancherlabs.github.io/systems-info/charts/rancher-0.0.1.tgz
     version: 0.0.1
-  - apiVersion: v1
-    appVersion: 0.0.1-rc3
-    created: "2021-02-12T10:50:22.0746677-06:00"
-    description: Rancher Systems Summary Report
-    digest: 993b910f4bfa0e701b9d673b395d53f366a1c185d1c718928c3e0bb7be699e25
-    home: https://support.rancher.com
-    icon: https://rancher.com/img/brand-guidelines/assets/logos/png/color/rancher-logo-stacked-color.png
-    keywords:
-    - rancher
-    - support
-    maintainers:
-    - email: Matthew.Mattox@rancher.com
-      name: mattmattox
-    name: systems-information
-    sources:
-    - https://github.com/rancherlabs/support-tools
-    type: application
-    urls:
-    - systems-information-0.0.1-rc3.tgz
-    version: 0.0.1-rc3
-  - apiVersion: v2
-    appVersion: 0.0.1-rc2
-    created: "2021-02-12T10:50:22.0733232-06:00"
-    description: Rancher Systems Summary Report
-    digest: 1dfc0b79dfa1dcb727fdf8acad364df0be99ce5e8184c7c28ad30369903c0bc3
-    home: support.rancher.com
-    icon: https://rancher.com/img/brand-guidelines/assets/logos/png/color/rancher-logo-stacked-color.png
-    keywords:
-    - rancher
-    - support
-    maintainers:
-    - email: Matthew.Mattox@rancher.com
-      name: mattmattox
-    name: systems-information
-    sources:
-    - https://github.com/rancherlabs/support-tools
-    type: application
-    urls:
-    - systems-information-0.0.1-rc2.tgz
-    version: 0.0.1-rc2
-  - apiVersion: v2
-    appVersion: 0.0.1-rc1
-    created: "2021-02-12T10:50:22.0721256-06:00"
-    description: Rancher Systems Summary Report
-    digest: 038a060e89eec1ede7ec96f0012ed61e8217e0d9c75f529a9d1436e5640d615d
-    home: support.rancher.com
-    icon: https://rancher.com/img/brand-guidelines/assets/logos/png/color/rancher-logo-stacked-color.png
-    keywords:
-    - rancher
-    - support
-    maintainers:
-    - email: Matthew.Mattox@rancher.com
-      name: mattmattox
-    name: systems-information
-    sources:
-    - https://github.com/rancherlabs/support-tools
-    type: application
-    urls:
-    - systems-information-0.0.1-rc1.tgz
-    version: 0.0.1-rc1
-generated: "2021-02-12T10:50:22.0704609-06:00"
+generated: "2021-03-04T11:39:06.0847725-06:00"
