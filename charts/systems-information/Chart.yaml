@@ -1,6 +1,6 @@
 apiVersion: v1
-name: systems-information
-description: Rancher Systems Summary Report
+name: systems-info
+description: Rancher Systems Info
 
 # A chart can be either an 'application' or a 'library' chart.
 #
@@ -25,8 +25,8 @@ keywords:
 - support
 home: https://support.rancher.com
 sources:
-- https://github.com/rancherlabs/support-tools
+- https://github.com/rancherlabs/systems-info
 maintainers:
 - name: mattmattox
-  email: Matthew.Mattox@rancher.com
+  email: matt.mattox@suse.com
 icon: https://rancher.com/img/brand-guidelines/assets/logos/png/color/rancher-logo-stacked-color.png
