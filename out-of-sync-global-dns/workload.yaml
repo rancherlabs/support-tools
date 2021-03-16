@@ -1,0 +1,36 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: out-of-sync-global-dns
+  name: out-of-sync-global-dns
+spec:
+  selector:
+    matchLabels:
+      app: out-of-sync-global-dns
+  template:
+    metadata:
+      labels:
+        app: out-of-sync-global-dns
+    spec:
+      containers:
+      - env:
+        - name: CATTLE_SERVER
+          valueFrom:
+            secretKeyRef:
+              key: cattle-server
+              name: rancher-api-key
+        - name: CATTLE_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: access-key
+              name: rancher-api-key
+        - name: CATTLE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: secret-key
+              name: rancher-api-key
+        image: leodotcloud/swiss-army-knife
+        imagePullPolicy: IfNotPresent
+        name: out-of-sync-global-dns
