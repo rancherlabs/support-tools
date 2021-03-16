@@ -88,34 +88,39 @@ scan-ingresses() {
     for ingress in $ingresses
     do
       globalDNShostname=`kubectl --kubeconfig ${TMPDIR}/kubeconfig/${cluster} get ingress ${ingress} -o json | jq ' .metadata.annotations | with_entries(select(.key == "rancher.io/globalDNS.hostname")) ' | jq .[] | tr -d '"'`
-      echo "Searching for globaldnses.management.cattle.io record"
-      cd ${TMPDIR}/globaldnses
-      gdcandidates=`grep -R -l "${projectId}" .`
-      unset ghname
-      for gdcandidate in $gdcandidates
-      do
-        if grep -i "${globalDNShostname}" ${gdcandidate}
-        then
-          ghname=${gdcandidate}
-        fi
-      done
-      if [[ -z $ghname ]]
+      if [[ -z $globalDNShostname ]]
       then
-        echo "CRITICAL: Could not find globaldnses for ingress ${ingress} in namespace ${namespace} in cluster $cluster"
-      else
-        echo "Checking IPs..."
-        upstreamips=`kubectl --kubeconfig ${TMPDIR}/kubeconfig/local -n cattle-global-data get globaldnses.management.cattle.io ${ghname} -o json | jq -r .status.endpoints | jq .[] | tr -d '"' | sort`
-        downstreamips=`kubectl --kubeconfig ${TMPDIR}/kubeconfig/${cluster} -n ${namespace} get ingress ${ingress} -o json | jq -r .status.loadBalancer.ingress | grep 'ip' | awk '{print $2}' | tr -d '"' | sort`
-        if ! diff <(echo "$upstreamips") <(echo "$downstreamips")
+        echo "Searching for globaldnses.management.cattle.io record"
+        cd ${TMPDIR}/globaldnses
+        gdcandidates=`grep -R -l "${projectId}" .`
+        unset ghname
+        for gdcandidate in $gdcandidates
+        do
+          if grep -i "${globalDNShostname}" ${gdcandidate}
+          then
+            ghname=${gdcandidate}
+          fi
+        done
+        if [[ -z $ghname ]]
         then
-          echo "CRITICAL: We have detected a difference between the ingress IPs and the globalDNS record for ingress ${ingress} in namespace ${namespace} in cluster $cluster"
-          echo "::Upstream::"
-          kubectl --kubeconfig ${TMPDIR}/kubeconfig/local -n cattle-global-data get globaldnses.management.cattle.io ${ghname} -o json | jq -r .status.endpoints
-          echo "::Downstream::"
-          kubectl --kubeconfig ${TMPDIR}/kubeconfig/${cluster} -n ${namespace} get ingress ${ingress} -o json | jq -r .status.loadBalancer.ingress
+          echo "CRITICAL: Could not find globaldnses for ingress ${ingress} in namespace ${namespace} in cluster $cluster"
         else
-          eco "OK: The IPs for ingress ${ingress} in namespace ${namespace} in cluster $cluster look to be correct"
+          echo "Checking IPs..."
+          upstreamips=`kubectl --kubeconfig ${TMPDIR}/kubeconfig/local -n cattle-global-data get globaldnses.management.cattle.io ${ghname} -o json | jq -r .status.endpoints | jq .[] | tr -d '"' | sort`
+          downstreamips=`kubectl --kubeconfig ${TMPDIR}/kubeconfig/${cluster} -n ${namespace} get ingress ${ingress} -o json | jq -r .status.loadBalancer.ingress | grep 'ip' | awk '{print $2}' | tr -d '"' | sort`
+          if ! diff <(echo "$upstreamips") <(echo "$downstreamips")
+          then
+            echo "CRITICAL: We have detected a difference between the ingress IPs and the globalDNS record for ingress ${ingress} in namespace ${namespace} in cluster $cluster"
+            echo "::Upstream::"
+            kubectl --kubeconfig ${TMPDIR}/kubeconfig/local -n cattle-global-data get globaldnses.management.cattle.io ${ghname} -o json | jq -r .status.endpoints
+            echo "::Downstream::"
+            kubectl --kubeconfig ${TMPDIR}/kubeconfig/${cluster} -n ${namespace} get ingress ${ingress} -o json | jq -r .status.loadBalancer.ingress
+          else
+            echo "OK: The IPs for ingress ${ingress} in namespace ${namespace} in cluster $cluster looks to be correct"
+          fi
         fi
+      else
+        echo "OK: The ingress ${ingress} in namespace ${namespace} in cluster $cluster is being skipped because is doesn't have the correct annotation."
       fi
     done
   done
