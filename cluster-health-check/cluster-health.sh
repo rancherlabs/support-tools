@@ -1,27 +1,19 @@
 #!/bin/bash
 # Minimum space needed to run the script (MB)
 SPACE=2048
-
 setup() {
-
   TMPDIR=$(mktemp -d $MKTEMP_BASEDIR)
   techo "Created ${TMPDIR}"
-
 }
-
 disk-space() {
-
   AVAILABLE=$(df -m ${TMPDIR} | tail -n 1 | awk '{ print $4 }')
   if [ "${AVAILABLE}" -lt "${SPACE}" ]
     then
       techo "${AVAILABLE} MB space free, minimum needed is ${SPACE} MB."
       DISK_FULL=1
   fi
-
 }
-
 verify-access() {
-
   techo "Verifying cluster access"
   if [[ ! -z $OVERRIDE_KUBECONFIG ]];
   then
@@ -60,9 +52,7 @@ verify-access() {
     KUBECTL_CMD="${KUBECTL_CMD} --v=6"
   fi
 }
-
 cluster-info() {
-
   techo "Collecting information about the cluster..."
   mkdir -p $TMPDIR/clusterinfo
   decho "cluster-info"
@@ -72,7 +62,13 @@ cluster-info() {
   ${KUBECTL_CMD} get nodes -o wide > $TMPDIR/clusterinfo/get-node.wide 2>&1
   ${KUBECTL_CMD} get nodes -o yaml > $TMPDIR/clusterinfo/get-node-yaml 2>&1
 }
-
+detect-provider() {
+  techo "Detecting the cluster provider..."
+  mkdir -p $TMPDIR/clusterprovider
+  decho "cluster-info"
+  clusterprovider=`${KUBECTL_CMD} get cluster -o json | jq -r '.items[].status.provider'`
+  echo $clusterprovider > $TMPDIR/clusterprovider/provider
+}
 nodes() {
   techo "Collecting information about the nodes..."
   mkdir -p $TMPDIR/nodes/
@@ -86,7 +82,7 @@ nodes() {
     ${KUBECTL_CMD} describe node $NODE > $TMPDIR/nodes/describe/$NODE
   done
   techo "Gathering node counts..."
-  decho "All nodes..."
+  decho "Total number of nodes..."
   NumberOfNodes=`${KUBECTL_CMD} get nodes --no-headers | wc -l`
   decho "master"
   ${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/master' -o wide > $TMPDIR/nodes/get-nodes-master.wide 2>&1
@@ -101,7 +97,7 @@ nodes() {
   ${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/worker' -o wide > $TMPDIR/nodes/get-nodes-worker.wide 2>&1
   NumberOfWorkerNodes=`${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/worker' --no-headers 2>/dev/null | wc -l`
   techo "Node Summary Report"
-  techo "All nodes:"                   $NumberOfNodes | tee -a $TMPDIR/nodes/summary
+  techo "Total number of nodes:"                   $NumberOfNodes | tee -a $TMPDIR/nodes/summary
   techo "etcd:"                        $NumberOfEtcdNodes | tee -a $TMPDIR/nodes/summary
   techo "controlplane:"                $NumberOfControlplaneNodes | tee -a $TMPDIR/nodes/summary
   techo "worker:"                      $NumberOfWorkerNodes | tee -a $TMPDIR/nodes/summary
@@ -113,20 +109,18 @@ nodes() {
     techo $NODE" "$NumberOfPodsPerNode | tee -a $TMPDIR/nodes/pods-per-node
   done
 }
-
 get-debug-tool-image() {
-  if [[ -z $IMAGE_FLAG ]]
+  if [[ ! -z $IMAGE_FLAG ]]
   then
     DebugToolImage=$IMAGE_FLAG
   else
-    DebugToolImage="rancherlabs/swiss-army-knife:latest"
+    DebugToolImage="leodotcloud/swiss-army-knife:latest"
   fi
   echo $DebugToolImage
 }
-
 deploy-serviceaccount() {
   techo "Deploying serviceaccount"
-  ${KUBECTL_CMD} -n kube-system create serviceaccount cluster-health-check
+  ${KUBECTL_CMD} -n kube-system create serviceaccount cluster-health-check > /dev/null 2>&1
   techo "Deploying clusterrole"
   cat <<EOF | ${KUBECTL_CMD} -n kube-system apply -f -
 kind: ClusterRole
@@ -134,16 +128,22 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: cluster-health-check
 rules:
-- apiGroups: [""] # core API group
-  resources: ["pods"]
-  verbs: ["get", "watch", "list"]
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- nonResourceURLs:
+  - '*'
+  verbs:
+  - '*'
 EOF
   techo "Deploying clusterrolebinding"
   ${KUBECTL_CMD} create clusterrolebinding cluster-health-check \
   --clusterrole=cluster-health-check \
-  --serviceaccount=kube-system:cluster-health-check
+  --serviceaccount=kube-system:cluster-health-check > /dev/null 2>&1
 }
-
 cleanup-serviceaccount() {
   techo "Deleting clusterrolebinding"
   ${KUBECTL_CMD} delete clusterrolebinding cluster-health-check
@@ -152,100 +152,106 @@ cleanup-serviceaccount() {
   techo "Deleting serviceaccount"
   ${KUBECTL_CMD} -n kube-system delete serviceaccount cluster-health-check
 }
-
-overlay-test() {
-  mkdir -p $TMPDIR/overlaytest/
-  techo "Deploying overlay test containers"
-  get-debug-tool-image DebugToolImage > /dev/null 2>&1
+deploy-swiss-army-knife() {
+  techo "Deploying swiss-army-knife test containers"
+  get-debug-tool-image
   decho "DebugToolImage: $DebugToolImage"
-  cat <<EOF | sed -e "s/DebugToolImage/${DebugToolImage//\//\\/}/g" | tee $TMPDIR/overlaytest/overlay-test.yaml | ${KUBECTL_CMD} -n kube-system apply -f -
+  mkdir -p $TMPDIR/swiss-army-knife/
+  cat <<EOF | sed -e "s/DebugToolImage/${DebugToolImage//\//\\/}/g" | tee $TMPDIR/swiss-army-knife/swiss-army-knife.yaml | ${KUBECTL_CMD} -n kube-system apply -f -
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: overlaytest
+  name: swiss-army-knife
 spec:
   selector:
       matchLabels:
-        name: overlaytest
+        name: swiss-army-knife
   template:
     metadata:
       labels:
-        name: overlaytest
+        name: swiss-army-knife
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+              - key: beta.kubernetes.io/os
+                operator: In
+                values:
+                - linux
       tolerations:
       - operator: Exists
       serviceAccountName: cluster-health-check
       containers:
       - image: DebugToolImage
         imagePullPolicy: Always
-        name: overlaytest
+        name: swiss-army-knife
         command: ["sh", "-c", "tail -f /dev/null"]
-        terminationMessagePath: /dev/termination-log
+        securityContext:
+          allowPrivilegeEscalation: true
+        volumeMounts:
+        - name: dockersock
+          mountPath: "/var/run/docker.sock"
+        - name: etckubernetes
+          mountPath: "/etc/kubernetes"
+        - name: hostroot
+          mountPath: "/mnt/hostroot"
+      volumes:
+      - name: dockersock
+        hostPath:
+          path: /var/run/docker.sock
+      - name: etckubernetes
+        hostPath:
+          path: /etc/kubernetes
+      - name: hostroot
+        hostPath:
+          path: /
 EOF
   techo "Waiting for rollout to complete..."
-  ${KUBECTL_CMD} -n kube-system rollout status ds/overlaytest -w
+  ${KUBECTL_CMD} -n kube-system rollout status ds/swiss-army-knife -w
+}
+cleanup-swiss-army-knife() {
+  techo "Cleaning up swiss-army-knife test containers"
+  ${KUBECTL_CMD} -n kube-system delete ds/swiss-army-knife
+}
+overlay-test() {
+  mkdir -p $TMPDIR/overlaytest/
   techo "Starting network overlay test" | tee -a $TMPDIR/overlaytest/overlay.log
-  ${KUBECTL_CMD} -n kube-system get pods -l name=overlaytest -o jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.spec.nodeName}{"\n"}{end}' |
-  while read sourcepod sourehost
+  ${KUBECTL_CMD} -n kube-system get pods -l name=swiss-army-knife -o jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.status.podIP}{" "}{@.spec.nodeName}{"\n"}{end}' |
+  while read sourcepod sourceip sourehost
   do
     decho "sourcepod: $sourcepod"
-    decho "sourehost: $sourehost"
-    ${KUBECTL_CMD} -n kube-system get pods -l name=overlaytest -o jsonpath='{range .items[*]}{@.status.podIP}{" "}{@.spec.nodeName}{"\n"}{end}' |
+    decho "sourcehost: $sourehost"
+    decho "sourceip: $sourceip"
+    ${KUBECTL_CMD} -n kube-system get pods -l name=swiss-army-knife -o jsonpath='{range .items[*]}{@.status.podIP}{" "}{@.spec.nodeName}{"\n"}{end}' |
     while read targetip targethost
     do
       decho "targetip: $targetip"
       decho "targethost: $targethost"
-      ${KUBECTL_CMD} -n kube-system --request-timeout='10s' exec $sourcepod -c overlaytest -- /bin/sh -c "ping -c2 $targetip > /dev/null 2>&1"
+      ${KUBECTL_CMD} -n kube-system --request-timeout='10s' exec $sourcepod -c swiss-army-knife -- /bin/sh -c "ping -c2 $targetip > /dev/null 2>&1"
       RC=$?
       if [ $RC -ne 0 ]
       then
-        techo "Failure: $sourcepod on $sourehost cannot reach pod IP $targetip on $targethost" | tee -a $TMPDIR/overlaytest/overlay.log
+        techo "Failure: pod $sourcepod with the IP $sourceip on $sourehost cannot reach pod IP $targetip on $targethost" | tee -a $TMPDIR/overlaytest/overlay.log
       else
-        techo "Success: $sourcepod on $sourehost can reach pod IP $targetip on $targethost" | tee -a $TMPDIR/overlaytest/overlay.log
+        techo "Success: pod $sourcepod with the IP $sourceip on $sourehost can reach pod IP $targetip on $targethost" | tee -a $TMPDIR/overlaytest/overlay.log
       fi
     done
   done
   techo "Finished network overlay test" | tee -a $TMPDIR/overlaytest/overlay.log
-  techo "Cleaning up network overlay test"
-  ${KUBECTL_CMD} -n kube-system delete ds/overlaytest
 }
-
 dns-test() {
   mkdir -p $TMPDIR/dnstest/
-  techo "Deploying DNS test containers"
-  get-debug-tool-image DebugToolImage > /dev/null 2>&1
-  decho "DebugToolImage: $DebugToolImage"
-  cat <<EOF | sed -e "s/DebugToolImage/${DebugToolImage//\//\\/}/g" | tee $TMPDIR/dnstest/dns-test.yaml | ${KUBECTL_CMD} -n kube-system apply -f -
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: dnstest
-spec:
-  selector:
-      matchLabels:
-        name: dnstest
-  template:
-    metadata:
-      labels:
-        name: dnstest
-    spec:
-      tolerations:
-      - operator: Exists
-      serviceAccountName: cluster-health-check
-      containers:
-      - image: DebugToolImage
-        imagePullPolicy: Always
-        name: dnstest
-        command: ["sh", "-c", "tail -f /dev/null"]
-        terminationMessagePath: /dev/termination-log
-EOF
-  techo "Waiting for rollout to complete..."
-  ${KUBECTL_CMD} -n kube-system rollout status ds/dnstest -w
   techo "Starting cluster DNS test" | tee -a $TMPDIR/dnstest/dnstest.log
-  ${KUBECTL_CMD} -n kube-system get pods -l name=dnstest -o jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.spec.nodeName}{"\n"}{end}' |
+  ${KUBECTL_CMD} -n kube-system get pods -l name=swiss-army-knife -o jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.spec.nodeName}{"\n"}{end}' |
   while read pod host
   do
-    ${KUBECTL_CMD} -n kube-system --request-timeout='10s' exec $pod -c dnstest -- /bin/sh -c 'TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token); curl --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H "Authorization: Bearer $TOKEN" https://kubernetes.default/api/v1/ > /dev/null 2>&1'
+    ${KUBECTL_CMD} -n kube-system --request-timeout='10s' exec $pod -c swiss-army-knife -- /bin/sh -c 'TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token); curl --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H "Authorization: Bearer $TOKEN" https://kubernetes.default/api/v1/ > /dev/null 2>&1'
     RC=$?
     if [ $RC -ne 0 ]
     then
@@ -254,11 +260,46 @@ EOF
       techo "Success: DNS is working correctly for $pod on $host" | tee -a $TMPDIR/dnstest/dnstest.log
     fi
   done
-  techo "Finished DNS dns test" | tee -a $TMPDIR/dnstest/dnstest.log
-  techo "Cleaning up DNS dns test"
-  ${KUBECTL_CMD} -n kube-system delete ds/dnstest
+  techo "Finished DNS test" | tee -a $TMPDIR/dnstest/dnstest.log
 }
-
+kubeapi-check() {
+  mkdir -p $TMPDIR/kubeapi/
+  techo "Starting kubeapi test" | tee -a $TMPDIR/kubeapi/kubeapi.log
+  endpoints=`${KUBECTL_CMD} get endpoints kubernetes -o json | jq -r '.subsets[].addresses[].ip'`
+  ${KUBECTL_CMD} -n kube-system get pods -l name=swiss-army-knife -o jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.spec.nodeName}{"\n"}{end}' |
+  while read pod host
+  do
+    for endpoint in $endpoints
+    do
+      ${KUBECTL_CMD} -n kube-system --request-timeout='10s' exec $pod -c swiss-army-knife -- /bin/bash -c 'TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) && kubectl --server=https://'${endpoint}':6443 --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt --token=$TOKEN get nodes > /dev/null 2>&1'
+      RC=$?
+      if [ $RC -ne 0 ]
+      then
+        techo "Failure: kubeapi is not working correctly for $pod on node $host when connecting to kubeapi server $endpoint" | tee -a $TMPDIR/kubeapi/kubeapi.log
+      else
+        techo "Success: kubeapi is working correctly for $pod on node $host when connecting to kubeapi server $endpoint" | tee -a $TMPDIR/kubeapi/kubeapi.log
+      fi
+    done
+  done
+  techo "Finished kubeapi test" | tee -a $TMPDIR/kubeapi/kubeapi.log
+}
+nginxproxy-test() {
+  mkdir -p $TMPDIR/nginxproxy/
+  techo "Starting nginx-proxy test" | tee -a $TMPDIR/nginxproxy/nginxproxy.log
+  ${KUBECTL_CMD} -n kube-system get pods -l name=swiss-army-knife -o jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.spec.nodeName}{"\n"}{end}' |
+  while read pod host
+  do
+    ${KUBECTL_CMD} -n kube-system --request-timeout='10s' exec $pod -c swiss-army-knife -- /bin/bash -c 'TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) && kubectl --server=https://kubernetes.default:6443 --certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt --token=$TOKEN get nodes > /dev/null 2>&1'
+    RC=$?
+    if [ $RC -ne 0 ]
+    then
+      techo "Failure: nginx-proxy is not working correctly for $pod on $host when connecting via nginx-proxy" | tee -a $TMPDIR/nginxproxy/nginxproxy.log
+    else
+      techo "Success: nginx-proxy is working correctly for $pod on $host when connecting via nginx-proxy" | tee -a $TMPDIR/nginxproxy/nginxproxy.log
+    fi
+  done
+  techo "Finished nginx-proxy test" | tee -a $TMPDIR/nginxproxy/nginxproxy.log
+}
 pods() {
   techo "Collecting information about the pods..."
   mkdir -p $TMPDIR/pods/
@@ -305,7 +346,6 @@ pods() {
   ${KUBECTL_CMD} top pod -A --sort-by=cpu > $TMPDIR/pods/top-pod-by-cpu
   ${KUBECTL_CMD} top pod -A --sort-by=memory > $TMPDIR/pods/top-pod-by-memory
 }
-
 get-namespace-all() {
   NAMESPACE=$1
   techo "Collecting information about $NAMESPACE"
@@ -332,17 +372,15 @@ get-namespace-all() {
   ${KUBECTL_CMD} -n $NAMESPACE get pvc -o wide > $TMPDIR/$NAMESPACE/get-pvc.wide 2>&1
   ${KUBECTL_CMD} -n $NAMESPACE get pvc -o yaml  > $TMPDIR/$NAMESPACE/get-pvc.yaml 2>&1
 }
-
 storage() {
   techo "Collecting information about storage..."
   mkdir -p $TMPDIR/storage/
-  ${KUBECTL_CMD} get storageclass > $TMPDIR/storage/get-storageclass
-  ${KUBECTL_CMD} get storageclass -o yaml > $TMPDIR/storage/get-storageclass.yaml
+  ${KUBECTL_CMD} get storageclass > $TMPDIR/storage/get-storageclass 2>&1
+  ${KUBECTL_CMD} get storageclass -o yaml > $TMPDIR/storage/get-storageclass.yaml 2>&1
   mkdir -p $TMPDIR/storage/pv/
-  ${KUBECTL_CMD} get pv -o wide > $TMPDIR/storage/get-pv.wide
-  ${KUBECTL_CMD} get pv -o yaml > $TMPDIR/storage/get-pv.yaml
+  ${KUBECTL_CMD} get pv -o wide > $TMPDIR/storage/get-pv.wide 2>&1
+  ${KUBECTL_CMD} get pv -o yaml > $TMPDIR/storage/get-pv.yaml 2>&1
 }
-
 archive() {
 
   FILEDIR=$(dirname $TMPDIR)
@@ -354,38 +392,35 @@ archive() {
   techo "Created ${FILEDIR}/${FILENAME}.gz"
 
 }
-
 cleanup() {
 
   techo "Removing ${TMPDIR}"
   rm -r -f "${TMPDIR}" >/dev/null 2>&1
 
 }
-
 help() {
 
   echo "Cluster Health Check
-  Usage: cluster-health.sh [ -d <directory> -k ~/.kube/config -i rancherlabs/swiss-army-knife -f -D ]
+  Usage: cluster-health.sh [ -d <directory> -k ~/.kube/config -i rancherlabs/swiss-army-knife -t -c -f -D ]
 
   All flags are optional
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -k    Override the kubeconfig (ex: ~/.kube/custom)
+  -t    Skip collecting logs and only run tests.
+  -c    Don't cleanup swiss-army-knife test containers
   -f    Force collection if the minimum space isn't available
   -i    Override the debug image (ex: registry.example.com/rancherlabs/swiss-army-knife)
   -D    Enable debug logging"
 
 }
-
 timestamp() {
 
   date "+%Y-%m-%d %H:%M:%S"
 
 }
-
 techo() {
   echo "$(timestamp): $*"
 }
-
 decho() {
   if [[ ! -z $DEBUG ]]
   then
@@ -393,7 +428,10 @@ decho() {
   fi
 }
 
-while getopts ":d:s:r:i:fhD" opt; do
+testsonly=0
+cleanup=0
+
+while getopts ":d:s:r:i:tcfhD" opt; do
   case $opt in
     d)
       MKTEMP_BASEDIR="-p ${OPTARG}"
@@ -407,6 +445,12 @@ while getopts ":d:s:r:i:fhD" opt; do
       ;;
     i)
       IMAGE_FLAG="${OPTARG}"
+      ;;
+    t)
+      testsonly=1
+      ;;
+    c)
+      cleanup=1
       ;;
     f)
       FORCE=1
@@ -442,17 +486,34 @@ fi
 
 verify-access
 cluster-info
-nodes
-pods
-storage
-Namespaces='cattle-dashboards cattle-logging-system cattle-monitoring-system cattle-system cis-operator-system fleet-system ingress-nginx kube-node-lease kube-public kube-system local-path-storage longhorn-system'
-for Namespace in $Namespaces
-do
-  get-namespace-all $Namespace
-done
+detect-provider
+if [[ $testsonly == "0" ]]
+then
+  nodes
+  pods
+  storage
+  Namespaces='cattle-dashboards cattle-logging-system cattle-monitoring-system cattle-system cis-operator-system fleet-system ingress-nginx kube-node-lease kube-public kube-system local-path-storage longhorn-system'
+  for Namespace in $Namespaces
+  do
+    get-namespace-all $Namespace
+  done
+fi
 deploy-serviceaccount
+deploy-swiss-army-knife
 overlay-test
 dns-test
-cleanup-serviceaccount
-archive
+kubeapi-check
+if [[ $clusterprovider == "rke" ]]
+then
+  nginxproxy-test
+fi
+if [[ $cleanup == "0" ]]
+then
+  cleanup-swiss-army-knife
+  cleanup-serviceaccount
+fi
+if [[ $testsonly == "0" ]]
+then
+  archive
+fi
 cleanup
