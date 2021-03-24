@@ -52,7 +52,7 @@ cleanup-containers() {
 cleanup-dirs() {
 
   techo "Unmounting filesystems..."
-  for mount in $(mount | grep tmpfs | grep '/var/lib/kubelet' | awk '{ print $3 }') /var/lib/kubelet /var/lib/rancher
+  for mount in $(mount | grep tmpfs | grep '/var/lib/kubelet' | awk '{ print $3 }')
     do
       umount $mount
   done
