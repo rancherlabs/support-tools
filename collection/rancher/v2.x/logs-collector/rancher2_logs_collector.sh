@@ -525,7 +525,11 @@ timeout_cmd() {
 archive() {
 
   FILEDIR=$(dirname $TMPDIR)
-  FILENAME="$(hostname)-$(date +'%Y-%m-%d_%H_%M_%S').tar"
+  if [ -n "${CASE_NUMBER}" ]; then
+    FILENAME="${CASE_NUMBER}-$(hostname)-$(date +'%Y-%m-%d_%H_%M_%S').tar"
+  else
+    FILENAME="$(hostname)-$(date +'%Y-%m-%d_%H_%M_%S').tar"
+  fi
   tar --create --file ${FILEDIR}/${FILENAME} --directory ${TMPDIR}/ .
   ## gzip separately for Rancher OS
   gzip ${FILEDIR}/${FILENAME}
@@ -541,10 +545,22 @@ cleanup() {
 
 }
 
+upload() {
+
+  if $(command -v curl >/dev/null 2>&1); then
+    curl -v -L -A SupportConfig \
+	    -T "${FILEDIR}/${FILENAME}.gz" \
+	    "${SUSE_UPLOAD_HTTPS}/upload.php?appname=supportconfig&file=${FILENAME}.gz"
+  else
+    techo "Upload requires curl to be present."
+  fi
+
+}
+
 help() {
 
   echo "Rancher 2.x logs-collector
-  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -r <container runtime> -p -f ]
+  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -r <container runtime> -p -f -u -c <case number> -l <location> ]
 
   All flags are optional
 
@@ -552,7 +568,10 @@ help() {
   -s    Number of days history to collect from container and journald logs (ex: -s 7)
   -r    Override container runtime if not automatically detected (docker|k3s)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
-  -f    Force log collection if the minimum space isn't available"
+  -f    Force log collection if the minimum space isn't available
+  -u    Upload log collection archive via FTP
+  -c    Case number, required for log uploading (ex: -c 00012345)
+  -l    Location, required for log uploading (us|emea)"
 
 }
 
@@ -575,7 +594,7 @@ if [[ $EUID -ne 0 ]]
     exit 1
 fi
 
-while getopts ":d:s:r:fph" opt; do
+while getopts ":d:s:r:pfuc:l:h" opt; do
   case $opt in
     d)
       MKTEMP_BASEDIR="-p ${OPTARG}"
@@ -587,11 +606,20 @@ while getopts ":d:s:r:fph" opt; do
     r)
       RUNTIME_FLAG="${OPTARG}"
       ;;
+    p)
+      PRIORITY_DEFAULT=1
+      ;;
     f)
       FORCE=1
       ;;
-    p)
-      PRIORITY_DEFAULT=1
+    u)
+      UPLOAD=1
+      ;;
+    c)
+      CASE_NUMBER="${OPTARG}"
+      ;;
+    l)
+      LOCATION="${OPTARG}"
       ;;
     h)
       help && exit 0
@@ -604,6 +632,25 @@ while getopts ":d:s:r:fph" opt; do
       help && exit 0
   esac
 done
+
+# Check upload has required flags
+if [ -n "${UPLOAD}" ]; then
+  if [ -z "${LOCATION}" ]; then
+    techo "Option -u requires -l to be set."
+    exit 1
+  else
+    if [ "${LOCATION}" == "us" ] || [ "${LOCATION}" == "emea" ]; then
+      SUSE_UPLOAD_HTTPS="https://support-ftp.${LOCATION}.suse.com/incoming"
+    else
+      techo "Option -l requires either 'us' or 'emea' to be set."
+      exit 1
+    fi
+  fi
+  if [ -z "${CASE_NUMBER}" ]; then
+    techo "Option -u requires -c to be set."
+    exit 1
+  fi
+fi
 
 setup
 disk-space
@@ -647,3 +694,8 @@ if [ "${INIT}" = "systemd" ]
 fi
 archive
 cleanup
+if [ -n "${UPLOAD}" ]
+  then
+    techo "-u (upload) used, continuing"
+    upload
+fi
