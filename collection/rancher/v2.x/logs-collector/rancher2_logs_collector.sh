@@ -17,6 +17,10 @@ SPACE=1536
 # Set TIMEOUT in seconds for select commands
 TIMEOUT=60
 
+# Default nice and ionice priorities
+PRIORITY_NICE=19 # lowest
+PRIORITY_IONICE="idle" # lowest
+
 setup() {
 
   TMPDIR=$(mktemp -d $MKTEMP_BASEDIR)
@@ -36,6 +40,19 @@ disk-space() {
 }
 
 sherlock() {
+
+  if [ -z ${PRIORITY_DEFAULT} ]
+    then
+      echo -n "$(timestamp): Detecting available commands... "
+      if $(command -v renice >/dev/null 2>&1); then
+        renice -n ${PRIORITY_NICE} "$$" >/dev/null 2>&1
+        echo -n "renice "
+      fi
+      if $(command -v ionice >/dev/null 2>&1); then
+        ionice -c ${PRIORITY_IONICE} -p "$$" >/dev/null 2>&1
+        echo "ionoice"
+      fi
+  fi
 
   echo -n "$(timestamp): Detecting OS... "
   if [ -f /etc/os-release ]
@@ -81,6 +98,7 @@ sherlock() {
           fi
       fi
   fi
+
   echo -n "$(timestamp): Detecting init type... "
   if $(command -v systemctl >/dev/null 2>&1)
     then
@@ -448,12 +466,12 @@ k3s-certs() {
           openssl x509 -in $CERT -text -noout > $TMPDIR/k3s/certs/agent/$(basename $CERT) 2>&1
       done
       if [ -d /var/lib/rancher/k3s/server ]; then
-         techo "Collecting k3s Server certificates"
-         SERVER_CERTS=$(find /var/lib/rancher/k3s/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
-         for CERT in $SERVER_CERTS
-           do
-             openssl x509 -in $CERT -text -noout > $TMPDIR/k3s/certs/server/$(basename $CERT) 2>&1
-         done
+        techo "Collecting k3s Server certificates"
+        SERVER_CERTS=$(find /var/lib/rancher/k3s/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+        for CERT in $SERVER_CERTS
+          do
+            openssl x509 -in $CERT -text -noout > $TMPDIR/k3s/certs/server/$(basename $CERT) 2>&1
+        done
       fi
   fi
 
@@ -526,13 +544,14 @@ cleanup() {
 help() {
 
   echo "Rancher 2.x logs-collector
-  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -r <container runtime> -f ]
+  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -r <container runtime> -p -f ]
 
   All flags are optional
 
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -s    Number of days history to collect from container and journald logs (ex: -s 7)
   -r    Override container runtime if not automatically detected (docker|k3s)
+  -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
   -f    Force log collection if the minimum space isn't available"
 
 }
@@ -556,7 +575,7 @@ if [[ $EUID -ne 0 ]]
     exit 1
 fi
 
-while getopts ":d:s:r:fh" opt; do
+while getopts ":d:s:r:fph" opt; do
   case $opt in
     d)
       MKTEMP_BASEDIR="-p ${OPTARG}"
@@ -570,6 +589,9 @@ while getopts ":d:s:r:fh" opt; do
       ;;
     f)
       FORCE=1
+      ;;
+    p)
+      PRIORITY_DEFAULT=1
       ;;
     h)
       help && exit 0
