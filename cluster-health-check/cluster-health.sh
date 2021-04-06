@@ -13,6 +13,23 @@ disk-space() {
       DISK_FULL=1
   fi
 }
+dependencies-check() {
+  if ! hash jq 2>/dev/null; then
+      if [ "${INSTALL_MISSING_DEPENDENCIES}" == "yes" ] && [ "${OSTYPE}" == "linux-gnu" ]; then
+          curl -L -O https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+          chmod +x jq-linux64
+          mv jq-linux64 /bin/jq
+      else
+          echo '!!!jq was not found!!!'
+          echo "!!!download and install with:"
+          echo "Linux users (Run script with option -y to install automatically):"
+          echo "curl -L -O https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64"
+          echo "chmod +x jq-linux64"
+          echo "mv jq-linux64 /bin/jq"
+          exit 1
+      fi
+  fi
+}
 verify-access() {
   techo "Verifying cluster access"
   if [[ ! -z $OVERRIDE_KUBECONFIG ]];
@@ -319,7 +336,7 @@ pods() {
   ${KUBECTL_CMD} get pods -A -o wide > $TMPDIR/pods/get-pods.wide
   ${KUBECTL_CMD} get pods -A -o yaml > $TMPDIR/pods/get-pods.yaml
   ${KUBECTL_CMD} get pods -A -o json > $TMPDIR/pods/get-pods.json
-  NumberOfPods=`cat $TMPDIR/pods/get-pods.json | tail -n +2 | wc -l`
+  NumberOfPods=`cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | .metadata.namespace + "/" + .metadata.name' | wc -l`
 
   decho "Running"
   cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Running" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Running 2>&1
@@ -454,7 +471,7 @@ decho() {
 testsonly=0
 cleanup=0
 
-while getopts ":d:s:r:i:tcfhD" opt; do
+while getopts ":d:s:r:i:tcfhDy" opt; do
   case $opt in
     d)
       MKTEMP_BASEDIR="-p ${OPTARG}"
@@ -480,6 +497,9 @@ while getopts ":d:s:r:i:tcfhD" opt; do
       ;;
     D)
       DEBUG=1
+      ;;
+    y)
+      INSTALL_MISSING_DEPENDENCIES=yes
       ;;
     h)
       help && exit 0
