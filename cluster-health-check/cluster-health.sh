@@ -526,7 +526,7 @@ if [ -n "${DISK_FULL}" ]
         techo "-f (force) used, continuing"
     fi
 fi
-
+dependencies-check
 verify-access
 cluster-info
 detect-provider
