@@ -174,7 +174,7 @@ EOF
   --clusterrole=cluster-health-check \
   --serviceaccount=kube-system:cluster-health-check > /dev/null 2>&1
 }
-cleanup-serviceaccount() {
+CLEANUP-serviceaccount() {
   techo "Deleting clusterrolebinding"
   ${KUBECTL_CMD} delete clusterrolebinding cluster-health-check
   techo "Deleting clusterrole"
@@ -245,7 +245,7 @@ EOF
   techo "Waiting for rollout to complete..."
   ${KUBECTL_CMD} -n kube-system rollout status ds/swiss-army-knife -w
 }
-cleanup-swiss-army-knife() {
+CLEANUP-swiss-army-knife() {
   techo "Cleaning up swiss-army-knife test containers"
   ${KUBECTL_CMD} -n kube-system delete ds/swiss-army-knife
 }
@@ -344,43 +344,43 @@ pods() {
 
   decho "Pending"
   cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Pending" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Pending 2>&1
-  NumberOfPendingPods=`cat $TMPDIR/pods/pods-Pending | tail -n +2 | wc -l`
+  numberOfPendingPods=`cat $TMPDIR/pods/pods-Pending | tail -n +2 | wc -l`
 
   decho "Failed"
   cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Failed" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Failed 2>&1
-  NumberOfFailedPods=`cat $TMPDIR/pods/pods-Failed | tail -n +2 | wc -l`
+  numberOfFailedPods=`cat $TMPDIR/pods/pods-Failed | tail -n +2 | wc -l`
 
   decho "Unknown"
   cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Unknown" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Unknown 2>&1
-  NumberOfUnknownPods=`cat $TMPDIR/pods/pods-Unknown | tail -n +2 | wc -l`
+  numberOfUnknownPods=`cat $TMPDIR/pods/pods-Unknown | tail -n +2 | wc -l`
 
   decho "Completed"
   cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Completed" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Completed 2>&1
-  NumberOfCompletedPods=`cat $TMPDIR/pods/pods-Completed | tail -n +2 | wc -l`
+  numberOfCompletedPods=`cat $TMPDIR/pods/pods-Completed | tail -n +2 | wc -l`
 
   decho "CrashLoopBackOff"
   cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "CrashLoopBackOff" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-CrashLoopBackOff 2>&1
-  NumberOfCrashLoopBackOffPods=`cat $TMPDIR/pods/pods-CrashLoopBackOff | tail -n +2 | wc -l`
+  numberOfCrashLoopBackOffPods=`cat $TMPDIR/pods/pods-CrashLoopBackOff | tail -n +2 | wc -l`
 
   decho "NodeAffinity"
   cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "NodeAffinity" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-NodeAffinity 2>&1
-  NumberOfNodeAffinityPods=`cat $TMPDIR/pods/pods-NodeAffinity | tail -n +2 | wc -l`
+  numberOfNodeAffinityPods=`cat $TMPDIR/pods/pods-NodeAffinity | tail -n +2 | wc -l`
 
   decho "ImagePullBackOff"
   cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "ImagePullBackOff" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-ImagePullBackOff 2>&1
-  NumberOfImagePullBackOffPods=`cat $TMPDIR/pods/pods-ImagePullBackOff | tail -n +2 | wc -l`
+  numberOfImagePullBackOffPods=`cat $TMPDIR/pods/pods-ImagePullBackOff | tail -n +2 | wc -l`
 
   techo "Pod Summary Report"
   techo "Pods:"                        $numberOfPods | tee -a $TMPDIR/pods/summary
   techo "Running:"                     $numberOfRunningPods | tee -a $TMPDIR/pods/summary
-  techo "Pending:"                     $NumberOfPendingPods | tee -a $TMPDIR/pods/summary
-  techo "Failed:"                      $NumberOfFailedPods | tee -a $TMPDIR/pods/summary
-  techo "Unknown:"                     $NumberOfUnknownPods | tee -a $TMPDIR/pods/summary
-  techo "Completed:"                   $NumberOfCompletedPods | tee -a $TMPDIR/pods/summary
-  techo "CrashLoopBackOff:"            $NumberOfCrashLoopBackOffPods | tee -a $TMPDIR/pods/summary
-  techo "NodeAffinity:"                $NumberOfNodeAffinityPods | tee -a $TMPDIR/pods/summary
-  techo "ImagePullBackOff:"            $NumberOfImagePullBackOffPods | tee -a $TMPDIR/pods/summary
-  techo "NodeAffinity:"                $NumberOfNodeAffinityPods | tee -a $TMPDIR/pods/summary
+  techo "Pending:"                     $numberOfPendingPods | tee -a $TMPDIR/pods/summary
+  techo "Failed:"                      $numberOfFailedPods | tee -a $TMPDIR/pods/summary
+  techo "Unknown:"                     $numberOfUnknownPods | tee -a $TMPDIR/pods/summary
+  techo "Completed:"                   $numberOfCompletedPods | tee -a $TMPDIR/pods/summary
+  techo "CrashLoopBackOff:"            $numberOfCrashLoopBackOffPods | tee -a $TMPDIR/pods/summary
+  techo "NodeAffinity:"                $numberOfNodeAffinityPods | tee -a $TMPDIR/pods/summary
+  techo "ImagePullBackOff:"            $numberOfImagePullBackOffPods | tee -a $TMPDIR/pods/summary
+  techo "NodeAffinity:"                $numberOfNodeAffinityPods | tee -a $TMPDIR/pods/summary
   decho "top pod"
   ${KUBECTL_CMD} top pod -A > $TMPDIR/pods/top-pod
   ${KUBECTL_CMD} top pod -A --sort-by=cpu > $TMPDIR/pods/top-pod-by-cpu
@@ -432,7 +432,7 @@ archive() {
   techo "Created ${FILEDIR}/${FILENAME}.gz"
 
 }
-cleanup() {
+CLEANUP() {
 
   techo "Removing ${TMPDIR}"
   rm -r -f "${TMPDIR}" >/dev/null 2>&1
@@ -447,7 +447,7 @@ help() {
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -k    Override the kubeconfig (ex: ~/.kube/custom)
   -t    Skip collecting logs and only run tests.
-  -c    Don't cleanup swiss-army-knife test containers
+  -c    Don't CLEANUP swiss-army-knife test containers
   -f    Force collection if the minimum space isn't available
   -i    Override the debug image (ex: registry.example.com/rancherlabs/swiss-army-knife)
   -D    Enable debug logging"
@@ -468,8 +468,8 @@ decho() {
   fi
 }
 
-testsonly=0
-cleanup=0
+TESTSONLY=0
+CLEANUP=0
 
 while getopts ":d:s:r:i:tcfhDy" opt; do
   case $opt in
@@ -487,10 +487,10 @@ while getopts ":d:s:r:i:tcfhDy" opt; do
       IMAGE_FLAG="${OPTARG}"
       ;;
     t)
-      testsonly=1
+      TESTSONLY=1
       ;;
     c)
-      cleanup=1
+      CLEANUP=1
       ;;
     f)
       FORCE=1
@@ -520,7 +520,7 @@ if [ -n "${DISK_FULL}" ]
     if [ -z "${FORCE}" ]
       then
         techo "Cleaning up and exiting"
-        cleanup
+        CLEANUP
         exit 1
       else
         techo "-f (force) used, continuing"
@@ -530,7 +530,7 @@ fi
 verify-access
 cluster-info
 detect-provider
-if [[ $testsonly == "0" ]]
+if [[ $TESTSONLY == "0" ]]
 then
   nodes
   pods
@@ -550,13 +550,13 @@ if [[ $clusterprovider == "rke" ]]
 then
   nginxproxy-test
 fi
-if [[ $cleanup == "0" ]]
+if [[ $CLEANUP == "0" ]]
 then
-  cleanup-swiss-army-knife
-  cleanup-serviceaccount
+  CLEANUP-swiss-army-knife
+  CLEANUP-serviceaccount
 fi
-if [[ $testsonly == "0" ]]
+if [[ $TESTSONLY == "0" ]]
 then
   archive
 fi
-cleanup
+CLEANUP
