@@ -135,8 +135,8 @@ nodes() {
   techo "Pods Per Node"
   for Node in `${KUBECTL_CMD} get node -o NAME | awk -F '/' '{print $2}'`
   do
-    NumberOfPodsPerNode=`${KUBECTL_CMD} get pods --all-namespaces --field-selector spec.nodeName=$Node -o wide | wc -l`
-    techo $Node" "$NumberOfPodsPerNode | tee -a $TMPDIR/nodes/pods-per-node
+    numberOfPodsPerNode=`${KUBECTL_CMD} get pods --all-namespaces --field-selector spec.nodeName=$Node -o wide | wc -l`
+    techo $Node" "$numberOfPodsPerNode | tee -a $TMPDIR/nodes/pods-per-node
   done
 }
 get-debug-tool-image() {
@@ -336,11 +336,11 @@ pods() {
   ${KUBECTL_CMD} get pods -A -o wide > $TMPDIR/pods/get-pods.wide
   ${KUBECTL_CMD} get pods -A -o yaml > $TMPDIR/pods/get-pods.yaml
   ${KUBECTL_CMD} get pods -A -o json > $TMPDIR/pods/get-pods.json
-  NumberOfPods=`cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | .metadata.namespace + "/" + .metadata.name' | wc -l`
+  numberOfPods=`cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | .metadata.namespace + "/" + .metadata.name' | wc -l`
 
   decho "Running"
   cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Running" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Running 2>&1
-  NumberOfRunningPods=`cat $TMPDIR/pods/pods-Running | tail -n +2 | wc -l`
+  numberOfRunningPods=`cat $TMPDIR/pods/pods-Running | tail -n +2 | wc -l`
 
   decho "Pending"
   cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Pending" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Pending 2>&1
@@ -371,8 +371,8 @@ pods() {
   NumberOfImagePullBackOffPods=`cat $TMPDIR/pods/pods-ImagePullBackOff | tail -n +2 | wc -l`
 
   techo "Pod Summary Report"
-  techo "Pods:"                        $NumberOfPods | tee -a $TMPDIR/pods/summary
-  techo "Running:"                     $NumberOfRunningPods | tee -a $TMPDIR/pods/summary
+  techo "Pods:"                        $numberOfPods | tee -a $TMPDIR/pods/summary
+  techo "Running:"                     $numberOfRunningPods | tee -a $TMPDIR/pods/summary
   techo "Pending:"                     $NumberOfPendingPods | tee -a $TMPDIR/pods/summary
   techo "Failed:"                      $NumberOfFailedPods | tee -a $TMPDIR/pods/summary
   techo "Unknown:"                     $NumberOfUnknownPods | tee -a $TMPDIR/pods/summary
