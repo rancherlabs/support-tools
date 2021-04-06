@@ -17,22 +17,29 @@ verify-access() {
   techo "Verifying cluster access"
   if [[ ! -z $OVERRIDE_KUBECONFIG ]];
   then
-    ## Just use the kubeconfig that was set by the user
+    decho "Using the kubeconfig that was set by the user"
+    decho "OVERRIDE_KUBECONFIG: $OVERRIDE_KUBECONFIG"
     KUBECTL_CMD="kubectl --kubeconfig $OVERRIDE_KUBECONFIG"
   elif [[ ! -z $KUBECONFIG ]];
   then
+    decho "Using the default kubeconfig environment KUBECONFIG"
+    decho "KUBECONFIG: $KUBECONFIG"
     KUBECTL_CMD="kubectl"
   elif [[ ! -z $KUBERNETES_PORT ]];
   then
     ## We are inside the k8s cluster or we're using the local kubeconfig
+    decho "Detected that we're a pod inside the k8s cluster"
     RANCHER_POD=$(kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=id:metadata.name | head -n1)
+    decho "RANCHER_POD: $RANCHER_POD"
     KUBECTL_CMD="kubectl -n cattle-system exec -c rancher ${RANCHER_POD} -- kubectl"
   elif $(command -v k3s >/dev/null 2>&1)
   then
     ## We are on k3s node
+    decho "Detected that we're running on a k3s management node"
     KUBECTL_CMD="k3s kubectl"
   elif $(command -v docker >/dev/null 2>&1)
   then
+    decho "Detected that we're running on a k8s nodes with a Rancher server pod"
     DOCKER_ID=$(docker ps | grep "k8s_rancher_rancher" | cut -d' ' -f1 | head -1)
     KUBECTL_CMD="docker exec ${DOCKER_ID} kubectl"
   else
@@ -72,41 +79,47 @@ detect-provider() {
 nodes() {
   techo "Collecting information about the nodes..."
   mkdir -p $TMPDIR/nodes/
+  decho "Running kubectl get nodes..."
+  decho "kubectl get nodes -o wide"
   ${KUBECTL_CMD} get nodes -o wide > $TMPDIR/nodes/get-nodes.wide
-  ${KUBECTL_CMD} get nodes -o yaml > $TMPDIR/nodes/get-nodes-yaml
+  decho "kubectl get nodes -o yaml"
+  ${KUBECTL_CMD} get nodes -o yaml > $TMPDIR/nodes/get-nodes.yaml
+  decho "kubectl get nodes -o json"
+  ${KUBECTL_CMD} get nodes -o json > $TMPDIR/nodes/get-nodes.json
   ${KUBECTL_CMD} top nodes > $TMPDIR/nodes/top-node
   decho "Describing nodes..."
   mkdir -p $TMPDIR/nodes/describe
-  for NODE in `${KUBECTL_CMD} get node -o NAME | awk -F '/' '{print $2}'`
+  for Node in `cat $TMPDIR/nodes/get-nodes.json | jq -r '[.items[] | {name:.metadata.name}.name]' | tr -d '[]", ' | sed -e '/^$/d'`
   do
-    ${KUBECTL_CMD} describe node $NODE > $TMPDIR/nodes/describe/$NODE
+    decho "Node: $Node"
+    ${KUBECTL_CMD} describe node $Node > $TMPDIR/nodes/describe/$Node
   done
   techo "Gathering node counts..."
   decho "Total number of nodes..."
-  NumberOfNodes=`${KUBECTL_CMD} get nodes --no-headers | wc -l`
+  NumberOfNodes=`cat $TMPDIR/nodes/get-nodes.json | jq -r '[.items[] | {name:.metadata.name}.name]' | tr -d '[]", ' | sed -e '/^$/d' | wc -l`
   decho "master"
   ${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/master' -o wide > $TMPDIR/nodes/get-nodes-master.wide 2>&1
-  NumberOfMasterNodes=`${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/master' --no-headers 2>/dev/null | wc -l`
+  NumberOfMasterNodes=`cat $TMPDIR/nodes/get-nodes-master.wide 2>&1 tail -n +2 | wc -l`
   decho "etcd"
   ${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/etcd' -o wide > $TMPDIR/nodes/get-nodes-etcd.wide 2>&1
-  NumberOfEtcdNodes=`${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/etcd' --no-headers 2>/dev/null | wc -l`
+  NumberOfEtcdNodes=`cat $TMPDIR/nodes/get-nodes-etcd.wide 2>&1 tail -n +2 | wc -l`
   decho "controlplane"
   ${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/controlplane' -o wide > $TMPDIR/nodes/get-nodes-controlplane.wide 2>&1
-  NumberOfControlplaneNodes=`${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/controlplane' --no-headers 2>/dev/null | wc -l`
+  NumberOfControlplaneNodes=`cat $TMPDIR/nodes/get-nodes-controlplane.wide 2>&1 tail -n +2 | wc -l`
   decho "worker"
   ${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/worker' -o wide > $TMPDIR/nodes/get-nodes-worker.wide 2>&1
-  NumberOfWorkerNodes=`${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/worker' --no-headers 2>/dev/null | wc -l`
+  NumberOfWorkerNodes=`cat $TMPDIR/nodes/get-nodes-worker.wide 2>&1 tail -n +2 | wc -l`
   techo "Node Summary Report"
-  techo "Total number of nodes:"                   $NumberOfNodes | tee -a $TMPDIR/nodes/summary
+  techo "Total number of nodes:"       $NumberOfNodes | tee -a $TMPDIR/nodes/summary
   techo "etcd:"                        $NumberOfEtcdNodes | tee -a $TMPDIR/nodes/summary
   techo "controlplane:"                $NumberOfControlplaneNodes | tee -a $TMPDIR/nodes/summary
   techo "worker:"                      $NumberOfWorkerNodes | tee -a $TMPDIR/nodes/summary
   techo "master:"                      $NumberOfMasterNodes | tee -a $TMPDIR/nodes/summary
   techo "Pods Per Node"
-  for NODE in `${KUBECTL_CMD} get node -o NAME | awk -F '/' '{print $2}'`
+  for Node in `${KUBECTL_CMD} get node -o NAME | awk -F '/' '{print $2}'`
   do
-    NumberOfPodsPerNode=`${KUBECTL_CMD} get pods --all-namespaces --field-selector spec.nodeName=$NODE -o wide | wc -l`
-    techo $NODE" "$NumberOfPodsPerNode | tee -a $TMPDIR/nodes/pods-per-node
+    NumberOfPodsPerNode=`${KUBECTL_CMD} get pods --all-namespaces --field-selector spec.nodeName=$Node -o wide | wc -l`
+    techo $Node" "$NumberOfPodsPerNode | tee -a $TMPDIR/nodes/pods-per-node
   done
 }
 get-debug-tool-image() {
@@ -304,32 +317,42 @@ pods() {
   techo "Collecting information about the pods..."
   mkdir -p $TMPDIR/pods/
   ${KUBECTL_CMD} get pods -A -o wide > $TMPDIR/pods/get-pods.wide
-  ${KUBECTL_CMD} get pods -A -o yaml > $TMPDIR/pods/get-pods-yaml
-  NumberOfPods=`${KUBECTL_CMD} get pods -A --no-headers | wc -l`
+  ${KUBECTL_CMD} get pods -A -o yaml > $TMPDIR/pods/get-pods.yaml
+  ${KUBECTL_CMD} get pods -A -o json > $TMPDIR/pods/get-pods.json
+  NumberOfPods=`cat $TMPDIR/pods/get-pods.json | tail -n +2 | wc -l`
+
   decho "Running"
-  ${KUBECTL_CMD} get pods -A --field-selector=status.phase=Running > $TMPDIR/pods/pods-Running 2>&1
-  NumberOfRunningPods=`${KUBECTL_CMD} get pods -A --no-headers --field-selector=status.phase=Running 2>/dev/null | wc -l`
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Running" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Running 2>&1
+  NumberOfRunningPods=`cat $TMPDIR/pods/pods-Running | tail -n +2 | wc -l`
+
   decho "Pending"
-  ${KUBECTL_CMD} get pods -A --field-selector=status.phase=Pending > $TMPDIR/pods/pods-Pending 2>&1
-  NumberOfPendingPods=`${KUBECTL_CMD} get pods -A --no-headers --field-selector=status.phase=Pending 2>/dev/null | wc -l`
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Pending" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Pending 2>&1
+  NumberOfPendingPods=`cat $TMPDIR/pods/pods-Pending | tail -n +2 | wc -l`
+
   decho "Failed"
-  ${KUBECTL_CMD} get pods -A --field-selector=status.phase=Failed > $TMPDIR/pods/pods-Failed 2>&1
-  NumberOfFailedPods=`${KUBECTL_CMD} get pods -A --no-headers --field-selector=status.phase=Failed 2>/dev/null | wc -l`
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Failed" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Failed 2>&1
+  NumberOfFailedPods=`cat $TMPDIR/pods/pods-Failed | tail -n +2 | wc -l`
+
   decho "Unknown"
-  ${KUBECTL_CMD} get pods -A --field-selector=status.phase=Unknown > $TMPDIR/pods/pods-Unknown 2>&1
-  NumberOfUnknownPods=`${KUBECTL_CMD} get pods -A --no-headers --field-selector=status.phase=Unknown 2>/dev/null | wc -l`
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Unknown" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Unknown 2>&1
+  NumberOfUnknownPods=`cat $TMPDIR/pods/pods-Unknown | tail -n +2 | wc -l`
+
   decho "Completed"
-  ${KUBECTL_CMD} get pods -A --field-selector=status.phase=Succeeded > $TMPDIR/pods/pods-Completed 2>&1
-  NumberOfCompletedPods=`${KUBECTL_CMD} get pods -A --no-headers --field-selector=status.phase=Succeeded 2>/dev/null | wc -l`
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Completed" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Completed 2>&1
+  NumberOfCompletedPods=`cat $TMPDIR/pods/pods-Completed | tail -n +2 | wc -l`
+
   decho "CrashLoopBackOff"
-  ${KUBECTL_CMD} get pods -A --field-selector=status.phase=Running > $TMPDIR/pods/pods-CrashLoopBackOff 2>&1
-  NumberOfCrashLoopBackOffPods=`${KUBECTL_CMD} get pods -A --no-headers --field-selector=status.phase=CrashLoopBackOff 2>/dev/null | wc -l`
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "CrashLoopBackOff" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-CrashLoopBackOff 2>&1
+  NumberOfCrashLoopBackOffPods=`cat $TMPDIR/pods/pods-CrashLoopBackOff | tail -n +2 | wc -l`
+
   decho "NodeAffinity"
-  ${KUBECTL_CMD} get pods -A --field-selector=status.phase=NodeAffinity > $TMPDIR/pods/pods-NodeAffinity 2>&1
-  NumberOfNodeAffinityPods=`${KUBECTL_CMD} get pods -A --no-headers --field-selector=status.phase=CrashLoopBackOff 2>/dev/null | wc -l`
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "NodeAffinity" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-NodeAffinity 2>&1
+  NumberOfNodeAffinityPods=`cat $TMPDIR/pods/pods-NodeAffinity | tail -n +2 | wc -l`
+
   decho "ImagePullBackOff"
-  ${KUBECTL_CMD} get pods -A --field-selector=status.phase=NodeAffinity > $TMPDIR/pods/pods-ImagePullBackOff 2>&1
-  NumberOfImagePullBackOffPods=`${KUBECTL_CMD} get pods -A --no-headers --field-selector=status.phase=ImagePullBackOff 2>/dev/null | wc -l`
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "ImagePullBackOff" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-ImagePullBackOff 2>&1
+  NumberOfImagePullBackOffPods=`cat $TMPDIR/pods/pods-ImagePullBackOff | tail -n +2 | wc -l`
+
   techo "Pod Summary Report"
   techo "Pods:"                        $NumberOfPods | tee -a $TMPDIR/pods/summary
   techo "Running:"                     $NumberOfRunningPods | tee -a $TMPDIR/pods/summary
