@@ -125,11 +125,11 @@ nodes() {
 get-debug-tool-image() {
   if [[ ! -z $IMAGE_FLAG ]]
   then
-    DebugToolImage=$IMAGE_FLAG
+    DEBUGTOOLIMAGE=$IMAGE_FLAG
   else
-    DebugToolImage="leodotcloud/swiss-army-knife:latest"
+    DEBUGTOOLIMAGE="leodotcloud/swiss-army-knife:latest"
   fi
-  echo $DebugToolImage
+  echo $DEBUGTOOLIMAGE
 }
 deploy-serviceaccount() {
   techo "Deploying serviceaccount"
@@ -168,9 +168,9 @@ cleanup-serviceaccount() {
 deploy-swiss-army-knife() {
   techo "Deploying swiss-army-knife test containers"
   get-debug-tool-image
-  decho "DebugToolImage: $DebugToolImage"
+  decho "DEBUGTOOLIMAGE: $DEBUGTOOLIMAGE"
   mkdir -p $TMPDIR/swiss-army-knife/
-  cat <<EOF | sed -e "s/DebugToolImage/${DebugToolImage//\//\\/}/g" | tee $TMPDIR/swiss-army-knife/swiss-army-knife.yaml | ${KUBECTL_CMD} -n kube-system apply -f -
+  cat <<EOF | sed -e "s/DEBUGTOOLIMAGE/${DEBUGTOOLIMAGE//\//\\/}/g" | tee $TMPDIR/swiss-army-knife/swiss-army-knife.yaml | ${KUBECTL_CMD} -n kube-system apply -f -
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -201,7 +201,7 @@ spec:
       - operator: Exists
       serviceAccountName: cluster-health-check
       containers:
-      - image: DebugToolImage
+      - image: DEBUGTOOLIMAGE
         imagePullPolicy: Always
         name: swiss-army-knife
         command: ["sh", "-c", "tail -f /dev/null"]
