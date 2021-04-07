@@ -4,7 +4,7 @@
 CLEANUP_DIRS=(/etc/ceph /etc/cni /etc/kubernetes /opt/cni /opt/rke /run/secrets/kubernetes.io /run/calico /run/flannel /var/lib/calico /var/lib/weave /var/lib/etcd /var/lib/cni /var/lib/kubelet/* /var/lib/rancher/rke/log /var/log/containers /var/log/pods /var/run/calico)
 
 # Interfaces to cleanup
-CLEANUP_INTERFACES=(flannel.1 cni0 tunl0)
+CLEANUP_INTERFACES=(flannel.1 cni0 tunl0 weave datapath vxlan-6784)
 
 run() {
 
@@ -78,8 +78,11 @@ cleanup-interfaces() {
   techo "Removing interfaces..."
   for INTERFACE in "${CLEANUP_INTERFACES[@]}"
     do
-      techo "Removing $INTERFACE"
-      ip link delete $INTERFACE
+      if $(ip link show ${INTERFACE} > /dev/null 2>&1)
+        then
+          techo "Removing $INTERFACE"
+          ip link delete $INTERFACE
+      fi
   done
 
 }
@@ -113,7 +116,7 @@ flush-iptables() {
 help() {
 
   echo "Rancher 2.x extended cleanup
-  Usage: bash extended-cleanup-rancher2.sh [ -i -f ]
+  Usage: bash extended-cleanup-rancher2.sh [ -f -i ]
 
   All flags are optional
 
