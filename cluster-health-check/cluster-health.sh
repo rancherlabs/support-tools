@@ -1,9 +1,25 @@
 #!/bin/bash
 # Minimum space needed to run the script (MB)
 SPACE=2048
+# Default nice and ionice priorities
+PRIORITY_NICE=19 # lowest
+PRIORITY_IONICE="idle" # lowest
+
 setup() {
   TMPDIR=$(mktemp -d $MKTEMP_BASEDIR)
   techo "Created ${TMPDIR}"
+  if [ -z ${PRIORITY_DEFAULT} ]
+  then
+    echo -n "$(timestamp): Detecting available commands... "
+    if $(command -v renice >/dev/null 2>&1); then
+      renice -n ${PRIORITY_NICE} "$$" >/dev/null 2>&1
+      echo -n "renice "
+    fi
+    if $(command -v ionice >/dev/null 2>&1); then
+      ionice -c ${PRIORITY_IONICE} -p "$$" >/dev/null 2>&1
+      echo "ionoice"
+    fi
+  fi
 }
 disk-space() {
   AVAILABLE=$(df -m ${TMPDIR} | tail -n 1 | awk '{ print $4 }')
@@ -441,14 +457,16 @@ CLEANUP() {
 help() {
 
   echo "Cluster Health Check
-  Usage: cluster-health.sh [ -d <directory> -k ~/.kube/config -i rancherlabs/swiss-army-knife -t -c -f -D ]
+  Usage: cluster-health.sh [ -d <directory> -k ~/.kube/config -i rancherlabs/swiss-army-knife -t -c -y -f -p -D ]
 
   All flags are optional
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -k    Override the kubeconfig (ex: ~/.kube/custom)
   -t    Skip collecting logs and only run tests.
   -c    Don't CLEANUP swiss-army-knife test containers
+  -y    Install missing dependencies.
   -f    Force collection if the minimum space isn't available
+  -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
   -i    Override the debug image (ex: registry.example.com/rancherlabs/swiss-army-knife)
   -D    Enable debug logging"
 
@@ -471,7 +489,7 @@ decho() {
 TESTSONLY=0
 CLEANUP=0
 
-while getopts ":d:s:r:i:tcfhDy" opt; do
+while getopts ":d:s:r:i:tcfhDyp" opt; do
   case $opt in
     d)
       MKTEMP_BASEDIR="-p ${OPTARG}"
@@ -494,6 +512,9 @@ while getopts ":d:s:r:i:tcfhDy" opt; do
       ;;
     f)
       FORCE=1
+      ;;
+    p)
+      PRIORITY_DEFAULT=1
       ;;
     D)
       DEBUG=1
