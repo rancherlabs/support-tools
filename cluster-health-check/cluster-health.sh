@@ -556,10 +556,10 @@ then
   nodes
   pods
   storage
-  Namespaces='cattle-dashboards cattle-logging-system cattle-monitoring-system cattle-system cis-operator-system fleet-system ingress-nginx kube-node-lease kube-public kube-system local-path-storage longhorn-system'
-  for Namespace in $Namespaces
+  namespaces='cattle-dashboards cattle-logging-system cattle-monitoring-system cattle-system cis-operator-system fleet-system ingress-nginx kube-node-lease kube-public kube-system local-path-storage longhorn-system'
+  for namespace in $namespaces
   do
-    get-namespace-all $Namespace
+    get-namespace-all $namespace
   done
 fi
 deploy-serviceaccount
