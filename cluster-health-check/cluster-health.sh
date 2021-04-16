@@ -160,7 +160,7 @@ get-debug-tool-image() {
   then
     DEBUGTOOLIMAGE=$IMAGE_FLAG
   else
-    DEBUGTOOLIMAGE="leodotcloud/swiss-army-knife:latest"
+    DEBUGTOOLIMAGE="rancherlabs/swiss-army-knife:latest"
   fi
   echo $DEBUGTOOLIMAGE
 }
