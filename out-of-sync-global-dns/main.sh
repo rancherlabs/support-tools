@@ -31,7 +31,7 @@ verify-settings() {
   fi
 }
 setup-tmp-dir() {
-  TMPDIR=$(mktemp -d /tmp/out-of-sync)
+  TMPDIR=$(mktemp -d /tmp/out-of-sync.XXX)
   if [[ ! -d $TMPDIR ]]
   then
     echo "CRITICAL: Creating TMPDIR"
