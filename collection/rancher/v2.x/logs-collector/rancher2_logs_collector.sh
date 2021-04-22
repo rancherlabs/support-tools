@@ -578,7 +578,7 @@ fi
 while getopts ":d:s:r:fph" opt; do
   case $opt in
     d)
-      MKTEMP_BASEDIR="-p ${OPTARG}"
+      MKTEMP_BASEDIR="${OPTARG}/temp.XXXX"
       ;;
     s)
       START=$(date -d "-${OPTARG} days" '+%Y-%m-%d')
