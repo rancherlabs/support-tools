@@ -1,4 +1,6 @@
 #!/bin/bash
+
+# Minimum space needed to run the script (MB)
 SPACE="512"
 
 setup() {
@@ -60,16 +62,21 @@ cluster-info() {
   techo "Collecting cluster info"
   mkdir -p $TMPDIR/clusterinfo
   ${KUBECTL_CMD} cluster-info > $TMPDIR/clusterinfo/cluster-info 2>&1
-  ${KUBECTL_CMD} cluster-info dump > $TMPDIR/clusterinfo/cluster-info-dump 2>&1
   ${KUBECTL_CMD} get nodes -o wide > $TMPDIR/clusterinfo/get-node-wide 2>&1
+  ${KUBECTL_CMD} cluster-info dump -o yaml -n cattle-system --log-file-max-size 500 --output-directory $TMPDIR/clusterinfo/cluster-info-dump
   ## Grabbing cattle-system items
   mkdir -p $TMPDIR/cattle-system/
-  ${KUBECTL_CMD} get pods -n cattle-system -o wide > $TMPDIR/cattle-system/get-pods 2>&1
-  ${KUBECTL_CMD} get svc -n cattle-system -o wide > $TMPDIR/cattle-system/get-svc 2>&1
   ${KUBECTL_CMD} get endpoints -n cattle-system -o wide > $TMPDIR/cattle-system/get-endpoints 2>&1
+  ${KUBECTL_CMD} get ingress -n cattle-system -o yaml > $TMPDIR/cattle-system/get-ingress.yaml 2>&1
+  ${KUBECTL_CMD} get pods -n cattle-system -o wide > $TMPDIR/cattle-system/get-pods 2>&1
+  ${KUBECTL_CMD} get svc -n cattle-system -o yaml > $TMPDIR/cattle-system/get-svc.yaml 2>&1
   ## Grabbing kube-system items
   mkdir -p $TMPDIR/kube-system/
   ${KUBECTL_CMD} get configmap -n kube-system cattle-controllers -o yaml > $TMPDIR/kube-system/get-configmap-cattle-controllers.yaml 2>&1
+  ## Grabbing cluster configuration
+  mkdir -p $TMPDIR/clusters
+  ${KUBECTL_CMD} get clusters.management.cattle.io -A > $TMPDIR/clusters/clusters 2>&1
+  ${KUBECTL_CMD} get clusters.management.cattle.io -A -o yaml > $TMPDIR/clusters/clusters.yaml 2>&1
 
 }
 
@@ -98,18 +105,6 @@ disable-debug() {
 
 }
 
-capture-logs() {
-
-  techo "Capturing debug logs from Rancher pods"
-  mkdir -p $TMPDIR/rancher-logs/
-  for POD in $(${KUBECTL_CMD} get pods -n cattle-system -l app=rancher --no-headers | awk '{print $1}');
-  do
-    techo "Pod: $POD"
-    ${KUBECTL_CMD} -n cattle-system logs -c rancher $POD > $TMPDIR/rancher-logs/$POD
-  done
-
-}
-
 watch-logs() {
 
   techo "Live tailing debug logs from Rancher pods"
@@ -121,7 +116,9 @@ watch-logs() {
 
 
 pause(){
- read -n1 -rsp $'Press any key to continue or Ctrl+C to exit...\n'
+
+ read -n1 -rsp $'Press any key once finished logging with debug loglevel, or Ctrl+C to exit and leave debug loglevel enabled... \n'
+
 }
 
 archive() {
@@ -173,7 +170,7 @@ techo() {
 while getopts ":d:k:ftwh" opt; do
   case $opt in
     d)
-      MKTEMP_BASEDIR="-p ${OPTARG}"
+      MKTEMP_BASEDIR="${OPTARG}/temp.XXXX"
       ;;
     k)
       OVERRIDE_KUBECONFIG="${OPTARG}"
@@ -219,15 +216,15 @@ then
   pause
 fi
 verify-access
-cluster-info
 enable-debug
 if [ ! -z "${WATCH}" ]
 then
   watch-logs
 else
+  techo "Debug loglevel has been set"
   pause
 fi
 disable-debug
-capture-logs
+cluster-info
 archive
 cleanup
