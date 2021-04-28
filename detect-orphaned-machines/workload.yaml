@@ -49,7 +49,7 @@ spec:
           defaultMode: 493
           items:
           - key: main.sh
-            mode: 755
+            mode: 0755
             path: main.sh
           name: detect-orphaned-machines
           optional: false
