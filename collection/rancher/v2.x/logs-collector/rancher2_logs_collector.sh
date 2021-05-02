@@ -545,7 +545,7 @@ k3s-certs() {
           openssl x509 -in $CERT -text -noout > $TMPDIR/k3s/certs/agent/$(basename $CERT) 2>&1
       done
       if [ -d /var/lib/rancher/k3s/server/tls ]; then
-        techo "Collecting k3s Server certificates"
+        techo "Collecting k3s server certificates"
         SERVER_CERTS=$(find /var/lib/rancher/k3s/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
         for CERT in $SERVER_CERTS
           do
@@ -573,7 +573,7 @@ rke2-certs() {
           openssl x509 -in $CERT -text -noout > $TMPDIR/rke2/certs/agent/$(basename $CERT) 2>&1
       done
       if [ -d /var/lib/rancher/rke2/server/tls ]; then
-        techo "Collecting rke2 Server certificates"
+        techo "Collecting rke2 server certificates"
         SERVER_CERTS=$(find /var/lib/rancher/rke2/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
         for CERT in $SERVER_CERTS
           do
