@@ -92,7 +92,7 @@ sherlock() {
       if $(command -v rke2 >/dev/null 2>&1)
         then
           RKE2_BIN="/var/lib/rancher/rke2/bin"
-          CRI_CONFIG_FILE="/var/lib/rancher/rke2/agent/etc/crictl.yaml"
+          export CRI_CONFIG_FILE="/var/lib/rancher/rke2/agent/etc/crictl.yaml"
           if $(${RKE2_BIN}/crictl ps >/dev/null 2>&1)
             then
               DISTRO=rke2
@@ -452,9 +452,9 @@ rke2-k8s() {
   if [ -f /etc/rancher/rke2/rke2.yaml ]; then
     KUBECONFIG=/etc/rancher/rke2/rke2.yaml
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-      for SYSTEM_POD in $(${RKE2_BIN}/kubectl -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
-        ${RKE2_BIN}/kubectl -n $SYSTEM_NAMESPACE logs --all-containers $SYSTEM_POD > $TMPDIR/rke2/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
-        ${RKE2_BIN}/kubectl -n $SYSTEM_NAMESPACE logs -p --all-containers $SYSTEM_POD > $TMPDIR/rke2/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous 2>&1
+      for SYSTEM_POD in $(${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
+        ${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs --all-containers $SYSTEM_POD > $TMPDIR/rke2/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
+        ${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs -p --all-containers $SYSTEM_POD > $TMPDIR/rke2/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous 2>&1
       done
     done
   elif [ -f /var/lib/rancher/rke2/agent/kubelet.kubeconfig ]; then
