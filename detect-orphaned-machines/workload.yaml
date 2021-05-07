@@ -72,7 +72,7 @@ spec:
               key: secret-key
               name: rancher-api-key
               optional: false
-        image: leodotcloud/swiss-army-knife
+        image: rancherlabs//swiss-army-knife
         imagePullPolicy: IfNotPresent
         name: detect-orphaned-machines
         volumeMounts:
