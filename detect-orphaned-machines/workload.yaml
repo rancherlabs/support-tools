@@ -1,3 +1,35 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: detect-orphaned-machines
+  namespace: detect-orphaned-machines
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+ name: detect-orphaned-machines
+rules:
+- apiGroups:
+  - "management.cattle.io"
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+ name: detect-orphaned-machines
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: detect-orphaned-machines
+subjects:
+- kind: ServiceAccount
+  name: detect-orphaned-machines
+  namespace: detect-orphaned-machines
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -16,6 +48,8 @@ spec:
       labels:
         app: detect-orphaned-machines
     spec:
+      serviceAccount: detect-orphaned-machines
+      serviceAccountName: detect-orphaned-machines
       containers:
       - args:
         - /root/bin/main.sh
@@ -38,7 +72,7 @@ spec:
               key: secret-key
               name: rancher-api-key
               optional: false
-        image: rancherlabs/swiss-army-knife
+        image: leodotcloud/swiss-army-knife
         imagePullPolicy: IfNotPresent
         name: detect-orphaned-machines
         volumeMounts:
