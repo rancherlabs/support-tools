@@ -1,36 +1,90 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: detect-orphaned-machines
+  namespace: detect-orphaned-machines
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+ name: detect-orphaned-machines
+rules:
+- apiGroups:
+  - "management.cattle.io"
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+ name: detect-orphaned-machines
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: detect-orphaned-machines
+subjects:
+- kind: ServiceAccount
+  name: detect-orphaned-machines
+  namespace: detect-orphaned-machines
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: out-of-sync-global-dns
-  name: out-of-sync-global-dns
+    app: detect-orphaned-machines
+  name: detect-orphaned-machines
+  namespace: detect-orphaned-machines
 spec:
+  replicas: 1
   selector:
     matchLabels:
-      app: out-of-sync-global-dns
+      app: detect-orphaned-machines
   template:
     metadata:
       labels:
-        app: out-of-sync-global-dns
+        app: detect-orphaned-machines
     spec:
+      serviceAccount: detect-orphaned-machines
+      serviceAccountName: detect-orphaned-machines
       containers:
-      - env:
+      - args:
+        - /root/bin/main.sh
+        env:
         - name: CATTLE_SERVER
           valueFrom:
             secretKeyRef:
               key: cattle-server
               name: rancher-api-key
+              optional: false
         - name: CATTLE_ACCESS_KEY
           valueFrom:
             secretKeyRef:
               key: access-key
               name: rancher-api-key
+              optional: false
         - name: CATTLE_SECRET_KEY
           valueFrom:
             secretKeyRef:
               key: secret-key
               name: rancher-api-key
+              optional: false
         image: leodotcloud/swiss-army-knife
         imagePullPolicy: IfNotPresent
-        name: out-of-sync-global-dns
+        name: detect-orphaned-machines
+        volumeMounts:
+        - mountPath: /root/bin/
+          name: detect-orphaned-machines
+      volumes:
+      - configMap:
+          defaultMode: 493
+          items:
+          - key: main.sh
+            mode: 0755
+            path: main.sh
+          name: detect-orphaned-machines
+          optional: false
+        name: detect-orphaned-machines
