@@ -27,9 +27,14 @@ kubectl create namespace out-of-sync-global-dns
 - Please run the following to create a secret using the API keys created earlier.
 ```
 kubectl -n out-of-sync-global-dns create secret generic rancher-api-key \
-  --from-literal=cattle-server="https://rancher.example.com/v3" \
+  --from-literal=cattle-server="rancher.example.com" \
   --from-literal=access-key="token-abcde" \
   --from-literal=secret-key="abcdefghijklmnopqrstuvwxyz1234567890123456789012345678"
+```
+
+- Deploy configmap
+```
+kubectl -n out-of-sync-global-dns create configmap out-of-sync-global-dns --from-file main.sh
 ```
 
 - Deploy workload
