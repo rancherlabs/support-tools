@@ -108,14 +108,14 @@ disable-debug() {
 watch-logs() {
 
   techo "Live tailing debug logs from Rancher pods"
-  techo "Please use Ctrl+C to continue"
+  techo "Please use Ctrl+C to finish tailing"
   mkdir -p $TMPDIR/rancher-logs/
   ${KUBECTL_CMD} -n cattle-system logs -f -l app=rancher -c rancher | tee $TMPDIR/rancher-logs/live-logs
 
 }
 
 
-pause(){
+pause() {
 
  read -n1 -rsp $'Press any key once finished logging with debug loglevel, or Ctrl+C to exit and leave debug loglevel enabled... \n'
 
