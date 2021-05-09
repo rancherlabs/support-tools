@@ -63,7 +63,7 @@ cluster-info() {
   mkdir -p $TMPDIR/clusterinfo
   ${KUBECTL_CMD} cluster-info > $TMPDIR/clusterinfo/cluster-info 2>&1
   ${KUBECTL_CMD} get nodes -o wide > $TMPDIR/clusterinfo/get-node-wide 2>&1
-  ${KUBECTL_CMD} cluster-info dump -o yaml -n cattle-system --log-file-max-size 500 --output-directory $TMPDIR/clusterinfo/cluster-info-dump
+  ${KUBECTL_CMD} cluster-info dump -o yaml -n cattle-system --log-file-max-size 200 --output-directory $TMPDIR/clusterinfo/cluster-info-dump
   ## Grabbing cattle-system items
   mkdir -p $TMPDIR/cattle-system/
   ${KUBECTL_CMD} get endpoints -n cattle-system -o wide > $TMPDIR/cattle-system/get-endpoints 2>&1
@@ -124,7 +124,7 @@ pause() {
 archive() {
 
   FILEDIR=$(dirname $TMPDIR)
-  FILENAME="$(hostname)-$(date +'%Y-%m-%d_%H_%M_%S').tar"
+  FILENAME="$(kubectl config view -o jsonpath='{.current-context}')-$(date +'%Y-%m-%d_%H_%M_%S').tar"
   tar --create --file ${FILEDIR}/${FILENAME} --directory ${TMPDIR}/ .
   ## gzip separately for Rancher OS
   gzip ${FILEDIR}/${FILENAME}
