@@ -1,0 +1,75 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: detached-volumes-not-backing-up
+  namespace: longhorn-system
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: detached-volumes-not-backing-up
+rules:
+  - apiGroups: ["", "batch"]
+    resources: ["cronjobs"]
+    verbs: ["list", "watch", "get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+ name: detached-volumes-not-backing-up
+ namespace: longhorn-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: detached-volumes-not-backing-up
+subjects:
+- kind: ServiceAccount
+  name: detached-volumes-not-backing-up
+  namespace: longhorn-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: detached-volumes-not-backing-up
+  name: detached-volumes-not-backing-up
+  namespace: detached-volumes-not-backing-up
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: detached-volumes-not-backing-up
+  template:
+    metadata:
+      labels:
+        app: detached-volumes-not-backing-up
+    spec:
+      serviceAccount: detached-volumes-not-backing-up
+      serviceAccountName: detached-volumes-not-backing-up
+      containers:
+      - args:
+        - /root/bin/main.sh
+        env:
+        - name: LoopSleep
+          value: "60"
+        - name: LonghornNamespace
+          value: "longhorns-system"
+        - name: ResetTrigger
+          value: "50"
+        image: rancherlabs/swiss-army-knife
+        imagePullPolicy: IfNotPresent
+        name: detached-volumes-not-backing-up
+        volumeMounts:
+        - mountPath: /root/bin/
+          name: detached-volumes-not-backing-up
+      volumes:
+      - configMap:
+          defaultMode: 493
+          items:
+          - key: main.sh
+            mode: 0755
+            path: main.sh
+          name: detached-volumes-not-backing-up
+          optional: false
+        name: detached-volumes-not-backing-up
