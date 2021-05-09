@@ -97,7 +97,7 @@ cluster-info() {
   mkdir -p $TMPDIR/clusterinfo
   decho "cluster-info"
   ${KUBECTL_CMD} cluster-info > $TMPDIR/clusterinfo/cluster-info 2>&1
-  ${KUBECTL_CMD} cluster-info dump > $TMPDIR/clusterinfo/cluster-info-dump 2>&1
+  ${KUBECTL_CMD} cluster-info dump > $TMPDIR/clusterinfo/cluster-info-dump
   decho "get nodes"
   ${KUBECTL_CMD} get nodes -o wide > $TMPDIR/clusterinfo/get-node.wide 2>&1
   ${KUBECTL_CMD} get nodes -o yaml > $TMPDIR/clusterinfo/get-node-yaml 2>&1
@@ -106,8 +106,8 @@ detect-provider() {
   techo "Detecting the cluster provider..."
   mkdir -p $TMPDIR/clusterprovider
   decho "cluster-info"
-  clusterprovider=`${KUBECTL_CMD} get cluster -o json | jq -r '.items[].status.provider'`
-  echo $clusterprovider > $TMPDIR/clusterprovider/provider
+  ${KUBECTL_CMD} get cluster -o json > $TMPDIR/clusterprovider/provider.json 2>&1
+  clusterprovider=`cat $TMPDIR/clusterprovider/provider.json | jq -r '.items[].status.provider'`
 }
 nodes() {
   techo "Collecting information about the nodes..."
@@ -131,17 +131,37 @@ nodes() {
   decho "Total number of nodes..."
   NumberOfNodes=`cat $TMPDIR/nodes/get-nodes.json | jq -r '[.items[] | {name:.metadata.name}.name]' | tr -d '[]", ' | sed -e '/^$/d' | wc -l`
   decho "master"
-  ${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/master' -o wide > $TMPDIR/nodes/get-nodes-master.wide 2>&1
-  NumberOfMasterNodes=`cat $TMPDIR/nodes/get-nodes-master.wide 2>&1 tail -n +2 | wc -l`
+  ${KUBECTL_CMD} get nodes --no-headers --selector='node-role.kubernetes.io/master' -o wide > $TMPDIR/nodes/get-nodes-master.wide 2>&1
+  if cat $TMPDIR/nodes/get-nodes-master.wide | grep 'No resources found' > /dev/null
+  then
+    NumberOfMasterNodes="0"
+  else
+    NumberOfMasterNodes=`cat $TMPDIR/nodes/get-nodes-master.wide | wc -l`
+  fi
   decho "etcd"
-  ${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/etcd' -o wide > $TMPDIR/nodes/get-nodes-etcd.wide 2>&1
-  NumberOfEtcdNodes=`cat $TMPDIR/nodes/get-nodes-etcd.wide 2>&1 tail -n +2 | wc -l`
+  ${KUBECTL_CMD} get nodes --no-headers --selector='node-role.kubernetes.io/etcd' -o wide > $TMPDIR/nodes/get-nodes-etcd.wide 2>&1
+  if cat $TMPDIR/nodes/get-nodes-etcd.wide | grep 'No resources found' > /dev/null
+  then
+    NumberOfEtcdNodes="0"
+  else
+    NumberOfEtcdNodes=`cat $TMPDIR/nodes/get-nodes-etcd.wide | wc -l`
+  fi
   decho "controlplane"
-  ${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/controlplane' -o wide > $TMPDIR/nodes/get-nodes-controlplane.wide 2>&1
-  NumberOfControlplaneNodes=`cat $TMPDIR/nodes/get-nodes-controlplane.wide 2>&1 tail -n +2 | wc -l`
+  ${KUBECTL_CMD} get nodes --no-headers --selector='node-role.kubernetes.io/controlplane' -o wide > $TMPDIR/nodes/get-nodes-controlplane.wide 2>&1
+  if cat $TMPDIR/nodes/get-nodes-controlplane.wide | grep 'No resources found' > /dev/null
+  then
+    NumberOfControlplaneNodes="0"
+  else
+    NumberOfControlplaneNodes=`cat $TMPDIR/nodes/get-nodes-controlplane.wide | wc -l`
+  fi
   decho "worker"
-  ${KUBECTL_CMD} get nodes --selector='node-role.kubernetes.io/worker' -o wide > $TMPDIR/nodes/get-nodes-worker.wide 2>&1
-  NumberOfWorkerNodes=`cat $TMPDIR/nodes/get-nodes-worker.wide 2>&1 tail -n +2 | wc -l`
+  ${KUBECTL_CMD} get nodes --no-headers --selector='node-role.kubernetes.io/worker' -o wide > $TMPDIR/nodes/get-nodes-worker.wide 2>&1
+  if cat $TMPDIR/nodes/get-nodes-worker.wide | grep 'No resources found' > /dev/null
+  then
+    NumberOfWorkerNodes="0"
+  else
+    NumberOfWorkerNodes=`cat $TMPDIR/nodes/get-nodes-worker.wide | wc -l`
+  fi
   techo "Node Summary Report"
   techo "Total number of nodes:"       $NumberOfNodes | tee -a $TMPDIR/nodes/summary
   techo "etcd:"                        $NumberOfEtcdNodes | tee -a $TMPDIR/nodes/summary
