@@ -489,10 +489,13 @@ decho() {
 TESTSONLY=0
 CLEANUP=0
 
-while getopts ":d:s:r:i:tcfhDyp" opt; do
+while getopts ":d:k:s:r:i:tcfhDyp" opt; do
   case $opt in
     d)
       MKTEMP_BASEDIR="-p ${OPTARG}"
+      ;;
+    k)
+      OVERRIDE_KUBECONFIG=${OPTARG}
       ;;
     s)
       START=$(date -d "-${OPTARG} days" '+%Y-%m-%d')
