@@ -14,12 +14,13 @@ The script will create a .tar.gz log collection in /tmp by default, all flags ar
 
 ```
 Rancher 2.x logs-collector
-  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -r <container runtime> -f ]
+  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -r <k8s distribution> -p -f ]
 
   All flags are optional
 
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -s    Number of days history to collect from container and journald logs (ex: -s 7)
-  -r    Override container runtime if not automatically detected (docker|k3s)
+  -r    Override k8s distribution if not automatically detected (rke|k3s|rke2)
+  -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
   -f    Force log collection if the minimum space isn't available
 ```
