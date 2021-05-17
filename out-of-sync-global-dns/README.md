@@ -37,6 +37,8 @@ kubectl -n out-of-sync-global-dns create secret generic rancher-api-key \
 kubectl apply -n out-of-sync-global-dns -f workload.yaml
 ```
 
+NOTE: By default, the local cluster is scanned too. This can be changed by setting SKIP_LOCAL to `true` in the `workload.yaml`
+
 ## Example messages
 
 ### Healthy globalDNS record

@@ -31,6 +31,8 @@ spec:
             secretKeyRef:
               key: secret-key
               name: rancher-api-key
+        - name: SKIP_LOCAL
+          value: "false"
         image: leodotcloud/swiss-army-knife
         imagePullPolicy: IfNotPresent
         name: out-of-sync-global-dns

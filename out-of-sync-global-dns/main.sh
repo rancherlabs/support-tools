@@ -31,7 +31,7 @@ verify-settings() {
   fi
 }
 setup-tmp-dir() {
-  TMPDIR=$(mktemp -d /tmp)
+  TMPDIR=$(mktemp -d /tmp/out-of-sync.XXX)
   if [[ ! -d $TMPDIR ]]
   then
     echo "CRITICAL: Creating TMPDIR"
@@ -50,9 +50,9 @@ cleanup-tmp-dir() {
   fi
 }
 get-clusters() {
-  clusters=`curl -k -s "https://${CATTLE_SERVER}/v3/clusters?limit=-1&sort=name" -u "${CATTLE_ACCESS_KEY}:${CATTLE_SECRET_KEY}" -H 'content-type: application/json' |jq -r .data[].id`
+  clusters=`curl -k -s "${CATTLE_SERVER}/v3/clusters?limit=-1&sort=name" -u "${CATTLE_ACCESS_KEY}:${CATTLE_SECRET_KEY}" -H 'content-type: application/json' |jq -r .data[].id`
   RESULT=$?
-  if [ $RESULT -eq 0 ];
+  if [ $RESULT -ne 0 ];
   then
     echo "CRITICAL: Getting a cluster list failed"
     exit 2
@@ -62,7 +62,7 @@ build-kubeconfig() {
   mkdir -p ${TMPDIR}/kubeconfig
   for cluster in $clusters
   do
-    curl -k -s -u "${CATTLE_ACCESS_KEY}:${CATTLE_SECRET_KEY}" https://${CATTLE_SERVER}/v3/clusters/${cluster}?action=generateKubeconfig -X POST -H 'content-type: application/json' | jq -r .config > ${TMPDIR}/kubeconfig/${cluster}
+    curl -k -s -u "${CATTLE_ACCESS_KEY}:${CATTLE_SECRET_KEY}" ${CATTLE_SERVER}/v3/clusters/${cluster}?action=generateKubeconfig -X POST -H 'content-type: application/json' | jq -r .config > ${TMPDIR}/kubeconfig/${cluster}
   done
 }
 get-globaldnslist() {
@@ -96,17 +96,18 @@ scan-ingresses() {
         unset ghname
         for gdcandidate in $gdcandidates
         do
-          if grep -i "${globalDNShostname}" ${gdcandidate}
+          if grep -i "${globalDNShostname}" ${gdcandidate} > /dev/null
           then
             ghname=${gdcandidate}
           fi
         done
+	ghname=`echo $ghname | tr -d './'`
         if [[ -z $ghname ]]
         then
           echo "CRITICAL: Could not find globaldnses for ingress ${ingress} in namespace ${namespace} in cluster $cluster"
         else
-          echo "Checking IPs..."
-          upstreamips=`kubectl --kubeconfig ${TMPDIR}/kubeconfig/local -n cattle-global-data get globaldnses.management.cattle.io ${ghname} -o json | jq -r .status.endpoints | jq .[] | tr -d '"' | sort`
+          ##echo "Checking IPs..."
+          upstreamips=`kubectl --kubeconfig ${TMPDIR}/kubeconfig/local -n cattle-global-data get globaldnses.management.cattle.io ${ghname} -o json | jq -r .status.endpoints | jq '.[]' | tr -d '"' | sort`
           downstreamips=`kubectl --kubeconfig ${TMPDIR}/kubeconfig/${cluster} -n ${namespace} get ingress ${ingress} -o json | jq -r .status.loadBalancer.ingress | grep 'ip' | awk '{print $2}' | tr -d '"' | sort`
           if ! diff <(echo "$upstreamips") <(echo "$downstreamips")
           then
@@ -137,7 +138,12 @@ do
   get-globaldnslist
   for cluster in $clusters
   do
-    scan-ingresses $cluster
+    if [[ ! $cluster == 'local' ]] && [[ ! $SKIP_LOCAL == 'true' ]]
+    then
+      scan-ingresses $cluster
+    else
+      echo "Skipping local cluster"
+    fi
   done
   cleanup-tmp-dir
   sleep ${SLEEP}
