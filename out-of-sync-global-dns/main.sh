@@ -101,12 +101,13 @@ scan-ingresses() {
             ghname=${gdcandidate}
           fi
         done
+	ghname=`echo $ghname | tr -d './'`
         if [[ -z $ghname ]]
         then
           echo "CRITICAL: Could not find globaldnses for ingress ${ingress} in namespace ${namespace} in cluster $cluster"
         else
           ##echo "Checking IPs..."
-          upstreamips=`kubectl --kubeconfig ${TMPDIR}/kubeconfig/local -n cattle-global-data get globaldnses.management.cattle.io ${ghname} -o json | jq -r .status.endpoints | jq .[] | tr -d '"' | sort`
+          upstreamips=`kubectl --kubeconfig ${TMPDIR}/kubeconfig/local -n cattle-global-data get globaldnses.management.cattle.io ${ghname} -o json | jq -r .status.endpoints | jq '.[]' | tr -d '"' | sort`
           downstreamips=`kubectl --kubeconfig ${TMPDIR}/kubeconfig/${cluster} -n ${namespace} get ingress ${ingress} -o json | jq -r .status.loadBalancer.ingress | grep 'ip' | awk '{print $2}' | tr -d '"' | sort`
           if ! diff <(echo "$upstreamips") <(echo "$downstreamips")
           then
@@ -137,7 +138,12 @@ do
   get-globaldnslist
   for cluster in $clusters
   do
-    scan-ingresses $cluster
+    if [[ ! $cluster == 'local' ]] && [[ ! $SKIP_LOCAL == 'true' ]]
+    then
+      scan-ingresses $cluster
+    else
+      echo "Skipping local cluster"
+    fi
   done
   cleanup-tmp-dir
   sleep ${SLEEP}
