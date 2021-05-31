@@ -115,7 +115,7 @@ if [[ -d "/opt/rke/var/lib/etcd" ]]; then
     elif [[ -d "/var/lib/etcd" ]]; then
         ETCD_DIR="/var/lib/etcd"
         else
-            grecho "Unable to locate an etcd directory, either move an old backup back into the normal place for your operating system or create an empty directory.  RancherOS/CoreOS is usually /opt/rke/var/lib/etcd/ and everything else uses /varr/lib/etcd/ by default."
+            grecho "Unable to locate an etcd directory, either move an old backup back into the normal place for your operating system or create an empty directory.  RancherOS/CoreOS is usually /opt/rke/var/lib/etcd/ and everything else uses /var/lib/etcd/ by default."
             exit 1
 fi
 grecho "Found ${ETCD_DIR}, setting ETCD_DIR to this value"
