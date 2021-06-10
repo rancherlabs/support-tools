@@ -43,6 +43,7 @@ _slugify () {
 # Generate a list (`rolebindings.list`) of all the role bindings and template bindings in the cluster
 _list_rolebindings () {
   for i in ${crd[*]} ; do
+    echo "Listing $i"
     printf "\n\n# $i\n" >> "$wd"/rolebindings.list 
     kubectl get $i -A >> "$wd"/rolebindings.list
   done
@@ -51,6 +52,7 @@ _list_rolebindings () {
 # Generate a JSON per role type containing all the rolebindings
 _get_rolebindings () {
   for i in ${crd[*]} ; do
+    echo "Getting $i JSON"
     file=$(_slugify "$i")
     kubectl get "$i" -A -o json > "$wd"/"$file".json
   done
@@ -58,7 +60,8 @@ _get_rolebindings () {
 
 # Archive and compress the report
 _tarball_wd () {
-tar -czvf "$wd".tar.gz "$wd"
+  echo "Compressing $wd"
+  tar -czvf "$wd".tar.gz "$wd"
 }
 
 
@@ -69,8 +72,8 @@ main () {
   if [[ ! -e "$wd" ]]; then
     mkdir "$wd"
   fi
-  _list_rolebindings
-  _get_rolebindings
+  _list_rolebindings >& "$wd"/list.log
+  _get_rolebindings >& "$wd"/rolebindings.log
   _tarball_wd
 }
 
