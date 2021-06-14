@@ -23,7 +23,7 @@ PRIORITY_IONICE="idle" # lowest
 
 setup() {
 
-  TMPDIR=$(mktemp -d $MKTEMP_BASEDIR)
+  TMPDIR=$(mktemp -d $MKTEMP_BASEDIR) || { echo 'mktemp failed, please check options' ; exit 1 ; }
   techo "Created ${TMPDIR}"
 
 }
