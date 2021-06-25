@@ -16,7 +16,7 @@ fi
 while true
 do
 
-for volume in `kubectl -n $LONGHORN_NAMESPACE get volumes.longhorn.io -o NAME| awk -F'/' '{print $2}'`
+for volume in $(kubectl -n $LONGHORN_NAMESPACE get volumes.longhorn.io -o NAME| awk -F'/' '{print $2}')
 do
   if [[ ! -z $Debug ]]; then echo "Checking $volume"; fi
   state=`kubectl -n $LONGHORN_NAMESPACE get volumes.longhorn.io $volume -o=jsonpath='{.status.state}'`
