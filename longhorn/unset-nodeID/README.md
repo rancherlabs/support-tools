@@ -7,7 +7,7 @@ These scripts are designed to walk through all Longhorn volumes and check the `s
 ## Install
 - Deploy script as configmap
 ```
-kubectl -n longhorn-system create configmap unset-nodeid --from-file main.sh
+kubectl -n longhorn-system create configmap unset-nodeid --from-file longhorn_unset_node_id.sh
 ```
 
 - Deploy workload
