@@ -49,7 +49,7 @@ spec:
       serviceAccountName: unset-nodeid
       containers:
       - args:
-        - /root/bin/main.sh
+        - /root/bin/longhorn_unset_node_id.sh
         env:
         - name: LoopSleep
           value: "60"
@@ -67,9 +67,9 @@ spec:
       - configMap:
           defaultMode: 493
           items:
-          - key: main.sh
+          - key: longhorn_unset_node_id.sh
             mode: 0755
-            path: main.sh
+            path: longhorn_unset_node_id.sh
           name: unset-nodeid
           optional: false
         name: unset-nodeid
