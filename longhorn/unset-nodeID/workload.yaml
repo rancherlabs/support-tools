@@ -51,9 +51,9 @@ spec:
       - args:
         - /root/bin/longhorn_unset_node_id.sh
         env:
-        - name: LoopSleep
+        - name: LOOP_SLEEP
           value: "60"
-        - name: LonghornNamespace
+        - name: LONGHORN_NAMESPACE
           value: "longhorns-system"
         - name: AlertOnly
           value: "False"
