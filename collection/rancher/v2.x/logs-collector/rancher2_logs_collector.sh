@@ -237,6 +237,7 @@ networking() {
     ip addr show > $TMPDIR/networking/ipaddrshow 2>&1
     ip route show table all > $TMPDIR/networking/iproute 2>&1
     ip rule show > $TMPDIR/networking/iprule 2>&1
+    ip -s link show > $TMPDIR/networking/iplinkshow 2>&1
   fi
   if $(command -v ifconfig >/dev/null 2>&1); then
     ifconfig -a > $TMPDIR/networking/ifconfiga
