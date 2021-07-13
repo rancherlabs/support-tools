@@ -100,7 +100,7 @@ disable-debug() {
   techo "Disabling debug for Rancher pods"
   for POD in $(${KUBECTL_CMD} get pods -n cattle-system -l app=rancher --no-headers | awk '{print $1}');
   do
-    techo "Pod: $POD `${KUBECTL_CMD} exec -n cattle-system -c rancher $POD -- loglevel --set debug`"
+    techo "Pod: $POD `${KUBECTL_CMD} exec -n cattle-system -c rancher $POD -- loglevel --set info`"
   done
 
 }
