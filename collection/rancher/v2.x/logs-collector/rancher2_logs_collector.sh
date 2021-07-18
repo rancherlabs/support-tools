@@ -474,6 +474,15 @@ var-log() {
   mkdir -p $TMPDIR/systemlogs
   cp -p /var/log/syslog* /var/log/messages* /var/log/kern* /var/log/docker* /var/log/system-docker* /var/log/cloud-init* /var/log/audit/* $TMPDIR/systemlogs 2>/dev/null
 
+  for STAT_PACKAGE in sysstat atop
+    do
+      if [ -d /var/log/${STAT_PACKAGE} ]
+        then
+          mkdir -p $TMPDIR/systemlogs/${STAT_PACKAGE}-data
+          find /var/log/${STAT_PACKAGE} -mtime -14 -exec cp -p {} $TMPDIR/systemlogs/${STAT_PACKAGE}-data \;
+      fi
+  done
+
 }
 
 journald-log() {
