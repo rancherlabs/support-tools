@@ -50,6 +50,7 @@ Function create_working_dir{
         New-Item -ItemType Directory -Path "$directory/podlogs" -Force >$null
         New-Item -ItemType Directory -Path "$directory/nginx" -Force >$null
         New-Item -ItemType Directory -Path "$directory/nginx/logs" -Force >$null
+        New-Item -ItemType Directory -Path "$directory/firewall" -Force >$null        
         New-Item -ItemType Directory -Path "$directory/config" -Force >$null
         New-Item -ItemType Directory -Path "$directory/config/cni" -Force >$null
         New-Item -ItemType Directory -Path "$directory/config/cni/networks" -Force >$null
