@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: "restart-kubelet"
+  name: restart-kubelet
+spec:
+  selector:
+    matchLabels:
+      app: "restart-kubelet"
+  template:
+    metadata:
+      labels:
+        app: restart-kubelet
+    spec:
+      containers:
+      - args:
+        - /root/bin/restart-kubelet.sh
+        image: rancherlabs/swiss-army-knife
+        imagePullPolicy: IfNotPresent
+        name: restart-kubelet
+        securityContext:
+          allowPrivilegeEscalation: true
+          privileged: true
+        volumeMounts:
+        - mountPath: /var/run
+          name: var-run
+        - mountPath: /root/bin/
+          name: script
+      volumes:
+      - hostPath:
+          path: /var/run
+          type: ""
+        name: var-run
+      - configMap:
+          defaultMode: 493
+          name: script
+          optional: false
+        name: script
