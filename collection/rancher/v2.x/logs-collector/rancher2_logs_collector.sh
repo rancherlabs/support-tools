@@ -449,7 +449,7 @@ rke2-k8s() {
   fi
 
   mkdir -p $TMPDIR/rke2/podlogs
-  techo "Collecting system pod logs"
+  techo "Collecting rke2 system pod logs"
   if [ -f /etc/rancher/rke2/rke2.yaml ]; then
     KUBECONFIG=/etc/rancher/rke2/rke2.yaml
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
@@ -465,6 +465,14 @@ rke2-k8s() {
       fi
     done
   fi
+
+  techo "Collecting rke2 agent/server logs"
+  for RKE2_LOG_DIR in agent server
+    do
+      if [ -d /var/lib/rancher/rke2/${RKE2_LOG_DIR}/logs/ ]; then
+        cp -rp /var/lib/rancher/rke2/${RKE2_LOG_DIR}/logs/ $TMPDIR/rke2/${RKE2_LOG_DIR}-logs
+      fi
+  done
 
 }
 
