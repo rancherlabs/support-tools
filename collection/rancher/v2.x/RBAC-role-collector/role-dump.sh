@@ -27,7 +27,7 @@ _declare_variables () {
   cluster=$(_slugify "$(kubectl config current-context)") # 
   
   # Working directory 
-  wd="$cluster"_role-bindings_$(date -I)
+  wd="$cluster"_role-bindings_$(date +"%Y-%m-%d_%H_%M_%S")
 }
 
 
@@ -79,4 +79,3 @@ main () {
 
 # ACTUALLY run all the things
 main
-
