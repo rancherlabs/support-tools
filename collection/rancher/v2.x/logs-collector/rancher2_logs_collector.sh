@@ -474,7 +474,7 @@ var-log() {
   mkdir -p $TMPDIR/systemlogs
   cp -p /var/log/syslog* /var/log/messages* /var/log/kern* /var/log/docker* /var/log/system-docker* /var/log/cloud-init* /var/log/audit/* $TMPDIR/systemlogs 2>/dev/null
 
-  for STAT_PACKAGE in sysstat atop
+  for STAT_PACKAGE in atop sa sysstat
     do
       if [ -d /var/log/${STAT_PACKAGE} ]
         then
