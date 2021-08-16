@@ -58,6 +58,22 @@ get-clusters() {
     exit 2
   fi
 }
+get-cluster-data() {
+  cluster=$1
+  skip=false
+  data=`curl -k -s "${CATTLE_SERVER}/v3/clusters/${cluster}" -u "${CATTLE_ACCESS_KEY}:${CATTLE_SECRET_KEY}" -H 'content-type: application/json' | jq -r .labels`
+  RESULT=$?
+  if [ $RESULT -ne 0 ];
+  then
+    echo "CRITICAL: Getting a cluster list failed"
+    exit 2
+  fi
+  if echo $data | grep '"out-of-sync-global-sync-skip": "true",' > /dev/null
+  then
+    echo "Skipping cluster..."
+    skip=true
+  fi
+}
 build-kubeconfig() {
   mkdir -p ${TMPDIR}/kubeconfig
   for cluster in $clusters
@@ -94,14 +110,21 @@ scan-ingresses() {
         cd ${TMPDIR}/globaldnses
         gdcandidates=`grep -R -l "${projectId}" .`
         unset ghname
+        duplicate=false
         for gdcandidate in $gdcandidates
         do
           if grep -i "${globalDNShostname}" ${gdcandidate} > /dev/null
           then
-            ghname=${gdcandidate}
+            if [[ $duplicate == "false" ]]
+            then
+              ghname=${gdcandidate}
+              duplicate=true
+            else
+               echo "CRITICAL: We have detected duplicate record, ${globalDNShostname} was found multiple times in globaldnses.management.cattle.io"
+            fi
           fi
         done
-	ghname=`echo $ghname | tr -d './'`
+	      ghname=`echo $ghname | tr -d './'`
         if [[ -z $ghname ]]
         then
           echo "CRITICAL: Could not find globaldnses for ingress ${ingress} in namespace ${namespace} in cluster $cluster"
@@ -113,9 +136,9 @@ scan-ingresses() {
           then
             echo "CRITICAL: We have detected a difference between the ingress IPs and the globalDNS record for ingress ${ingress} in namespace ${namespace} in cluster $cluster"
             echo "::Upstream::"
-            kubectl --kubeconfig ${TMPDIR}/kubeconfig/local -n cattle-global-data get globaldnses.management.cattle.io ${ghname} -o json | jq -r .status.endpoints
+            kubectl --kubeconfig ${TMPDIR}/kubeconfig/local -n cattle-global-data get globaldnses.management.cattle.io ${ghname} -o json
             echo "::Downstream::"
-            kubectl --kubeconfig ${TMPDIR}/kubeconfig/${cluster} -n ${namespace} get ingress ${ingress} -o json | jq -r .status.loadBalancer.ingress
+            kubectl --kubeconfig ${TMPDIR}/kubeconfig/${cluster} -n ${namespace} get ingress ${ingress} -o json
           else
             echo "OK: The IPs for ingress ${ingress} in namespace ${namespace} in cluster $cluster looks to be correct"
           fi
@@ -138,7 +161,8 @@ do
   get-globaldnslist
   for cluster in $clusters
   do
-    if [[ ! $cluster == 'local' ]] && [[ ! $SKIP_LOCAL == 'true' ]]
+    get-cluster-data
+    if [[ ! $cluster == 'local' ]] && [[ ! $SKIP_LOCAL == 'true' ]] && [[ ! $skip == 'true' ]]
     then
       scan-ingresses $cluster
     else
