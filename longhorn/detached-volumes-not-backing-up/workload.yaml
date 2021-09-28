@@ -54,7 +54,7 @@ spec:
         - name: LoopSleep
           value: "60"
         - name: LonghornNamespace
-          value: "longhorns-system"
+          value: "longhorn-system"
         - name: ResetTrigger
           value: "50"
         image: rancherlabs/swiss-army-knife
