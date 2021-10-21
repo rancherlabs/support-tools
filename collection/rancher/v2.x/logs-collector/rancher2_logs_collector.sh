@@ -93,11 +93,16 @@ sherlock() {
         then
           RKE2_BIN=$(dirname $(which rke2))
           CUSTOM_DIR=$(awk '$1 ~ /data-dir:/ {print $2}' /etc/rancher/rke2/config.yaml)
-          if [ -z "${CUSTOM_DIR}" ]
+          if [[ -z "${CUSTOM_DIR}" && -z "${DATA_DIR}" ]]
             then
               RKE2_DIR="/var/lib/rancher/rke2"
             else
-              RKE2_DIR="${CUSTOM_DIR}"
+              if [ -n "${DATA_DIR}" ]
+                then
+                  RKE2_DIR="${DATA_DIR}"
+                else
+                  RKE2_DIR="${CUSTOM_DIR}"
+              fi
           fi
           export CRI_CONFIG_FILE="${RKE2_DIR}/agent/etc/crictl.yaml"
           if $(${RKE2_DIR}/bin/crictl ps >/dev/null 2>&1)
@@ -107,6 +112,7 @@ sherlock() {
             else
               FOUND+="rke2"
           fi
+          techo "Detecting data-dir... ${RKE2_DIR}"
       fi
       if [ -z $DISTRO ]
         then
@@ -711,7 +717,8 @@ help() {
   -s    Number of days history to collect from container and journald logs (ex: -s 7)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
-  -f    Force log collection if the minimum space isn't available"
+  -f    Force log collection if the minimum space isn't available
+  -c    Set the custom data-dir in use if not automatically detected (rke2)"
 
 }
 
@@ -734,8 +741,11 @@ if [[ $EUID -ne 0 ]]
     exit 1
 fi
 
-while getopts ":d:s:r:fph" opt; do
+while getopts "c:d:s:r:fph" opt; do
   case $opt in
+    c)
+      DATA_DIR="${OPTARG}"
+      ;;
     d)
       MKTEMP_BASEDIR="-p ${OPTARG}"
       ;;
