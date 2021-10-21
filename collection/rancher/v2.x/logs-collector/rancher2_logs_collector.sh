@@ -91,15 +91,28 @@ sherlock() {
       fi
       if $(command -v rke2 >/dev/null 2>&1)
         then
-          RKE2_BIN="/var/lib/rancher/rke2/bin"
-          export CRI_CONFIG_FILE="/var/lib/rancher/rke2/agent/etc/crictl.yaml"
-          if $(${RKE2_BIN}/crictl ps >/dev/null 2>&1)
+          RKE2_BIN=$(dirname $(which rke2))
+          CUSTOM_DIR=$(awk '$1 ~ /data-dir:/ {print $2}' /etc/rancher/rke2/config.yaml)
+          if [[ -z "${CUSTOM_DIR}" && -z "${DATA_DIR}" ]]
+            then
+              RKE2_DIR="/var/lib/rancher/rke2"
+            else
+              if [ -n "${DATA_DIR}" ]
+                then
+                  RKE2_DIR="${DATA_DIR}"
+                else
+                  RKE2_DIR="${CUSTOM_DIR}"
+              fi
+          fi
+          export CRI_CONFIG_FILE="${RKE2_DIR}/agent/etc/crictl.yaml"
+          if $(${RKE2_DIR}/bin/crictl ps >/dev/null 2>&1)
             then
               DISTRO=rke2
               echo "rke2"
             else
               FOUND+="rke2"
           fi
+          techo "Detecting data-dir... ${RKE2_DIR}"
       fi
       if [ -z $DISTRO ]
         then
@@ -307,18 +320,18 @@ rke2-logs() {
 
   techo "Collecting rke2 info"
   mkdir -p $TMPDIR/rke2/crictl
-  rke2 --version > $TMPDIR/rke2/version 2>&1
-  ${RKE2_BIN}/crictl --version > $TMPDIR/rke2/crictl/crictl-version 2>&1
-  ${RKE2_BIN}/containerd --version > $TMPDIR/rke2/crictl/containerd-version 2>&1
-  ${RKE2_BIN}/runc --version > $TMPDIR/rke2/crictl/runc-version 2>&1
-  ${RKE2_BIN}/crictl ps -a > $TMPDIR/rke2/crictl/psa 2>&1
-  ${RKE2_BIN}/crictl pods > $TMPDIR/rke2/crictl/pods 2>&1
-  ${RKE2_BIN}/crictl info > $TMPDIR/rke2/crictl/info 2>&1
-  ${RKE2_BIN}/crictl stats -a > $TMPDIR/rke2/crictl/statsa 2>&1
-  ${RKE2_BIN}/crictl version > $TMPDIR/rke2/crictl/version 2>&1
-  ${RKE2_BIN}/crictl images > $TMPDIR/rke2/crictl/images 2>&1
-  ${RKE2_BIN}/crictl imagefsinfo > $TMPDIR/rke2/crictl/imagefsinfo 2>&1
-  ${RKE2_BIN}/crictl stats -a > $TMPDIR/rke2/crictl/statsa 2>&1
+  ${RKE2_BIN}/rke2 --version > $TMPDIR/rke2/version 2>&1
+  ${RKE2_DIR}/bin/crictl --version > $TMPDIR/rke2/crictl/crictl-version 2>&1
+  ${RKE2_DIR}/bin/containerd --version > $TMPDIR/rke2/crictl/containerd-version 2>&1
+  ${RKE2_DIR}/bin/runc --version > $TMPDIR/rke2/crictl/runc-version 2>&1
+  ${RKE2_DIR}/bin/crictl ps -a > $TMPDIR/rke2/crictl/psa 2>&1
+  ${RKE2_DIR}/bin/crictl pods > $TMPDIR/rke2/crictl/pods 2>&1
+  ${RKE2_DIR}/bin/crictl info > $TMPDIR/rke2/crictl/info 2>&1
+  ${RKE2_DIR}/bin/crictl stats -a > $TMPDIR/rke2/crictl/statsa 2>&1
+  ${RKE2_DIR}/bin/crictl version > $TMPDIR/rke2/crictl/version 2>&1
+  ${RKE2_DIR}/bin/crictl images > $TMPDIR/rke2/crictl/images 2>&1
+  ${RKE2_DIR}/bin/crictl imagefsinfo > $TMPDIR/rke2/crictl/imagefsinfo 2>&1
+  ${RKE2_DIR}/bin/crictl stats -a > $TMPDIR/rke2/crictl/statsa 2>&1
   if [ -f /usr/local/lib/systemd/system/rke2-agent.service ]
     then
       cp -p /usr/local/lib/systemd/system/rke2*.service $TMPDIR/rke2/
@@ -432,26 +445,26 @@ k3s-k8s() {
 rke2-k8s() {
 
   techo "Collecting rke2 cluster logs"
-  if [ -f /var/lib/rancher/rke2/agent/kubelet.kubeconfig ]; then
+  if [ -f ${RKE2_DIR}/agent/kubelet.kubeconfig ]; then
     mkdir -p $TMPDIR/rke2/kubectl
-    KUBECONFIG=/var/lib/rancher/rke2/agent/kubelet.kubeconfig
-    ${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG get nodes -o wide > $TMPDIR/rke2/kubectl/nodes 2>&1
-    ${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG describe nodes > $TMPDIR/rke2/kubectl/nodesdescribe 2>&1
-    ${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG version > $TMPDIR/rke2/kubectl/version 2>&1
-    ${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG get pods -o wide --all-namespaces > $TMPDIR/rke2/kubectl/pods 2>&1
-    ${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG get svc -o wide --all-namespaces > $TMPDIR/rke2/kubectl/services 2>&1
+    KUBECONFIG=${RKE2_DIR}/agent/kubelet.kubeconfig
+    ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get nodes -o wide > $TMPDIR/rke2/kubectl/nodes 2>&1
+    ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG describe nodes > $TMPDIR/rke2/kubectl/nodesdescribe 2>&1
+    ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG version > $TMPDIR/rke2/kubectl/version 2>&1
+    ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get pods -o wide --all-namespaces > $TMPDIR/rke2/kubectl/pods 2>&1
+    ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get svc -o wide --all-namespaces > $TMPDIR/rke2/kubectl/services 2>&1
   fi
 
   if [ -f /etc/rancher/rke2/rke2.yaml ]; then
     KUBECONFIG=/etc/rancher/rke2/rke2.yaml
-    ${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG api-resources > $TMPDIR/rke2/kubectl/api-resources 2>&1
+    ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG api-resources > $TMPDIR/rke2/kubectl/api-resources 2>&1
     RKE2_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations)
     RKE2_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases pods pvc replicasets roles rolebindings statefulsets)
     for OBJECT in "${RKE2_OBJECTS[@]}"; do
-      ${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG get ${OBJECT} -o wide > $TMPDIR/rke2/kubectl/${OBJECT} 2>&1
+      ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get ${OBJECT} -o wide > $TMPDIR/rke2/kubectl/${OBJECT} 2>&1
     done
     for OBJECT in "${RKE2_OBJECTS_NAMESPACED[@]}"; do
-      ${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG get ${OBJECT} --all-namespaces -o wide > $TMPDIR/rke2/kubectl/${OBJECT} 2>&1
+      ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get ${OBJECT} --all-namespaces -o wide > $TMPDIR/rke2/kubectl/${OBJECT} 2>&1
     done
   fi
 
@@ -460,12 +473,12 @@ rke2-k8s() {
   if [ -f /etc/rancher/rke2/rke2.yaml ]; then
     KUBECONFIG=/etc/rancher/rke2/rke2.yaml
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-      for SYSTEM_POD in $(${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
-        ${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs --all-containers $SYSTEM_POD > $TMPDIR/rke2/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
-        ${RKE2_BIN}/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs -p --all-containers $SYSTEM_POD > $TMPDIR/rke2/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous 2>&1
+      for SYSTEM_POD in $(${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
+        ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs --all-containers $SYSTEM_POD > $TMPDIR/rke2/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
+        ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs -p --all-containers $SYSTEM_POD > $TMPDIR/rke2/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous 2>&1
       done
     done
-  elif [ -f /var/lib/rancher/rke2/agent/kubelet.kubeconfig ]; then
+  elif [ -f ${RKE2_DIR}/agent/kubelet.kubeconfig ]; then
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       if ls -d /var/log/pods/$SYSTEM_NAMESPACE* > /dev/null 2>&1; then
         cp -r -p /var/log/pods/$SYSTEM_NAMESPACE* $TMPDIR/rke2/podlogs/
@@ -476,8 +489,8 @@ rke2-k8s() {
   techo "Collecting rke2 agent/server logs"
   for RKE2_LOG_DIR in agent server
     do
-      if [ -d /var/lib/rancher/rke2/${RKE2_LOG_DIR}/logs/ ]; then
-        cp -rp /var/lib/rancher/rke2/${RKE2_LOG_DIR}/logs/ $TMPDIR/rke2/${RKE2_LOG_DIR}-logs
+      if [ -d ${RKE2_DIR}/${RKE2_LOG_DIR}/logs/ ]; then
+        cp -rp ${RKE2_DIR}/${RKE2_LOG_DIR}/logs/ $TMPDIR/rke2/${RKE2_LOG_DIR}-logs
       fi
   done
 
@@ -583,23 +596,23 @@ k3s-certs() {
 
 rke2-certs() {
 
-  if [ -d /var/lib/rancher/rke2 ]
+  if [ -d ${RKE2_DIR} ]
     then
       techo "Collecting rke2 directory state"
       mkdir -p $TMPDIR/rke2/directories
-      ls -lah /var/lib/rancher/rke2/agent > $TMPDIR/rke2/directories/rke2agent 2>&1
-      ls -lah /var/lib/rancher/rke2/server/manifests > $TMPDIR/rke2/directories/rke2servermanifests 2>&1
-      ls -lah /var/lib/rancher/rke2/server/tls > $TMPDIR/rke2/directories/rke2servertls 2>&1
+      ls -lah ${RKE2_DIR}/agent > $TMPDIR/rke2/directories/rke2agent 2>&1
+      ls -lah ${RKE2_DIR}/server/manifests > $TMPDIR/rke2/directories/rke2servermanifests 2>&1
+      ls -lah ${RKE2_DIR}/server/tls > $TMPDIR/rke2/directories/rke2servertls 2>&1
       techo "Collecting rke2 certificates"
       mkdir -p $TMPDIR/rke2/certs/{agent,server}
-      AGENT_CERTS=$(find /var/lib/rancher/rke2/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+      AGENT_CERTS=$(find ${RKE2_DIR}/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
       for CERT in $AGENT_CERTS
         do
           openssl x509 -in $CERT -text -noout > $TMPDIR/rke2/certs/agent/$(basename $CERT) 2>&1
       done
-      if [ -d /var/lib/rancher/rke2/server/tls ]; then
+      if [ -d ${RKE2_DIR}/server/tls ]; then
         techo "Collecting rke2 server certificates"
-        SERVER_CERTS=$(find /var/lib/rancher/rke2/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+        SERVER_CERTS=$(find ${RKE2_DIR}/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
         for CERT in $SERVER_CERTS
           do
             openssl x509 -in $CERT -text -noout > $TMPDIR/rke2/certs/server/$(basename $CERT) 2>&1
@@ -644,21 +657,21 @@ rke-etcd() {
 
 rke2-etcd() {
 
-  RKE2_ETCD=$(${RKE2_BIN}/crictl ps --quiet --label io.kubernetes.container.name=etcd --state running)
+  RKE2_ETCD=$(${RKE2_DIR}/bin/crictl ps --quiet --label io.kubernetes.container.name=etcd --state running)
   if [ ! -z ${RKE2_ETCD} ]; then
     techo "Collecting rke2 etcd info"
     mkdir -p $TMPDIR/etcd
-    ETCDCTL_ENDPOINTS=$(${RKE2_BIN}/crictl exec ${RKE2_ETCD} /bin/sh -c "etcdctl --cert /var/lib/rancher/rke2/server/tls/etcd/server-client.crt --key /var/lib/rancher/rke2/server/tls/etcd/server-client.key --cacert /var/lib/rancher/rke2/server/tls/etcd/server-ca.crt member list | cut -d, -f5 | sed -e 's/ //g' | paste -sd ','")
-    ${RKE2_BIN}/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert /var/lib/rancher/rke2/server/tls/etcd/server-client.crt --key /var/lib/rancher/rke2/server/tls/etcd/server-client.key --cacert /var/lib/rancher/rke2/server/tls/etcd/server-ca.crt --write-out table endpoint status" > $TMPDIR/etcd/endpointstatus 2>&1
-    ${RKE2_BIN}/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert /var/lib/rancher/rke2/server/tls/etcd/server-client.crt --key /var/lib/rancher/rke2/server/tls/etcd/server-client.key --cacert /var/lib/rancher/rke2/server/tls/etcd/server-ca.crt endpoint health" > $TMPDIR/etcd/endpointhealth 2>&1
-    ${RKE2_BIN}/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert /var/lib/rancher/rke2/server/tls/etcd/server-client.crt --key /var/lib/rancher/rke2/server/tls/etcd/server-client.key --cacert /var/lib/rancher/rke2/server/tls/etcd/server-ca.crt alarm list" > $TMPDIR/etcd/alarmlist 2>&1
+    ETCDCTL_ENDPOINTS=$(${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "etcdctl --cert ${RKE2_DIR}/server/tls/etcd/server-client.crt --key ${RKE2_DIR}/server/tls/etcd/server-client.key --cacert ${RKE2_DIR}/server/tls/etcd/server-ca.crt member list | cut -d, -f5 | sed -e 's/ //g' | paste -sd ','")
+    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${RKE2_DIR}/server/tls/etcd/server-client.crt --key ${RKE2_DIR}/server/tls/etcd/server-client.key --cacert ${RKE2_DIR}/server/tls/etcd/server-ca.crt --write-out table endpoint status" > $TMPDIR/etcd/endpointstatus 2>&1
+    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${RKE2_DIR}/server/tls/etcd/server-client.crt --key ${RKE2_DIR}/server/tls/etcd/server-client.key --cacert ${RKE2_DIR}/server/tls/etcd/server-ca.crt endpoint health" > $TMPDIR/etcd/endpointhealth 2>&1
+    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${RKE2_DIR}/server/tls/etcd/server-client.crt --key ${RKE2_DIR}/server/tls/etcd/server-client.key --cacert ${RKE2_DIR}/server/tls/etcd/server-ca.crt alarm list" > $TMPDIR/etcd/alarmlist 2>&1
   fi
 
-  if [ -d /var/lib/rancher/rke2/server/db/etcd ]; then
-    find /var/lib/rancher/rke2/server/db/etcd -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbetcd 2>&1
+  if [ -d "${RKE2_DIR}/server/db/etcd" ]; then
+    find "${RKE2_DIR}/server/db/etcd" -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbetcd 2>&1
   fi
-  if [ -d /var/lib/rancher/rke2/server/db/snapshots ]; then
-    find /var/lib/rancher/rke2/server/db/snapshots -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbsnapshots 2>&1
+  if [ -d "${RKE2_DIR}/server/db/snapshots" ]; then
+    find "${RKE2_DIR}/server/db/snapshots" -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbsnapshots 2>&1
   fi
 
 }
@@ -704,7 +717,8 @@ help() {
   -s    Number of days history to collect from container and journald logs (ex: -s 7)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
-  -f    Force log collection if the minimum space isn't available"
+  -f    Force log collection if the minimum space isn't available
+  -c    Set the custom data-dir in use if not automatically detected (rke2)"
 
 }
 
@@ -727,8 +741,11 @@ if [[ $EUID -ne 0 ]]
     exit 1
 fi
 
-while getopts ":d:s:r:fph" opt; do
+while getopts "c:d:s:r:fph" opt; do
   case $opt in
+    c)
+      DATA_DIR="${OPTARG}"
+      ;;
     d)
       MKTEMP_BASEDIR="-p ${OPTARG}"
       ;;
