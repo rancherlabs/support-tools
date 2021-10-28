@@ -18,7 +18,7 @@ Rancher 2.x logs-collector
 
   All flags are optional
 
-  -c    Data directory for RKE2 (ex: -c /var/lib/rancher/rke2)
+  -c    Custom data-dir for RKE2 (ex: -c /opt/rke2)
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -s    Number of days history to collect from container and journald logs (ex: -s 7)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2)
