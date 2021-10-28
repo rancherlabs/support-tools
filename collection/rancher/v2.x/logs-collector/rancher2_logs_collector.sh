@@ -92,7 +92,10 @@ sherlock() {
       if $(command -v rke2 >/dev/null 2>&1)
         then
           RKE2_BIN=$(dirname $(which rke2))
-          CUSTOM_DIR=$(awk '$1 ~ /data-dir:/ {print $2}' /etc/rancher/rke2/config.yaml)
+          if [ -f /etc/rancher/rke2/config.yaml ]
+            then
+              CUSTOM_DIR=$(awk '$1 ~ /data-dir:/ {print $2}' /etc/rancher/rke2/config.yaml)
+          fi
           if [[ -z "${CUSTOM_DIR}" && -z "${DATA_DIR}" ]]
             then
               RKE2_DIR="/var/lib/rancher/rke2"
