@@ -92,7 +92,10 @@ sherlock() {
       if $(command -v rke2 >/dev/null 2>&1)
         then
           RKE2_BIN=$(dirname $(which rke2))
-          CUSTOM_DIR=$(awk '$1 ~ /data-dir:/ {print $2}' /etc/rancher/rke2/config.yaml)
+          if [ -f /etc/rancher/rke2/config.yaml ]
+            then
+              CUSTOM_DIR=$(awk '$1 ~ /data-dir:/ {print $2}' /etc/rancher/rke2/config.yaml)
+          fi
           if [[ -z "${CUSTOM_DIR}" && -z "${DATA_DIR}" ]]
             then
               RKE2_DIR="/var/lib/rancher/rke2"
@@ -713,13 +716,12 @@ help() {
 
   All flags are optional
 
-  -c    Data dir for RKE2 (ex: -c /var/lib/rancher/rke2)
+  -c    Custom data-dir for RKE2 (ex: -c /opt/rke2)
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -s    Number of days history to collect from container and journald logs (ex: -s 7)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
-  -f    Force log collection if the minimum space isn't available
-  -c    Set the custom data-dir in use if not automatically detected (rke2)"
+  -f    Force log collection if the minimum space isn't available"
 
 }
 
