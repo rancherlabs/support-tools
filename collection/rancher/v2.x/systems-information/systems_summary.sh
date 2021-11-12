@@ -8,7 +8,7 @@ echo
 if [[ ! -z $KUBERNETES_PORT ]];
 then
   RANCHER_POD=$(kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=id:metadata.name | head -n1)
-  KUBECTL_CMD="kubectl -n cattle-system exec ${RANCHER_POD} -- kubectl"
+  KUBECTL_CMD="kubectl -n cattle-system exec ${RANCHER_POD} -c rancher -- kubectl"
 else
   if $(command -v k3s >/dev/null 2>&1)
   then
