@@ -3,7 +3,7 @@
 # https://rancher.com/support-maintenance-terms#rancher-support-matrix
 
 # Included namespaces
-SYSTEM_NAMESPACES=(kube-system kube-public cattle-system cattle-alerting cattle-logging cattle-pipeline ingress-nginx cattle-prometheus istio-system longhorn-system cattle-global-data fleet-system fleet-default rancher-operator-system cattle-monitoring-system cattle-logging-system)
+SYSTEM_NAMESPACES=(kube-system kube-public cattle-system cattle-alerting cattle-logging cattle-pipeline ingress-nginx cattle-prometheus istio-system longhorn-system cattle-global-data fleet-system fleet-default rancher-operator-system cattle-monitoring-system cattle-logging-system cattle-fleet-system cattle-fleet-local-system)
 
 # Included container logs
 KUBE_CONTAINERS=(etcd etcd-rolling-snapshots kube-apiserver kube-controller-manager kubelet kube-scheduler kube-proxy nginx-proxy)
