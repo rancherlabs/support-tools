@@ -10,4 +10,7 @@ Usage:
 ```
 curl -LO https://raw.githubusercontent.com/rancherlabs/support-tools/master/instant-fio-master/instant-fio-master.sh
 bash instant-fio-master.sh
+
+mkdir test-data
+fio --rw=write --ioengine=sync --fdatasync=1 --directory=test-data --size=100m --bs=2300 --name=mytest
 ```
