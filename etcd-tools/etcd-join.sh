@@ -115,7 +115,7 @@ if [[ -d "/opt/rke/var/lib/etcd" ]]; then
     elif [[ -d "/var/lib/etcd" ]]; then
         ETCD_DIR="/var/lib/etcd"
         else
-            grecho "Unable to locate an etcd directory, either move an old backup back into the normal place for your operating system or create an empty directory.  RancherOS/CoreOS is usually /opt/rke/var/lib/etcd/ and everything else uses /varr/lib/etcd/ by default."
+            grecho "Unable to locate an etcd directory, either move an old backup back into the normal place for your operating system or create an empty directory.  RancherOS/CoreOS is usually /opt/rke/var/lib/etcd/ and everything else uses /var/lib/etcd/ by default."
             exit 1
 fi
 grecho "Found ${ETCD_DIR}, setting ETCD_DIR to this value"
@@ -126,12 +126,12 @@ if [[ -d "/opt/rke/etc/kubernetes" ]]; then
         CERT_DIR="/etc/kubernetes"
         else
             grecho "Unable to locate the kubernetes certificate directory, exiting script!"
-            exit 1        
+            exit 1
 fi
 grecho "Found ${CERT_DIR}, setting CERT_DIR to this value"
 #check for runlike container
 grecho "Gathering information about your etcd container with runlike"
-RUNLIKE=$(docker run --rm -v /var/run/docker.sock:/var/run/docker.sock patrick0057/runlike etcd)
+RUNLIKE=$(docker run --rm -v /var/run/docker.sock:/var/run/docker.sock rancher/etcd-tools etcd)
 if [[ $? -ne 0 ]]; then
     grecho "runlike container failed to run, aborting script!"
     exit 1
@@ -216,7 +216,7 @@ if [[ "$(rootcmd "ls -A ${ETCD_DIR}")" ]]; then
             checkpipecmd "Failed to set permissions on etcd directory to 700, exiting script."
             rootcmd "chown root:root ${ETCD_DIR}"
             checkpipecmd "Failed to set ownership on etcd directory to root:root, exiting script."
-            else        
+            else
                 recho "${ETCD_DIR} is not empty, moving files out into ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}"
                 rootcmd "mv ${ETCD_DIR}/* ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}/"
                 checkpipecmd "Failed to move etcd data files to backup directory ${ETCD_DIR}/* -> ${ETCD_DIR}-old--${ETCD_BACKUP_TIME}/, exiting script!"

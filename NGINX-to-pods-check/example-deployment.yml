@@ -1,0 +1,105 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: webserver-good
+  name: webserver-good
+spec:
+  selector:
+    matchLabels:
+      app: webserver-good
+  template:
+    metadata:
+      labels:
+        app: webserver-good
+    spec:
+      containers:
+      - image: httpd
+        name: webserver-good
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: webserver-bad
+  name: webserver-bad
+spec:
+  selector:
+    matchLabels:
+      app: webserver-bad
+  template:
+    metadata:
+      labels:
+        app: webserver-bad
+    spec:
+      containers:
+      - args:
+        - while true; do sleep 100000; done;
+        command:
+        - /bin/sh
+        - -c
+        image: httpd
+        imagePullPolicy: Always
+        name: webserver-bad
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: webserver-good
+  name: webserver-good
+spec:
+  ports:
+  - name: "80"
+    port: 80
+    targetPort: 80
+  selector:
+    app: webserver-good
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: webserver-bad
+  name: webserver-bad
+spec:
+  ports:
+  - name: "80"
+    port: 80
+    targetPort: 80
+  selector:
+    app: webserver-bad
+
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: webserver-good
+spec:
+  rules:
+  - host: webserver-good.local
+    http:
+      paths:
+      - backend:
+          serviceName: webserver-good
+          servicePort: 80
+        path: /
+
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: webserver-bad
+spec:
+  rules:
+  - host: webserver-bad.local
+    http:
+      paths:
+      - backend:
+          serviceName: webserver-bad
+          servicePort: 80
+        path: /

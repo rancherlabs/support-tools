@@ -53,7 +53,7 @@ if [[ -d "/opt/rke/etc/kubernetes" ]]; then
         CERT_DIR="/etc/kubernetes"
         else
             grecho "Unable to locate the kubernetes certificate directory, exiting script!"
-            exit 1        
+            exit 1
 fi
 grecho "Found ${CERT_DIR}, setting CERT_DIR to this value"
 
@@ -127,7 +127,7 @@ fi
 
 
 #check for runlike container
-RUNLIKE=$(docker run --rm -v /var/run/docker.sock:/var/run/docker.sock patrick0057/runlike etcd)
+RUNLIKE=$(docker run --rm -v /var/run/docker.sock:/var/run/docker.sock rancher/etcd-tools etcd)
 checkpipecmd "runlike container failed to run, aborting script!"
 
 recho "Setting etcd restart policy to never restart \"no\""
@@ -157,8 +157,8 @@ else
                 else
                 grecho "${ETCD_DIR} is empty, no need to move any files out."
         fi
-                
-        
+
+
 fi
 
 ETCD_HOSTNAME=$(sed 's,^.*--hostname=\([^ ]*\).*,\1,g' <<<${RUNLIKE})
@@ -279,7 +279,7 @@ if [[ ! "${ETCD_IMAGE}" =~ "v3.0" ]] && [[ ! "${ETCD_IMAGE}" =~ "v3.1" ]] && [[ 
         grecho "We're running etcd 3.4 or newer, automatically omitting endpoints."
         docker exec etcd etcdctl member list
         else
-        
+
                 REQUIRE_ENDPOINT=$(docker exec etcd netstat -lpna | grep \:2379 | grep tcp | grep LISTEN | tr -s ' ' | cut -d' ' -f4)
                 if [[ $REQUIRE_ENDPOINT =~ ":::" ]]; then
                         grecho "etcd is listening on ${REQUIRE_ENDPOINT}, no need to pass --endpoints"

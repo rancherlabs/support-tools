@@ -1,0 +1,56 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: rancher-metadata
+  name: rancher-metadata
+  namespace: cattle-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rancher-metadata
+  template:
+    metadata:
+      labels:
+        app: rancher-metadata
+    spec:
+      containers:
+      - image: rancher/metadata-syncer:latest
+        imagePullPolicy: IfNotPresent
+        name: rancher-metadata
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 3
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - mountPath: /data
+          name: metadata
+      volumes:
+      - configMap:
+          defaultMode: 256
+          name: rancher-metadata
+          optional: false
+        name: metadata
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rancher-metadata
+  namespace: cattle-system
+spec:
+  selector:
+    app: rancher-metadata
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

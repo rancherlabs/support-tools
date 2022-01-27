@@ -3,7 +3,7 @@ This script simplifies the process for upgrading, backing up, restoring and inst
 
 Usage:
 ```bash
-curl -LO https://github.com/patrick0057/rancher-single-tool/raw/master/rancher-single-tool.sh
+curl -LOs https://raw.githubusercontent.com/rancherlabs/support-tools/master/rancher-single-tool/rancher-single-tool.sh
 bash rancher-single-tool.sh -h
 ```
 

@@ -1,0 +1,22 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: cleanup-evicted-pods
+  namespace: kube-system
+  labels:
+    app: cleanup-evicted-pods
+spec:
+  schedule: "*/30 * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cleanup-evicted-pods
+            image: rancherlabs/swiss-army-knife
+            imagePullPolicy: IfNotPresent
+            command: ["sh", "-c", "kubectl get pods --all-namespaces --field-selector 'status.phase==Failed' -o json | kubectl delete -f -"]
+          restartPolicy: OnFailure
+          serviceAccount: rke-job-deployer
+          serviceAccountName: rke-job-deployer

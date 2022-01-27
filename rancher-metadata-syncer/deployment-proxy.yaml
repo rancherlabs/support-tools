@@ -1,0 +1,61 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: rancher-metadata
+  name: rancher-metadata
+  namespace: cattle-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rancher-metadata
+  template:
+    metadata:
+      labels:
+        app: rancher-metadata
+    spec:
+      containers:
+      - env:
+        - name: HTTPS_PROXY
+          value: https://<user>:<password>@<ip_addr>:<port>/
+        - name: HTTP_PROXY
+          value: http://<user>:<password>@<ip_addr>:<port>/
+        image: rancher/metadata-syncer:latest
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: rancher-metadata
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /healthz
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rancher-metadata
+  namespace: cattle-system
+spec:
+  selector:
+    app: rancher-metadata
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

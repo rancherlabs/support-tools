@@ -1,1 +1,1 @@
-“User-Agent: *nDisallow: /”
+"User-Agent: *nDisallow: /"
