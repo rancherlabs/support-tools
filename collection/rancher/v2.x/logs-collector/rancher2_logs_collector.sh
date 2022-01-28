@@ -240,6 +240,9 @@ networking() {
   ip6tables $IPTABLES_FLAGS --numeric --verbose --list --table mangle > $TMPDIR/networking/ip6tablesmangle 2>&1
   ip6tables $IPTABLES_FLAGS --numeric --verbose --list --table nat > $TMPDIR/networking/ip6tablesnat 2>&1
   ip6tables $IPTABLES_FLAGS --numeric --verbose --list > $TMPDIR/networking/ip6tables 2>&1
+  if $(command -v nft >/dev/null 2>&1); then
+   nft list ruleset  > $TMPDIR/networking/nft_ruleset 2>&1
+  fi
   if $(command -v netstat >/dev/null 2>&1); then
     if [ "${OSRELEASE}" = "rancheros" ]
       then
