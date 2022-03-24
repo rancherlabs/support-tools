@@ -74,6 +74,7 @@ CATTLE_DATA_NAMESPACES="cattle-global-data cattle-global-nt"
 
 # Delete rancher install to not have anything running that (re)creates resources
 kcd -n cattle-system deploy,ds --all
+kubectl -n cattle-system wait --for delete pod --selector=app=rancher
 # Delete the only resource not in cattle namespaces
 kcd -n kube-system configmap cattle-controllers
 
