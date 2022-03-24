@@ -67,6 +67,7 @@ kcg namespace -o name | grep "cis-operator-system"
 kcg namespace -o name | grep "^c-"
 kcg namespace -o name | grep "^p-"
 kcg namespace -o name | grep "^user-"
+kcg namespace -o name | grep "^u-"
 kcg namespace -o name | grep "fleet"
 kcg namespace -o name | grep "istio"
 
