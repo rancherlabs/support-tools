@@ -6,12 +6,6 @@ echo "MAKE SURE YOU HAVE CREATED AND TESTED YOUR BACKUPS"
 echo "THIS IS A NON REVERSIBLE ACTION"
 echo "==================== WARNING ===================="
 
-# Linux only for now
-if [ "$(uname -s)" != "Linux" ]; then
-  echo "Must be run on Linux"
-  exit 1
-fi
-
 # Check kubectl existence
 if ! which kubectl >/dev/null 2>&1; then
   echo "kubectl not found in PATH, make sure kubectl is available"
@@ -48,7 +42,7 @@ kcpf()
 kcdns()
 {
   if kubectl get namespace $1; then
-    kubectl get namespace "$1" -o json | tr -d "\n" | sed "s/\"finalizers\": \[[^]]\+\]/\"finalizers\": []/"   | kubectl replace --raw /api/v1/namespaces/$1/finalize -f -
+    kubectl get namespace "$1" -o json | tr -d "\n" | sed "s/\"finalizers\":.*\]/\"finalizers\": []/" | kubectl replace --raw /api/v1/namespaces/$1/finalize -f -
     kubectl delete --ignore-not-found=true --grace-period=30 namespace $1
   fi
 }
