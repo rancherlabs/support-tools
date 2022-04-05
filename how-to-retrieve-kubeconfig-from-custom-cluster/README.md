@@ -15,11 +15,9 @@ During a Rancher outage or other disaster event. You may lose access to a downst
 - You should SSH into one of the controlplane nodes in the cluster
 - You'll need root/sudo or access to the docker cli
 
-- Download and install kubectl
+- Copy kubectl from the kubelet container
 ```bash
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-chmod +x kubectl
-mv kubectl /usr/local/bin/   ## This step is optional can be stepped if you don't have root/sudo permissions
+docker cp kubelet:/usr/local/bin/kubelet /usr/local/bin/
 ```
 
 ### Oneliner (RKE and Rancher custom cluster)
