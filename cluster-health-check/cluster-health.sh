@@ -242,11 +242,11 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: beta.kubernetes.io/arch
+              - key: kubernetes.io/arch
                 operator: In
                 values:
                 - amd64
-              - key: beta.kubernetes.io/os
+              - key: kubernetes.io/os
                 operator: In
                 values:
                 - linux
@@ -375,35 +375,35 @@ pods() {
   numberOfPods=`cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | .metadata.namespace + "/" + .metadata.name' | wc -l`
 
   decho "Running"
-  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Running" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Running 2>&1
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase == "Running" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Running 2>&1
   numberOfRunningPods=`cat $TMPDIR/pods/pods-Running | tail -n +2 | wc -l`
 
   decho "Pending"
-  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Pending" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Pending 2>&1
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase == "Pending" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Pending 2>&1
   numberOfPendingPods=`cat $TMPDIR/pods/pods-Pending | tail -n +2 | wc -l`
 
   decho "Failed"
-  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Failed" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Failed 2>&1
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase == "Failed" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Failed 2>&1
   numberOfFailedPods=`cat $TMPDIR/pods/pods-Failed | tail -n +2 | wc -l`
 
   decho "Unknown"
-  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Unknown" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Unknown 2>&1
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase == "Unknown" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Unknown 2>&1
   numberOfUnknownPods=`cat $TMPDIR/pods/pods-Unknown | tail -n +2 | wc -l`
 
   decho "Completed"
-  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "Completed" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Completed 2>&1
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase == "Completed" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-Completed 2>&1
   numberOfCompletedPods=`cat $TMPDIR/pods/pods-Completed | tail -n +2 | wc -l`
 
   decho "CrashLoopBackOff"
-  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "CrashLoopBackOff" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-CrashLoopBackOff 2>&1
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase == "CrashLoopBackOff" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-CrashLoopBackOff 2>&1
   numberOfCrashLoopBackOffPods=`cat $TMPDIR/pods/pods-CrashLoopBackOff | tail -n +2 | wc -l`
 
   decho "NodeAffinity"
-  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "NodeAffinity" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-NodeAffinity 2>&1
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase == "NodeAffinity" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-NodeAffinity 2>&1
   numberOfNodeAffinityPods=`cat $TMPDIR/pods/pods-NodeAffinity | tail -n +2 | wc -l`
 
   decho "ImagePullBackOff"
-  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase = "ImagePullBackOff" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-ImagePullBackOff 2>&1
+  cat $TMPDIR/pods/get-pods.json | jq -r '.items[] | select(.status.phase == "ImagePullBackOff" ) | .metadata.namespace + "/" + .metadata.name' > $TMPDIR/pods/pods-ImagePullBackOff 2>&1
   numberOfImagePullBackOffPods=`cat $TMPDIR/pods/pods-ImagePullBackOff | tail -n +2 | wc -l`
 
   techo "Pod Summary Report"
