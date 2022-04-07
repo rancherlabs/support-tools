@@ -304,7 +304,7 @@ done
 
 # Delete all cattle namespaces, including project namespaces (p-),cluster (c-),cluster-fleet and user (user-) namespaces
 for NS in $TOOLS_NAMESPACES $FLEET_NAMESPACES $CATTLE_NAMESPACES; do
-  kubectl get $(kubectl api-resources --namespaced=true --verbs=delete -o name| tr "\n" "," | sed -e 's/,$//') -n $NS --no-headers -o custom-columns=NAME:.metadata.name,NAMESPACE:.metadata.namespace,KIND:.kind,APIVERSION:.apiVersion | while read NAME NAMESPACE KIND APIVERSION; do
+  kubectl get $(kubectl api-resources --namespaced=true --verbs=delete -o name| grep -v events\.events\.k8s\.io | grep -v ^events$ | tr "\n" "," | sed -e 's/,$//') -n $NS --no-headers -o custom-columns=NAME:.metadata.name,NAMESPACE:.metadata.namespace,KIND:.kind,APIVERSION:.apiVersion | while read NAME NAMESPACE KIND APIVERSION; do
     kcpf -n $NAMESPACE "${KIND}.$(printapiversion $APIVERSION)" $NAME
     kcd -n $NAMESPACE "${KIND}.$(printapiversion $APIVERSION)" $NAME
   done
