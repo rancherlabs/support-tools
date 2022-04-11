@@ -58,6 +58,18 @@ verify-access() {
     decho "Using the default kubeconfig environment KUBECONFIG"
     decho "KUBECONFIG: $KUBECONFIG"
     KUBECTL_CMD="kubectl"
+  elif [[ -f ~/.kube/config ]];
+  then
+    decho "Using the default kubeconfig found in ~/.kube/config"
+    KUBECTL_CMD="kubectl --kubeconfig ~/.kube/config"
+  elif [[ -f /var/lib/rancher/rke2/server/cred/admin.kubeconfig ]];
+  then
+    decho "Using the kubeconfig found for rke2 at /var/lib/rancher/rke2/server/cred/admin.kubeconfig"
+    KUBECTL_CMD="kubectl --kubeconfig /var/lib/rancher/rke2/server/cred/admin.kubeconfig"
+  elif [[ -f /var/lib/rancher/k3s/server/cred/admin.kubeconfig ]];
+  then
+    decho "Using the kubeconfig found for k3s at /var/lib/rancher/k3s/server/cred/admin.kubeconfig"
+    KUBECTL_CMD="kubectl --kubeconfig /var/lib/rancher/k3s/server/cred/admin.kubeconfig"
   elif [[ ! -z $KUBERNETES_PORT ]];
   then
     ## We are inside the k8s cluster or we're using the local kubeconfig
