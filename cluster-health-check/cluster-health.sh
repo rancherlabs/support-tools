@@ -53,6 +53,21 @@ verify-access() {
     decho "Using the kubeconfig that was set by the user"
     decho "OVERRIDE_KUBECONFIG: $OVERRIDE_KUBECONFIG"
     KUBECTL_CMD="kubectl --kubeconfig $OVERRIDE_KUBECONFIG"
+  elif [[ ! -z $KUBERNETES_PORT ]];
+  then
+    ## We are inside the k8s cluster or we're using the local kubeconfig
+    decho "Detected that we're a pod inside the k8s cluster"
+    KUBECTL_CMD="kubectl"
+  elif $(command -v k3s >/dev/null 2>&1)
+  then
+    ## We are on k3s node
+    decho "Detected that we're running on a k3s management node"
+    KUBECTL_CMD="k3s kubectl"
+  elif $(command -v docker >/dev/null 2>&1)
+  then
+    decho "Detected that we're running on a k8s nodes with a Rancher server pod"
+    DOCKER_ID=$(docker ps | grep "k8s_rancher_rancher" | cut -d' ' -f1 | head -1)
+    KUBECTL_CMD="docker exec ${DOCKER_ID} kubectl"
   elif [[ ! -z $KUBECONFIG ]];
   then
     decho "Using the default kubeconfig environment KUBECONFIG"
@@ -70,23 +85,6 @@ verify-access() {
   then
     decho "Using the default kubeconfig found in ~/.kube/config"
     KUBECTL_CMD="kubectl --kubeconfig ~/.kube/config"
-  elif [[ ! -z $KUBERNETES_PORT ]];
-  then
-    ## We are inside the k8s cluster or we're using the local kubeconfig
-    decho "Detected that we're a pod inside the k8s cluster"
-    RANCHER_POD=$(kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=id:metadata.name | head -n1)
-    decho "RANCHER_POD: $RANCHER_POD"
-    KUBECTL_CMD="kubectl -n cattle-system exec -c rancher ${RANCHER_POD} -- kubectl"
-  elif $(command -v k3s >/dev/null 2>&1)
-  then
-    ## We are on k3s node
-    decho "Detected that we're running on a k3s management node"
-    KUBECTL_CMD="k3s kubectl"
-  elif $(command -v docker >/dev/null 2>&1)
-  then
-    decho "Detected that we're running on a k8s nodes with a Rancher server pod"
-    DOCKER_ID=$(docker ps | grep "k8s_rancher_rancher" | cut -d' ' -f1 | head -1)
-    KUBECTL_CMD="docker exec ${DOCKER_ID} kubectl"
   else
     ## Giving up
     techo "Could not find a kubeconfig"
