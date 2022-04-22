@@ -8,7 +8,7 @@ The script needs to be downloaded and run on one of the following servers.
 
 ## How to use
 
-* Download the script and save as: `longhonr-pod-collector.sh`
+* Download the script and save as: `longhorn-pod-collector.sh`
 * Make sure the script is executable: `chmod +x longhorn-pod-collector.sh`
 * Run the script: `./longhorn-pod-collector.sh`
 
