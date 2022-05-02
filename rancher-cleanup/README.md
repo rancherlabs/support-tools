@@ -11,13 +11,19 @@ This script will delete all Kubernetes resources belonging to/created by Rancher
 
 ## Using the cleanup script
 
+### Run as a Kubernetes Job (preferred)
+
+* Deploy the job using `kubectl create -f rancher-cleanup.yaml`
+* Watch logs using `kubectl  -n kube-system logs -l job-name=cleanup-job  -f`
+
+### Run the script on a Linux node
+
 * Set KUBECONFIG enviroment variable to working kubeconfig file
 * Run `cleanup.sh` as shown below, it should be POSIX compatible so `chmod +x cleanup.sh && ./cleanup.sh` or `sh cleanup.sh` should work.
 
 ## Verify
 
 The script `verify.sh` will use the similar commands to retrieve the resources that need to be deleted, so the output should be empty after running `cleanup.sh`.
-
 
 ## Runtime
 
