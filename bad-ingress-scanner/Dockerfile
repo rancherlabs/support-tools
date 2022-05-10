@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:20.04
 MAINTAINER Matthew Mattox <matt.mattox@suse.com>
 
 ENV DEBIAN_FRONTEND=noninteractive
