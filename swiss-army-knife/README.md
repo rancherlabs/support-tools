@@ -30,7 +30,7 @@ Inside the pod, you will be able to un `kubectl` commands with cluster-admin pri
 - `kubectl -n kube-system get pods -l app=swiss-army-knife -o wide`
 - This will show you all pods running `swiss-army-knife` in the `kube-system` namespace.
 - Find the pod on the node you want to interact with.
-- `kubectl -n Kube-system exec -it <pod-name> -- bash`
+- `kubectl -n kube-system exec -it <pod-name> -- bash`
 - `chroot /rootfs`
 
 You are now running a root shell on the node with full privileges.
