@@ -23,6 +23,11 @@ kubectl apply -f https://raw.githubusercontent.com/rancherlabs/support-tools/mas
 
 This will deploy a deamonset that will run on all nodes in the cluster. These pods will be running `tail -f /dev/null,` which will do nothing but keep the pod running.
 
+You can run the overlay test script by running the following command:
+```
+curl -sfL https://raw.githubusercontent.com/rancherlabs/support-tools/master/swiss-army-knife/overlaytest.sh | bash
+```
+
 ### Admin Tools
 This deployment will deploy `swiss-army-knife` to all nodes in the cluster but with additional permissions and privileges. This is useful for troubleshooting and managing your Rancher environment. The pod will be running `tail -f /dev/null,` which will do nothing but keep the pod running.
 
