@@ -17,7 +17,7 @@ During a Rancher outage or other disaster event. You may lose access to a downst
 
 - Copy kubectl from the kubelet container
 ```bash
-docker cp kubelet:/usr/local/bin/kubelet /usr/local/bin/
+docker cp kubelet:/usr/local/bin/kubectl /usr/local/bin/
 ```
 
 ### Oneliner (RKE and Rancher custom cluster)
