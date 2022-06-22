@@ -1,4 +1,4 @@
-# rancher-enumerate-resources
+# rancher-resource-enumerator
 
 Rancher Custom Resource enumeration script
 
