@@ -18,7 +18,7 @@ TLDR; This image has a lot of useful tools that can be used for scripting and tr
 ### Overlay Test
 As part of Rancher's overlay test, which can be found [here](https://rancher.com/docs/rancher/v2.6/en/troubleshooting/networking/). You can be deployed to the Rancher environment by running the following command:
 ```
-kubectl apply -f https://raw.githubusercontent.com/rancherlabs/support-tools/master/swiss-army-knife/deploy/overlaytest.yaml
+kubectl apply -f https://raw.githubusercontent.com/rancherlabs/support-tools/master/swiss-army-knife/overlaytest.yaml
 ```
 
 This will deploy a deamonset that will run on all nodes in the cluster. These pods will be running `tail -f /dev/null,` which will do nothing but keep the pod running.
