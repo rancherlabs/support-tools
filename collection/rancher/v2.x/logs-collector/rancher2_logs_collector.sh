@@ -9,7 +9,7 @@ SYSTEM_NAMESPACES=(kube-system kube-public cattle-system cattle-alerting cattle-
 KUBE_CONTAINERS=(etcd etcd-rolling-snapshots kube-apiserver kube-controller-manager kubelet kube-scheduler kube-proxy nginx-proxy)
 
 # Included journald logs
-JOURNALD_LOGS=(docker k3s rke2-agent rke2-server containerd cloud-init systemd-network kubelet kubeproxy)
+JOURNALD_LOGS=(docker k3s rke2-agent rke2-server containerd cloud-init systemd-network kubelet kubeproxy rancher-system-agent)
 
 # Minimum space needed to run the script (MB)
 SPACE=1536
@@ -76,7 +76,7 @@ sherlock() {
               DISTRO=rke
               echo "rke"
             else
-              FOUND="rke "
+              FOUND="rke"
           fi
       fi
       if $(command -v k3s >/dev/null 2>&1)
