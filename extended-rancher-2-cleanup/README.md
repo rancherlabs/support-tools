@@ -1,12 +1,16 @@
 ## Extended Rancher 2 Cleanup
-This script is designed to clean a node provisioned by Rancher/RKE, and re-use the node again.
 
-**Note** for k3s nodes, use the [/usr/local/bin/k3s-killall.sh](https://rancher.com/docs/k3s/latest/en/upgrades/killall/) created during installation.
+This script is designed to clean a node provisioned with the RKE distribution using Rancher or the RKE CLI. The node will be cleaned of all state to ensure it is consistent to reuse in a cluster or other use case.
+
+> Please note, this script will delete all containers, volumes, network interfaces, and directories that relate to Rancher and Kubernetes. It can also optionally flush all iptables rules and delete container images. It is important to perform pre-checks, and backup the node as needed before proceeding with any steps below.
+
+> **Note** for [RKE2](https://docs.rke2.io/install/linux_uninstall/) and [K3s](https://rancher.com/docs/k3s/latest/en/installation/uninstall/) nodes, use the uninstall.sh script created during installation.
 
 ### Running the script
 
 ```bash
 curl -LO https://github.com/rancherlabs/support-tools/raw/master/extended-rancher-2-cleanup/extended-cleanup-rancher2.sh
+
 bash extended-cleanup-rancher2.sh
 ```
 
