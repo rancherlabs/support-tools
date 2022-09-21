@@ -124,11 +124,12 @@ sherlock() {
       echo "other"
   fi
 
+  echo "$(timestamp): Using discovered data-dir... ${RKE2_DIR}"
+
 }
 
 sherlock-data-dir() {
 
-  echo -n "$(timestamp): Detecting data-dir... "
   RKE2_BIN=$(dirname $(which rke2))
   if [ -f /etc/rancher/rke2/config.yaml ]
     then
@@ -140,7 +141,6 @@ sherlock-data-dir() {
     else
       RKE2_DIR="${CUSTOM_DIR}"
   fi
-  echo "${RKE2_DIR}"
   export CRI_CONFIG_FILE="${RKE2_DIR}/agent/etc/crictl.yaml"
 
 }
@@ -347,6 +347,10 @@ rke2-logs() {
   if [ -f /usr/local/lib/systemd/system/rke2-agent.service ]
     then
       cp -p /usr/local/lib/systemd/system/rke2*.service $TMPDIR/rke2/
+  fi
+  if [ -f /var/lib/rancher/rke2/agent/containerd/containerd.log ]
+    then
+      cp -p /var/lib/rancher/rke2/agent/containerd/containerd.log $TMPDIR/rke2
   fi
 
 }
