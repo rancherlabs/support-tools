@@ -24,7 +24,7 @@ By default the output will be written to `/tmp` as a tar.gz archive named `<host
  
 * Run the script:
   ```bash
-  sudo bash rancher_logs_collector.sh
+  sudo bash rancher2_logs_collector.sh
   ```
 ### Optional: Run the script in one command
   ```bash
