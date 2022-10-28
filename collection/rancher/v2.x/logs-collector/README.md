@@ -1,14 +1,35 @@
-# logs-collector
+# Rancher v2.x logs-collector
 
-The script needs to be downloaded and run directly on the node using the `root` user or using `sudo`.
+## Notes
+
+This script is intended to collect logs from RKE, k3s and RKE2 cluster nodes provisioned by Rancher, or provisioned directly. When used on a node provisioned by an other Kubernetes distribution, some necessary information may not be included.
+
+Access to the node using the root user, or sudo is required.
+
+By default the output will be written to `/tmp` as a tar.gz archive named `<hostname>-<datetime>.tar.gz`, the default output directory can be changed with the `-d` flag.
 
 ## How to use
 
-* Download the script and save as: `rancher_logs_collector.sh`
-* Make sure the script is executable: `chmod +x rancher_logs_collector.sh`
-* Run the script: `./rancher_logs_collector.sh`
+### Download and run the script
+* Save the script as: `rancher2_logs_collector.sh`
 
-The script will create a .tar.gz log collection in /tmp by default, all flags are optional.
+  Using `wget`:
+    ```bash
+    wget https://raw.githubusercontent.com/rancherlabs/support-tools/master/collection/rancher/v2.x/logs-collector/rancher2_logs_collector.sh
+    ```
+  Using `curl`:
+    ```bash
+    curl -OLs https://raw.githubusercontent.com/rancherlabs/support-tools/master/collection/rancher/v2.x/logs-collector/rancher2_logs_collector.sh
+    ```
+ 
+* Run the script:
+  ```bash
+  sudo bash rancher_logs_collector.sh
+  ```
+### Optional: Run the script in one command
+  ```bash
+  curl -Ls rnch.io/rancher2_logs | sudo bash
+  ```
 
 ## Flags
 
