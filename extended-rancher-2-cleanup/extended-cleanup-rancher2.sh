@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Clean up for nodes provisioned using the RKE1 distribution
+# Cleanup for nodes provisioned using the RKE1 distribution
+# Note, for RKE2 and K3s use the uninstall script deployed on the node during install. 
 
 # Directories to cleanup
 CLEANUP_DIRS=(/etc/ceph /etc/cni /etc/kubernetes /opt/cni /run/secrets/kubernetes.io /run/calico /run/flannel /var/lib/calico /var/lib/weave /var/lib/etcd /var/lib/cni /var/lib/kubelet /var/lib/rancher/rke/log /var/log/containers /var/log/pods /var/run/calico)
