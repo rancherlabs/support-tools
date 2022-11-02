@@ -352,6 +352,17 @@ rke2-logs() {
     then
       cp -p /var/lib/rancher/rke2/agent/containerd/containerd.log $TMPDIR/rke2
   fi
+  if [ -f /etc/rancher/rke2/config.yaml ]
+    then
+      grep -v token /etc/rancher/rke2/config.yaml >& $TMPDIR/rke2/config.yaml
+  fi
+  if [ -d /etc/rancher/rke2/config.yaml.d ]
+    then
+      for _FILE in $(ls /etc/rancher/rke2/config.yaml.d)
+        do
+          grep -v token /etc/rancher/rke2/config.yaml.d/$_FILE >& $TMPDIR/rke2/$_FILE
+      done
+  fi
 
 }
 
