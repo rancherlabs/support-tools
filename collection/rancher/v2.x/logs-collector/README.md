@@ -20,7 +20,8 @@ Rancher 2.x logs-collector
 
   -c    Custom data-dir for RKE2 (ex: -c /opt/rke2)
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
-  -s    Number of days history to collect from container and journald logs (ex: -s 7)
+  -s    Start day of journald and docker log collection. Specify the number of days before the current time (ex: -s 7)
+  -e    End day of journald and docker log collection. Specify the number of days before the current time (ex: -e 5)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
   -f    Force log collection if the minimum space isn't available

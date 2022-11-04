@@ -376,12 +376,12 @@ rke-k8s() {
 
   for RANCHERSERVER in $RANCHERSERVERS; do
     docker inspect $RANCHERSERVER > $TMPDIR/rancher/containerinspect/server-$RANCHERSERVER 2>&1
-    docker logs $SINCE_FLAG -t $RANCHERSERVER > $TMPDIR/rancher/containerlogs/server-$RANCHERSERVER 2>&1
+    docker logs $SINCE_FLAG $UNTIL_FLAG -t $RANCHERSERVER > $TMPDIR/rancher/containerlogs/server-$RANCHERSERVER 2>&1
   done
 
   for RANCHERAGENT in $RANCHERAGENTS; do
     docker inspect $RANCHERAGENT > $TMPDIR/rancher/containerinspect/agent-$RANCHERAGENT 2>&1
-    docker logs $SINCE_FLAG -t $RANCHERAGENT 2>&1 | sed 's/with token.*/with token REDACTED/g' > $TMPDIR/rancher/containerlogs/agent-$RANCHERAGENT 2>&1
+    docker logs $SINCE_FLAG $UNTIL_FLAG -t $RANCHERAGENT 2>&1 | sed 's/with token.*/with token REDACTED/g' > $TMPDIR/rancher/containerlogs/agent-$RANCHERAGENT 2>&1
   done
 
   # K8s Docker container logging
@@ -390,7 +390,7 @@ rke-k8s() {
   for KUBE_CONTAINER in "${KUBE_CONTAINERS[@]}"; do
     if [ "$(docker ps -a -q -f name=$KUBE_CONTAINER)" ]; then
       docker inspect $KUBE_CONTAINER > $TMPDIR/k8s/containerinspect/$KUBE_CONTAINER 2>&1
-      docker logs $SINCE_FLAG -t $KUBE_CONTAINER > $TMPDIR/k8s/containerlogs/$KUBE_CONTAINER 2>&1
+      docker logs $SINCE_FLAG $UNTIL_FLAG -t $KUBE_CONTAINER > $TMPDIR/k8s/containerlogs/$KUBE_CONTAINER 2>&1
     fi
   done
 
@@ -401,7 +401,7 @@ rke-k8s() {
     CONTAINERS=$(docker ps -a --filter name=$SYSTEM_NAMESPACE --format "{{.Names}}")
     for CONTAINER in $CONTAINERS; do
       docker inspect $CONTAINER > $TMPDIR/k8s/podinspect/$CONTAINER 2>&1
-      docker logs $SINCE_FLAG -t $CONTAINER > $TMPDIR/k8s/podlogs/$CONTAINER 2>&1
+      docker logs $SINCE_FLAG $UNTIL_FLAG -t $CONTAINER > $TMPDIR/k8s/podlogs/$CONTAINER 2>&1
     done
   done
 
@@ -546,7 +546,7 @@ journald-log() {
   mkdir -p $TMPDIR/journald
   for JOURNALD_LOG in "${JOURNALD_LOGS[@]}"; do
     if $(grep $JOURNALD_LOG.service $TMPDIR/systeminfo/systemd-units > /dev/null 2>&1); then
-      journalctl $SINCE_FLAG --unit=$JOURNALD_LOG > $TMPDIR/journald/$JOURNALD_LOG
+      journalctl $SINCE_FLAG $UNTIL_FLAG --unit=$JOURNALD_LOG > $TMPDIR/journald/$JOURNALD_LOG
     fi
   done
 
@@ -742,7 +742,8 @@ help() {
 
   -c    Custom data-dir for RKE2 (ex: -c /opt/rke2)
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
-  -s    Number of days history to collect from container and journald logs (ex: -s 7)
+  -s    Start day of journald and docker log collection. Specify the number of days before the current time (ex: -s 7)
+  -e    End day of journald and docker log collection. Specify the number of days before the current time (ex: -e 5)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
   -f    Force log collection if the minimum space isn't available"
@@ -768,7 +769,7 @@ if [[ $EUID -ne 0 ]]
     exit 1
 fi
 
-while getopts "c:d:s:r:fph" opt; do
+while getopts "c:d:s:e:r:fph" opt; do
   case $opt in
     c)
       FLAG_DATA_DIR="${OPTARG}"
@@ -777,8 +778,16 @@ while getopts "c:d:s:r:fph" opt; do
       MKTEMP_BASEDIR="-p ${OPTARG}"
       ;;
     s)
+      START_DAY=${OPTARG}
       START=$(date -d "-${OPTARG} days" '+%Y-%m-%d')
       SINCE_FLAG="--since ${START}"
+      techo "Logging since $START"
+      ;;
+    e)
+      END_DAY=${OPTARG}
+      END_LOGGING=$(date -d "-${OPTARG} days" '+%Y-%m-%d')
+      UNTIL_FLAG="--until ${END_LOGGING}"
+      techo "Logging until $END_LOGGING"
       ;;
     r)
       DISTRO_FLAG="${OPTARG}"
@@ -800,6 +809,12 @@ while getopts "c:d:s:r:fph" opt; do
       help && exit 0
   esac
 done
+
+if [ -n "${START_DAY}" ] && [ -n "${END_DAY}" ] && [ ${END_DAY} -ge ${START_DAY} ]
+  then
+    techo "Start day should be greater than end day"
+    exit 1
+fi
 
 DATA_DIR="${FLAG_DATA_DIR:-/var/lib/rancher/rke2}"
 setup
