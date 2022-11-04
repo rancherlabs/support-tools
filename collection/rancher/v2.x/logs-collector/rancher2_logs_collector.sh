@@ -153,7 +153,10 @@ system-all() {
   hostname -f > $TMPDIR/systeminfo/hostnamefqdn 2>&1
   cp -p /etc/hosts $TMPDIR/systeminfo/etchosts 2>&1
   cp -p /etc/resolv.conf $TMPDIR/systeminfo/etcresolvconf 2>&1
-  cp -p /run/systemd/resolve/resolv.conf $TMPDIR/systeminfo/systemd-resolved 2>&1
+  if [ -e /run/systemd/resolve/resolv.conf ]
+    then
+      cp -p /run/systemd/resolve/resolv.conf $TMPDIR/systeminfo/systemd-resolved 2>&1
+  fi
   date > $TMPDIR/systeminfo/date 2>&1
   free -m > $TMPDIR/systeminfo/freem 2>&1
   uptime > $TMPDIR/systeminfo/uptime 2>&1
