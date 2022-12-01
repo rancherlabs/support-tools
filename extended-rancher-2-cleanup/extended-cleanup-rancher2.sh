@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# Cleanup for nodes provisioned using the RKE1 distribution
+# Note, for RKE2 and K3s use the uninstall script deployed on the node during install. 
+
 # Directories to cleanup
-CLEANUP_DIRS=(/etc/ceph /etc/cni /etc/kubernetes /opt/cni /opt/rke /run/secrets/kubernetes.io /run/calico /run/flannel /var/lib/calico /var/lib/weave /var/lib/etcd /var/lib/cni /var/lib/kubelet/* /var/lib/rancher/rke/log /var/log/containers /var/log/pods /var/run/calico)
+CLEANUP_DIRS=(/etc/ceph /etc/cni /etc/kubernetes /opt/cni /run/secrets/kubernetes.io /run/calico /run/flannel /var/lib/calico /var/lib/weave /var/lib/etcd /var/lib/cni /var/lib/kubelet /var/lib/rancher/rke/log /var/log/containers /var/log/pods /var/run/calico)
 
 # Interfaces to cleanup
 CLEANUP_INTERFACES=(flannel.1 cni0 tunl0 weave datapath vxlan-6784)
@@ -57,6 +60,11 @@ cleanup-dirs() {
       umount $mount
   done
 
+  if [ -n "${DELETE_SNAPSHOTS}" ]
+    then
+      techo "Removing etcd snapshots"
+      rm -rf /opt/rke
+  fi
   techo "Removing directories..."
   for DIR in "${CLEANUP_DIRS[@]}"
     do
@@ -122,6 +130,7 @@ help() {
 
   -f | --flush-iptables     Flush all iptables rules (includes a Docker restart)
   -i | --flush-images       Cleanup all container images
+  -s | --delete-snapshots   Cleanup all etcd snapshots
   -h                        This help menu
 
   !! Warning, this script removes containers and all data specific to Kubernetes and Rancher
@@ -158,6 +167,10 @@ while test $# -gt 0
       -i|--flush-images)
         shift
         CLEANUP_IMAGES=1
+        ;;
+      -s|--delete-snapshots)
+        shift
+        DELETE_SNAPSHOTS=1
         ;;
       h)
         help && exit 0
