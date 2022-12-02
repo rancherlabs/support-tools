@@ -73,16 +73,6 @@ sherlock() {
       fi
     else
       echo -n "$(timestamp): Detecting k8s distribution... "
-      if $(command -v docker >/dev/null 2>&1)
-        then
-          if $(docker ps >/dev/null 2>&1)
-            then
-              DISTRO=rke
-              echo "rke"
-            else
-              FOUND="rke"
-          fi
-      fi
       if $(command -v k3s >/dev/null 2>&1)
         then
           if $(k3s crictl ps >/dev/null 2>&1)
@@ -104,7 +94,22 @@ sherlock() {
               FOUND+="rke2"
           fi
       fi
-      if [ -z $DISTRO ]
+      if $(command -v docker >/dev/null 2>&1)
+        then
+          if $(docker ps >/dev/null 2>&1)
+            then
+              if [ -z "${DISTRO}" ]
+                then
+                  DISTRO=rke
+                  echo "rke"
+                else
+                  techo "Found rke, but another distribution ("${DISTRO}") was also found, using "${DISTRO}"..."
+              fi
+            else
+              FOUND="rke"
+          fi
+      fi
+      if [ -z ${DISTRO} ]
         then
           echo -e "\n$(timestamp): couldn't detect k8s distro"
           if [ -n "${FOUND}" ]
