@@ -35,13 +35,14 @@ By default the output will be written to `/tmp` as a tar.gz archive named `<host
 
 ```
 Rancher 2.x logs-collector
-  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -r <k8s distribution> -p -f ]
+  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -e <days> -r <k8s distribution> -p -f ]
 
   All flags are optional
 
   -c    Custom data-dir for RKE2 (ex: -c /opt/rke2)
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
-  -s    Number of days history to collect from container and journald logs (ex: -s 7)
+  -s    Start day of journald and docker log collection, # of days relative to the current day (ex: -s 7)
+  -e    End day of journald and docker log collection, # of days relative to the current day (ex: -e 5)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
   -f    Force log collection if the minimum space isn't available
