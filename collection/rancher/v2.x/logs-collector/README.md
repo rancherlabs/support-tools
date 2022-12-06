@@ -2,13 +2,15 @@
 
 ## Notes
 
-This script is intended to collect logs from RKE, k3s and RKE2 cluster nodes provisioned by Rancher, or provisioned directly. When used on a node provisioned by another Kubernetes distribution, some necessary information may not be included.
+This script is intended to collect logs from [Rancher Kubernetes Engine (RKE) CLI](https://rancher.com/docs/rke/latest/en/) provisioned clusters, [K3s clusters](https://rancher.com/docs/k3s/latest/en/), [RKE2 clusters](https://docs.rke2.io/), Rancher provisioned [Custom](https://docs.ranchermanager.rancher.io/pages-for-subheaders/use-existing-nodes), and [Node Driver](https://docs.ranchermanager.rancher.io/pages-for-subheaders/use-new-nodes-in-an-infra-provider) clusters.
 
-Access to the node using the root user, or sudo is required.
+This script may not collect all necessary information when run on nodes in Hosted [Kubernetes Provider clusters](https://docs.ranchermanager.rancher.io/pages-for-subheaders/set-up-clusters-from-hosted-kubernetes-providers).
 
-By default the output will be written to `/tmp` as a tar.gz archive named `<hostname>-<date>.tar.gz`, the default output directory can be changed with the `-d` flag.
+Output will be written to `/tmp` as a tar.gz archive named `<hostname>-<date>.tar.gz`, the default output directory can be changed with the `-d` flag.
 
-## How to use
+## Usage
+
+The script needs to be downloaded and run directly on the node, using the `root` user or `sudo`.
 
 ### Download and run the script
 * Save the script as: `rancher2_logs_collector.sh`
@@ -30,6 +32,7 @@ By default the output will be written to `/tmp` as a tar.gz archive named `<host
   ```bash
   curl -Ls rnch.io/rancher2_logs | sudo bash
   ```
+  > Note: This command requires `curl` to be installed, and internet access from the node.
 
 ## Flags
 
