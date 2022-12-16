@@ -267,9 +267,12 @@ networking() {
     ip addr show > $TMPDIR/networking/ipaddrshow 2>&1
     ip route show table all > $TMPDIR/networking/iproute 2>&1
     ip neighbour > $TMPDIR/networking/ipneighbour 2>&1
-    ip -6 neighbour > $TMPDIR/networking/ipv6neighbour 2>&1
     ip rule show > $TMPDIR/networking/iprule 2>&1
     ip -s link show > $TMPDIR/networking/iplinkshow 2>&1
+    ip -6 neighbour > $TMPDIR/networking/ipv6neighbour 2>&1
+    ip -6 rule show > $TMPDIR/networking/ipv6rule 2>&1
+    ip -6 route show > $TMPDIR/networking/ipv6route 2>&1
+    ip -6 addr show > $TMPDIR/networking/ipv6addrshow 2>&1
   fi
   if $(command -v ifconfig >/dev/null 2>&1); then
     ifconfig -a > $TMPDIR/networking/ifconfiga
