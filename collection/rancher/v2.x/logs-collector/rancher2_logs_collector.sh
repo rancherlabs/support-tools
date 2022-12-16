@@ -244,16 +244,6 @@ networking() {
   mkdir -p $TMPDIR/networking
   iptables-save > $TMPDIR/networking/iptablessave 2>&1
   ip6tables-save > $TMPDIR/networking/ip6tablessave 2>&1
-  if [ ! "${OSRELEASE}" = "sles" ]
-    then
-      IPTABLES_FLAGS="--wait 1"
-  fi
-  iptables $IPTABLES_FLAGS --numeric --verbose --list --table mangle > $TMPDIR/networking/iptablesmangle 2>&1
-  iptables $IPTABLES_FLAGS --numeric --verbose --list --table nat > $TMPDIR/networking/iptablesnat 2>&1
-  iptables $IPTABLES_FLAGS --numeric --verbose --list > $TMPDIR/networking/iptables 2>&1
-  ip6tables $IPTABLES_FLAGS --numeric --verbose --list --table mangle > $TMPDIR/networking/ip6tablesmangle 2>&1
-  ip6tables $IPTABLES_FLAGS --numeric --verbose --list --table nat > $TMPDIR/networking/ip6tablesnat 2>&1
-  ip6tables $IPTABLES_FLAGS --numeric --verbose --list > $TMPDIR/networking/ip6tables 2>&1
   if $(command -v nft >/dev/null 2>&1); then
    nft list ruleset  > $TMPDIR/networking/nft_ruleset 2>&1
   fi
@@ -276,6 +266,7 @@ networking() {
   if $(command -v ip >/dev/null 2>&1); then
     ip addr show > $TMPDIR/networking/ipaddrshow 2>&1
     ip route show table all > $TMPDIR/networking/iproute 2>&1
+    ip neighbour > $TMPDIR/networking/ipneighbour 2>&1
     ip rule show > $TMPDIR/networking/iprule 2>&1
     ip -s link show > $TMPDIR/networking/iplinkshow 2>&1
   fi
