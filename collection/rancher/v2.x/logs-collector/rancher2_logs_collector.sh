@@ -752,6 +752,8 @@ help() {
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -s    Start day of journald and docker log collection. Specify the number of days before the current time (ex: -s 7)
   -e    End day of journald and docker log collection. Specify the number of days before the current time (ex: -e 5)
+  -S    Start date of journald and docker log collection. (ex: -S 2022-12-05)
+  -E    End date of journald and docker log collection. (ex: -E 2022-12-07)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
   -f    Force log collection if the minimum space isn't available"
@@ -777,7 +779,7 @@ if [[ $EUID -ne 0 ]]
     exit 1
 fi
 
-while getopts "c:d:s:e:r:fph" opt; do
+while getopts "c:d:s:e:S:E:r:fph" opt; do
   case $opt in
     c)
       FLAG_DATA_DIR="${OPTARG}"
@@ -796,6 +798,14 @@ while getopts "c:d:s:e:r:fph" opt; do
       END_LOGGING=$(date -d "-${OPTARG} days" '+%Y-%m-%d')
       UNTIL_FLAG="--until ${END_LOGGING}"
       techo "Logging until $END_LOGGING"
+      ;;
+    S)
+      SINCE_FLAG="--since ${OPTARG}"
+      techo "Collecting logs starting ${OPTARG}"
+      ;;
+    E)
+      UNTIL_FLAG="--until ${OPTARG}"
+      techo "Collecting logs until ${OPTARG}"
       ;;
     r)
       DISTRO_FLAG="${OPTARG}"
