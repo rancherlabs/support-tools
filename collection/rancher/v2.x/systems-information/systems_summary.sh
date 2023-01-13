@@ -10,7 +10,10 @@ then
   RANCHER_POD=$(kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=id:metadata.name --field-selector status.phase=Running | head -n1)
   KUBECTL_CMD="kubectl -n cattle-system exec ${RANCHER_POD} -c rancher -- kubectl"
 else
-  if $(command -v k3s >/dev/null 2>&1)
+  if $(command -v rke2 >/dev/null 2>&1)
+  then
+    KUBECTL_CMD="/var/lib/rancher/rke2/bin/kubectl --kubeconfig=/etc/rancher/rke2/rke2.yaml"
+  elif $(command -v k3s >/dev/null 2>&1)
   then
     KUBECTL_CMD="k3s kubectl"
   else
