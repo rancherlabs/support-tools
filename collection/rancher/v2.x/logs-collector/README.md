@@ -3,6 +3,8 @@
 ## Notes
 
 This script is intended to collect logs from [Rancher Kubernetes Engine (RKE) CLI](https://rancher.com/docs/rke/latest/en/) provisioned clusters, [K3s clusters](https://rancher.com/docs/k3s/latest/en/), [RKE2 clusters](https://docs.rke2.io/), Rancher provisioned [Custom](https://docs.ranchermanager.rancher.io/pages-for-subheaders/use-existing-nodes), and [Node Driver](https://docs.ranchermanager.rancher.io/pages-for-subheaders/use-new-nodes-in-an-infra-provider) clusters.
+A fallback log collection support from vanilla Kubeadm clusters has been also recently added.
+
 
 This script may not collect all necessary information when run on nodes in Hosted [Kubernetes Provider clusters](https://docs.ranchermanager.rancher.io/pages-for-subheaders/set-up-clusters-from-hosted-kubernetes-providers).
 
@@ -46,7 +48,7 @@ Rancher 2.x logs-collector
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -s    Start day of journald and docker log collection, # of days relative to the current day (ex: -s 7)
   -e    End day of journald and docker log collection, # of days relative to the current day (ex: -e 5)
-  -r    Override k8s distribution if not automatically detected (rke|k3s|rke2)
+  -r    Override k8s distribution if not automatically detected (rke|k3s|rke2|kubeadm)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
   -f    Force log collection if the minimum space isn't available
 ```
