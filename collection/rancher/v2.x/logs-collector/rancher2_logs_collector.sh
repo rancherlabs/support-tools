@@ -109,16 +109,6 @@ sherlock() {
               FOUND="rke"
           fi
       fi
-      if $(command -v kubeadm >/dev/null 2>&1)
-        then
-          if $(kubeadm version >/dev/null 2>&1)
-            then
-              DISTRO=kubeadm
-              echo "kubeadm"
-            else
-              FOUND+="kubeadm"
-          fi
-      fi
       if [ -z ${DISTRO} ]
         then
           echo -e "\n$(timestamp): couldn't detect k8s distro"
@@ -452,7 +442,7 @@ k3s-k8s() {
 
   if [ -d /var/lib/rancher/k3s/server ]; then
     unset KUBECONFIG
-    kubectl api-resources > $TMPDIR/k3s/kubectl/api-resources 2>&1
+    k3s kubectl api-resources > $TMPDIR/k3s/kubectl/api-resources 2>&1
     K3S_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations)
     K3S_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases pods pvc replicasets roles rolebindings statefulsets)
     for OBJECT in "${K3S_OBJECTS[@]}"; do
@@ -540,55 +530,54 @@ kubeadm-k8s() {
   
   KUBEADM_DIR="/etc/kubernetes/"
   KUBEADM_STATIC_DIR="/etc/kubernetes/manifests/"
-  techo "Collecting k8s kubeadm cluster logs"
-  if [ -f /$USER/.kube/config ]; then
-    mkdir -p $TMPDIR/kubeadm/kubectl
-    KUBECONFIG=/$USER/.kube/config
-    /usr/bin/kubectl --kubeconfig=$KUBECONFIG get nodes -o wide > $TMPDIR/kubeadm/kubectl/nodes 2>&1
-    /usr/bin/kubectl --kubeconfig=$KUBECONFIG describe nodes > $TMPDIR/kubeadm/kubectl/nodesdescribe 2>&1
-    /usr/bin/kubectl --kubeconfig=$KUBECONFIG version > $TMPDIR/kubeadm/kubectl/version 2>&1
-    /usr/bin/kubectl --kubeconfig=$KUBECONFIG get pods -o wide --all-namespaces > $TMPDIR/kubeadm/kubectl/pods 2>&1
-    /usr/bin/kubectl --kubeconfig=$KUBECONFIG get svc -o wide --all-namespaces > $TMPDIR/kubeadm/kubectl/services 2>&1
-    /usr/bin/kubectl --kubeconfig=$KUBECONFIG cluster-info dump > $TMPDIR/kubeadm/kubectl/cluster-info_dump 2>&1
+  if ! $(command -v kubeadm >/dev/null 2>&1); then
+    echo "error: kubeadm command not found"
+    exit 1
   fi
 
-  if [ -f /$USER/.kube/config ]; then
-    KUBECONFIG=/$USER/.kube/config
-    /usr/bin/kubectl --kubeconfig=$KUBECONFIG api-resources > $TMPDIR/kubeadm/kubectl/api-resources 2>&1
-    KUBEADM_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations)
-    KUBEADM_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases pods pvc replicasets roles rolebindings statefulsets)
-    for OBJECT in "${KUBEADM_OBJECTS[@]}"; do
-      /usr/bin/kubectl --kubeconfig=$KUBECONFIG get ${OBJECT} -o wide > $TMPDIR/kubeadm/kubectl/${OBJECT} 2>&1
-    done
-    for OBJECT in "${KUBEADM_OBJECTS_NAMESPACED[@]}"; do
-      /usr/bin/kubectl --kubeconfig=$KUBECONFIG get ${OBJECT} --all-namespaces -o wide > $TMPDIR/kubeadm/kubectl/${OBJECT} 2>&1
-    done
+  if ! $(command -v kubectl >/dev/null 2>&1); then
+    echo "error: kubectl command not found"
+    exit 1
   fi
+
+  KUBECONFIG=${KUBECONFIG:"$USER/.kube/config"}
+  techo "Collecting k8s kubeadm cluster logs"
+  mkdir -p $TMPDIR/kubeadm/kubectl
+  kubectl --kubeconfig=$KUBECONFIG get nodes -o wide > $TMPDIR/kubeadm/kubectl/nodes 2>&1
+  kubectl --kubeconfig=$KUBECONFIG describe nodes > $TMPDIR/kubeadm/kubectl/nodesdescribe 2>&1
+  kubectl --kubeconfig=$KUBECONFIG version > $TMPDIR/kubeadm/kubectl/version 2>&1
+  kubectl --kubeconfig=$KUBECONFIG get pods -o wide --all-namespaces > $TMPDIR/kubeadm/kubectl/pods 2>&1
+  kubectl --kubeconfig=$KUBECONFIG get svc -o wide --all-namespaces > $TMPDIR/kubeadm/kubectl/services 2>&1
+  kubectl --kubeconfig=$KUBECONFIG cluster-info dump > $TMPDIR/kubeadm/kubectl/cluster-info_dump 2>&1
+
+  kubectl --kubeconfig=$KUBECONFIG api-resources > $TMPDIR/kubeadm/kubectl/api-resources 2>&1
+  KUBEADM_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations)
+  KUBEADM_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases pods pvc replicasets roles rolebindings statefulsets)
+  for OBJECT in "${KUBEADM_OBJECTS[@]}"; do
+    kubectl --kubeconfig=$KUBECONFIG get ${OBJECT} -o wide > $TMPDIR/kubeadm/kubectl/${OBJECT} 2>&1
+  done
+  for OBJECT in "${KUBEADM_OBJECTS_NAMESPACED[@]}"; do
+    kubectl --kubeconfig=$KUBECONFIG get ${OBJECT} --all-namespaces -o wide > $TMPDIR/kubeadm/kubectl/${OBJECT} 2>&1
+  done
 
   mkdir -p $TMPDIR/kubeadm/podlogs
   techo "Collecting k8s kubeadm system pod logs"
-  if [ -f /$USER/.kube/config ]; then
-    KUBECONFIG=/$USER/.kube/config
-    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-      for SYSTEM_POD in $(/usr/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
-        /usr/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs --all-containers $SYSTEM_POD > $TMPDIR/kubeadm/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
-        /usr/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs -p --all-containers $SYSTEM_POD > $TMPDIR/kubeadm/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous 2>&1
-      done
+  for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
+    for SYSTEM_POD in $(kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
+      kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs --all-containers $SYSTEM_POD > $TMPDIR/kubeadm/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
+      kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs -p --all-containers $SYSTEM_POD > $TMPDIR/kubeadm/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous 2>&1
     done
-    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-      if ls -d /var/log/pods/$SYSTEM_NAMESPACE* > /dev/null 2>&1; then
-        cp -r -p /var/log/pods/$SYSTEM_NAMESPACE* $TMPDIR/kubeadm/podlogs/
-      fi
-    done
-  fi
-  
+  done
+  for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
+    if ls -d /var/log/pods/$SYSTEM_NAMESPACE* > /dev/null 2>&1; then
+      cp -r -p /var/log/pods/$SYSTEM_NAMESPACE* $TMPDIR/kubeadm/podlogs/
+    fi
+  done
+
   techo "Collecting k8s kubeadm metrics"
-  if [ -f /$USER/.kube/config ]; then
-    KUBECONFIG=/$USER/.kube/config
-    /usr/bin/kubectl --kubeconfig=$KUBECONFIG top node > $TMPDIR/kubeadm/metrics_pod 2>&1
-    /usr/bin/kubectl --kubeconfig=$KUBECONFIG top pod > $TMPDIR/kubeadm/metrics_nodes 2>&1
-    /usr/bin/kubectl --kubeconfig=$KUBECONFIG top pod --containers=true > $TMPDIR/kubeadm/metrics_containers 2>&1
-  fi
+  kubectl --kubeconfig=$KUBECONFIG top node > $TMPDIR/kubeadm/metrics_pod 2>&1
+  kubectl --kubeconfig=$KUBECONFIG top pod > $TMPDIR/kubeadm/metrics_nodes 2>&1
+  kubectl --kubeconfig=$KUBECONFIG top pod --containers=true > $TMPDIR/kubeadm/metrics_containers 2>&1
 
   techo "Collecting k8s kubeadm static pods info and containers logs"
   if [ -d /var/log/containers/ ]; then
@@ -597,7 +586,6 @@ kubeadm-k8s() {
   if [ -d $KUBEADM_STATIC_DIR ]; then
      ls -lah $KUBEADM_STATIC_DIR > $TMPDIR/kubeadm/staticpodlist 2>&1
   fi
-
 }
 
 var-log() {
@@ -699,6 +687,10 @@ k3s-certs() {
 }
 
 kubeadm-certs() {
+  if ! $(command -v openssl >/dev/null 2>&1); then
+    echo "error: openssl command not found"
+    exit 1
+  fi
 
   if [ -d /etc/kubernetes/pki/ ]
     then
@@ -807,19 +799,23 @@ rke2-etcd() {
 }
 
 kubeadm-etcd() {
-
   KUBEADM_ETCD_DIR="/var/lib/etcd/"
   KUBEADM_ETCD_CERTS="/etc/kubernetes/pki/etcd/"
   
+  if ! $(command -v etcdctl >/dev/null 2>&1); then
+    echo "error: etcdctl command not found"
+    exit 1
+  fi
+
   if [ -d $KUBEADM_ETCD_DIR ]; then
     techo "Collecting kubeadm etcd info"
     mkdir -p $TMPDIR/etcd
-    ETCDCTL_ENDPOINTS=$(/usr/bin/etcdctl --cert ${KUBEADM_ETCD_CERTS}/server.crt --key ${KUBEADM_ETCD_CERTS}/server.key --cacert ${KUBEADM_ETCD_CERTS}/ca.crt --write-out="simple" endpoint status | cut -d "," -f 1)
-    /usr/bin/etcdctl --endpoints=$ETCDCTL_ENDPOINTS --cert ${KUBEADM_ETCD_CERTS}/server.crt --key ${KUBEADM_ETCD_CERTS}/server.key --cacert ${KUBEADM_ETCD_CERTS}/ca.crt --write-out table endpoint status > $TMPDIR/etcd/endpointstatus 2>&1
-    /usr/bin/etcdctl --endpoints=$ETCDCTL_ENDPOINTS --cert ${KUBEADM_ETCD_CERTS}/server.crt --key ${KUBEADM_ETCD_CERTS}/server.key --cacert ${KUBEADM_ETCD_CERTS}/ca.crt endpoint health > $TMPDIR/etcd/endpointhealth 2>&1
-    /usr/bin/etcdctl --endpoints=$ETCDCTL_ENDPOINTS --cert ${KUBEADM_ETCD_CERTS}/server.crt --key ${KUBEADM_ETCD_CERTS}/server.key --cacert ${KUBEADM_ETCD_CERTS}/ca.crt alarm list > $TMPDIR/etcd/alarmlist 2>&1
+    ETCDCTL_ENDPOINTS=$(etcdctl --cert ${KUBEADM_ETCD_CERTS}/server.crt --key ${KUBEADM_ETCD_CERTS}/server.key --cacert ${KUBEADM_ETCD_CERTS}/ca.crt --write-out="simple" endpoint status | cut -d "," -f 1)
+    etcdctl --endpoints=$ETCDCTL_ENDPOINTS --cert ${KUBEADM_ETCD_CERTS}/server.crt --key ${KUBEADM_ETCD_CERTS}/server.key --cacert ${KUBEADM_ETCD_CERTS}/ca.crt --write-out table endpoint status > $TMPDIR/etcd/endpointstatus 2>&1
+    etcdctl --endpoints=$ETCDCTL_ENDPOINTS --cert ${KUBEADM_ETCD_CERTS}/server.crt --key ${KUBEADM_ETCD_CERTS}/server.key --cacert ${KUBEADM_ETCD_CERTS}/ca.crt endpoint health > $TMPDIR/etcd/endpointhealth 2>&1
+    etcdctl --endpoints=$ETCDCTL_ENDPOINTS --cert ${KUBEADM_ETCD_CERTS}/server.crt --key ${KUBEADM_ETCD_CERTS}/server.key --cacert ${KUBEADM_ETCD_CERTS}/ca.crt alarm list > $TMPDIR/etcd/alarmlist 2>&1
   fi
-  
+
   if [ -d ${KUBEADM_ETCD_DIR} ]; then
     find ${KUBEADM_ETCD_DIR} -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbetcd 2>&1
   fi
@@ -887,7 +883,7 @@ techo() {
 }
 
 # Check if we're running as root.
-if [[ $EUID -ne 0 ]]
+if [[ $EUID -ne 0 ]] && [[ "${DEV}" == "" ]]
   then
     techo "This script must be run as root"
     exit 1
