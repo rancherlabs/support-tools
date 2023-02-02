@@ -109,6 +109,16 @@ sherlock() {
               FOUND="rke"
           fi
       fi
+      if $(command -v kubeadm >/dev/null 2>&1)
+        then
+          if $(kubeadm version >/dev/null 2>&1)
+            then
+              DISTRO=kubeadm
+              echo "kubeadm"
+            else
+              FOUND+="kubeadm"
+          fi
+      fi
       if [ -z ${DISTRO} ]
         then
           echo -e "\n$(timestamp): couldn't detect k8s distro"
