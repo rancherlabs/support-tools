@@ -21,6 +21,9 @@ TIMEOUT=60
 PRIORITY_NICE=19 # lowest
 PRIORITY_IONICE="idle" # lowest
 
+# Set the dmesg date to use English, as non-English environments such as Japanese will display non-English characters in it.
+LANG=C
+
 setup() {
 
   TMPDIR=$(mktemp -d $MKTEMP_BASEDIR) || { techo 'Creating temporary directory failed, please check options'; exit 1; }
