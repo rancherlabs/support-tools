@@ -51,7 +51,7 @@ func (s *awsIAMAttachEBSPolicyStep) Do(ctx context.Context) ([]planner.Procedure
 	}
 
 	if attachErr := s.attachEBSPolicy(ctx, roleName, iamService); attachErr != nil {
-		return nil, fmt.Errorf("attaching ebs policy to role: %w", err)
+		return nil, fmt.Errorf("attaching ebs policy to role: %w", attachErr)
 	}
 
 	s.plan.EBSPolicyAttachedToRole = true

@@ -21,9 +21,12 @@ func NewEnableCmd() *cobra.Command {
 			app := inject.CreateApp(cfg)
 
 			output, err := app.Enable(cmd.Context(), &ports.EnableInput{
-				ClusterName:       cfg.Cluster.Name,
-				RancherKubeconfig: cfg.Rancher.Kubeconfig,
-				EBSAddonVersion:   cfg.EBSAddonVersion,
+				ClusterName:        cfg.Cluster.Name,
+				RancherKubeconfig:  cfg.Rancher.Kubeconfig,
+				EBSAddonVersion:    cfg.EBSAddonVersion,
+				ExplicitCreds:      cfg.ExplicitCreds,
+				AWSAccessKeyID:     cfg.AWSCredentials.AccessKeyID,
+				AWSAccessKeySecret: cfg.AWSCredentials.AccessKeySecret,
 			})
 			if err != nil {
 				return err
@@ -41,6 +44,9 @@ func NewEnableCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&cfg.Rancher.BearerToken, "bearer-token", "b", "", "The Rancher API Bearer Token")
 	cmd.Flags().StringVarP(&cfg.Rancher.Kubeconfig, "kubeconfig", "k", "", "The path to the Rancher Kubeconfig. (default \"$HOME/.kube/config\")")
 	cmd.Flags().StringVarP(&cfg.EBSAddonVersion, "version", "v", "latest", "The version of the EBS addon to install if its not installed already")
+	cmd.Flags().BoolVar(&cfg.ExplicitCreds, "explicit-creds", false, "If true the AWS credentials supplied via the flags will be used")
+	cmd.Flags().StringVar(&cfg.AWSCredentials.AccessKeyID, "access-key-id", "", "The AWS access key id to use")
+	cmd.Flags().StringVar(&cfg.AWSCredentials.AccessKeySecret, "access-key-secret", "", "The AWS access key secret to use")
 
 	cmd.MarkFlagRequired("cluster")
 	cmd.MarkFlagRequired("endpoint")

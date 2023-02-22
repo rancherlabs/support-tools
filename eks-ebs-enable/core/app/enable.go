@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -27,11 +28,22 @@ func (a *app) Enable(ctx context.Context, input *ports.EnableInput) (*ports.Enab
 		logger.Debugw("no rancher kubeconfig supplied, defaulting", "path", input.RancherKubeconfig)
 	}
 
+	if input.ExplicitCreds {
+		if input.AWSAccessKeyID == "" {
+			return nil, errors.New("aws access key id is required when using explicit creds")
+		}
+		if input.AWSAccessKeySecret == "" {
+			return nil, errors.New("aws access key secret is required when using explicit creds")
+		}
+	}
+
 	plan := plan.NewEnableEBSPlan(&plan.EnableEBSPlanInput{
-		Ports:             a.ports,
-		ClusterName:       input.ClusterName,
-		RancherKubeconfig: input.RancherKubeconfig,
-		EBSAddonVersion:   input.EBSAddonVersion,
+		Ports:              a.ports,
+		ClusterName:        input.ClusterName,
+		RancherKubeconfig:  input.RancherKubeconfig,
+		EBSAddonVersion:    input.EBSAddonVersion,
+		AWSAccessKeyID:     input.AWSAccessKeyID,
+		AWSAccessKeySecret: input.AWSAccessKeySecret,
 	})
 
 	manager := planner.NewManager(logger)

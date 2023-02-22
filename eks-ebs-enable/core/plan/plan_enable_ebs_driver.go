@@ -12,9 +12,11 @@ import (
 )
 
 type EnableEBSPlanInput struct {
-	RancherKubeconfig string
-	ClusterName       string
-	EBSAddonVersion   string
+	RancherKubeconfig  string
+	ClusterName        string
+	EBSAddonVersion    string
+	AWSAccessKeyID     string
+	AWSAccessKeySecret string
 
 	Ports *ports.Collection
 }
@@ -25,6 +27,8 @@ func NewEnableEBSPlan(input *EnableEBSPlanInput) planner.Plan {
 		ClusterName:       input.ClusterName,
 		RancherKubeconfig: input.RancherKubeconfig,
 		EBSAddonVersion:   input.EBSAddonVersion,
+		AccessKey:         input.AWSAccessKeyID,
+		SecretKey:         input.AWSAccessKeySecret,
 	}
 }
 

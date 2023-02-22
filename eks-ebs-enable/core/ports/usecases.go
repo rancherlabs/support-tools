@@ -9,9 +9,12 @@ type EBSCSIUseCases interface {
 }
 
 type EnableInput struct {
-	ClusterName       string
-	RancherKubeconfig string
-	EBSAddonVersion   string
+	ClusterName        string
+	RancherKubeconfig  string
+	EBSAddonVersion    string
+	ExplicitCreds      bool
+	AWSAccessKeyID     string
+	AWSAccessKeySecret string
 }
 
 type EnableOutput struct {

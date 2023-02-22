@@ -4,6 +4,8 @@ type Config struct {
 	Rancher         RancherConfig
 	Cluster         ClusterConfig
 	EBSAddonVersion string
+	ExplicitCreds   bool
+	AWSCredentials  AWSCredentials
 }
 
 type RancherConfig struct {
@@ -14,4 +16,9 @@ type RancherConfig struct {
 
 type ClusterConfig struct {
 	Name string
+}
+
+type AWSCredentials struct {
+	AccessKeyID     string
+	AccessKeySecret string
 }
