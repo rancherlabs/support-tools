@@ -1,0 +1,64 @@
+# This is an example .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+builds:
+  - id: default
+    main: .
+    binary: eks-ebs-enable
+    flags:
+      - -tags
+      - netgo release
+      - -trimpath 
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - 6
+      - 7
+
+archives:
+  - id: default
+    builds:
+      - default
+    name_template:  "eks-ebs-enable_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    # replacements:
+    #   darwin: Darwin
+    #   linux: Linux
+    #   windows: Windows
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - none*
+
+checksum:
+  name_template: 'checksums.txt'
+
+nfpms:
+  - id: default
+    package_name: eks-ebs-enable
+    builds:
+      - default
+    vendor: SUSE Support
+    description: |-
+      A support utility to enable the EBS Driver addon
+      for an EKS cluster created via Rancher.
+    formats:
+      - apk
+      - deb
+      - rpm
+      - archlinux
+
+sboms:
+  - artifacts: archive

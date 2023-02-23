@@ -6,6 +6,19 @@
 
 Starting with EKS v1.23 you are required to use the out-of-tree drivers for EBS backed volumes. This support tool can be used to enable the the **Amazon EBS CSI Driver** via an EKS addon.
 
+When run this will do the following per cluster:
+
+- Lookup the cluster details in Rancher
+- Get the AWS creds for the cluster from Rancher (if not using explicit creds)
+- Get the EKS cluster details from AWS
+- Creates an OIDC provider for the EKS cluster
+- Create a new IAM role for the cluster to use with the EBS addon (named `EBS_CSI_<CLUSTERNAME>` )
+- Attaches the EBS policy to the new role
+- Installs the EBS CSI addon for the EKS cluster using the created role
+- Waits for the addon to be `active` (or timesout)
+
+The tool is idempotent so it can be run multiple times against the same cluster (even if the last run failed).
+
 ## Requirements
 
 You will need specific permissions to enable the addon. These permissions are currently outside the recommended set of permissions for Rancher.
@@ -83,6 +96,23 @@ Create a new IAM policy with the following permissions:
 ```
 
 Then create a new IAM user and attach the policy you just created. Then create a new access key and use the id and secret later.
+
+## Building
+
+The tool needs to be built. This done by doing the following:
+
+1. Clone the repo
+2. Change directory into this folder
+3. Run the following
+
+```shell
+make release-local
+```
+
+4. The **dist** folder contains:
+    1. archives for linux, macOS and windows
+    2. Linux packages in deb, rpm, apk format
+    3. SBOMs for the archives
 
 ## Usage
 
