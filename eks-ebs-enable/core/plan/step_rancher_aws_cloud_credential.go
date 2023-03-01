@@ -39,11 +39,6 @@ func (s *rancherAWSCloudCredentialStep) Do(ctx context.Context) ([]planner.Proce
 		return nil, fmt.Errorf("reading file %s: %w", s.plan.RancherKubeconfig, err)
 	}
 
-	// config, err := clientcmd.NewClientConfigFromBytes(data)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("building kubeconfig: %w", err)
-	// }
-
 	config, err := clientcmd.RESTConfigFromKubeConfig(data)
 	if err != nil {
 		return nil, fmt.Errorf("building rest kubeconfig: %w", err)

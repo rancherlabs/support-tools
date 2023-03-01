@@ -19,6 +19,8 @@ When run this will do the following per cluster:
 
 The tool is idempotent so it can be run multiple times against the same cluster (even if the last run failed).
 
+> NOTE: this tool only runs against standard AWS regions (and not US GovCloud or China regions)
+
 ## Requirements
 
 You will need specific permissions to enable the addon. These permissions are currently outside the recommended set of permissions for Rancher.
@@ -27,10 +29,11 @@ There are 2 options to supply these permissions
 
 ### Option 1 - augment the permissions used when provisioning the cluster
 
-The IAM user who's credentials where used to provision the cluster can be augumented by adding the following permissions (via a policy):
+The IAM user who's credentials where used to provision the cluster can be augumented by adding the following permissions (via a policy). To do this with the `aws` cli you can run the following command to create the policy:
 
-```json
-{
+```shell
+aws iam create-policy --policy-name Rancher_Support_EKSEBS --policy-document `
+`{
     "Version": "2012-10-17",
     "Statement": [
         {
@@ -53,10 +56,17 @@ The IAM user who's credentials where used to provision the cluster can be augume
             "Resource": "*"
         }
     ]
-}
+}`
+
 ```
 
-You can then attach this policy to the IAM user.
+You can then attach this policy to the IAM user of the AWS credentials used by Rancher:
+
+```shell
+aws iam attach-user-policy --user-name <USERNAME> --policy-arn "arn:aws:iam::<ACCOUNT_ID>:policy/Rancher_Support_EKSEBS
+```
+
+You will need to replace `<USERNAME>` with the IAM user that the Rancher credentials belong to and also `<ACCOUNT_ID>` with your AWS account id.
 
 ### Option 2 - permissions just for this tool
 
@@ -125,15 +135,19 @@ make release-local
 ```bash
 export RANCHER_TOKEN="<YOUR BEARER TOKEN FROM ABOVE>"
 export RANCHER_API="<YOUR RANCHER API ENDPOINT>"
+export KUBECONFIG="<YOUR RANCHER KUBECONFIG PATH>"
 ```
 
-4. Enable the addon for a cluster using one of the following commands depending on with iam permissions option you went with:
+> If you are going to use the existing AWS credentials in Rancher (option 1 above) then you will need to use the `--kubeconfig` flag to point to the kubeconfig file for your Rancher clusters.
+
+1. Enable the addon for a cluster using one of the following commands depending on with iam permissions option you went with:
     1. option 1 (augmenting existing permissions)
 
     ```shell
     eks-ebs-enable enable /
         --endpoint $RANCHER_API \
         --bearer-token $RANCHER_TOKEN \
+        --kubeconfig $KUBECONFIG \
         --cluster richtest1 \
         --debug
     ```

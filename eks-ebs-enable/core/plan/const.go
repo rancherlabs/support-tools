@@ -5,7 +5,7 @@ const (
 
 	driverRoleNameFormat = "EBS_CSI_%s"
 
-	ebsPolicyARN = "arn:aws-cn:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+	ebsPolicyARN = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 
 	ebsAddonName = "aws-ebs-csi-driver"
 
@@ -15,13 +15,13 @@ const (
 		{
 			"Effect": "Allow",
 			"Principal": {
-				"Federated": "arn:aws-cn:iam::{{.AccountID}}:oidc-provider/oidc.eks.{{.Region}}}}.amazonaws.com.cn/id/{{.ProviderID}}"
+				"Federated": "arn:aws:iam::{{.AccountID}}:oidc-provider/oidc.eks.{{.Region}}.amazonaws.com/id/{{.ProviderID}}"
 			},
 			"Action": "sts:AssumeRoleWithWebIdentity",
 			"Condition": {
 				"StringEquals": {
-					"oidc.eks.{{.Region}}.amazonaws.com.cn/id/{{.ProviderID}}:aud": "sts.amazonaws.com",
-					"oidc.eks.{{.Region}}.amazonaws.com.cn/id/{{.ProviderID}}:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa"
+					"oidc.eks.{{.Region}}.amazonaws.com/id/{{.ProviderID}}:aud": "sts.amazonaws.com",
+					"oidc.eks.{{.Region}}.amazonaws.com/id/{{.ProviderID}}:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa"
 				}
 			}
 		}
