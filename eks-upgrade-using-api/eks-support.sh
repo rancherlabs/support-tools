@@ -15,6 +15,8 @@ cmd_upgrade() {
     local token=""
     local api_endpoint=""
     local cluster_name=""
+    local kev1=false
+    local aws_secret=""
 
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -42,6 +44,13 @@ cmd_upgrade() {
             shift
             api_endpoint="$1"
             ;;
+        "--aws-secret-key")
+            shift
+            aws_secret="$1"
+            ;;
+        "--kev1")
+            kev1=true
+            ;;
         *)
             die "Unknown argument: $1. Please use --help for help"
         esac
@@ -63,13 +72,19 @@ cmd_upgrade() {
     if [[ "$api_endpoint" == "" ]]; then
         die "You must supply an api endpoint"
     fi
+    if [[ "$kev1" = "true" ]]; then
+        if [[ "$aws_secret" == "" ]]; then
+            die "You must supply an AWS secret key when upgrading kev1"
+        fi
+    fi
 
-    do_upgrade "$cluster_name" "$from" "$to" "$token" "$api_endpoint"
+    do_upgrade "$cluster_name" "$from" "$to" "$token" "$api_endpoint" "$kev1" "$aws_secret"
 }
 
 cmd_list() {
     local token=""
     local api_endpoint=""
+    local kev1=false
 
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -85,6 +100,9 @@ cmd_list() {
             shift
             api_endpoint="$1"
             ;;
+        "--kev1")
+            kev1=true
+            ;;
         *)
             die "Unknown argument: $1. Please use --help for help"
         esac
@@ -98,7 +116,7 @@ cmd_list() {
         die "You must supply an api endpoint"
     fi
 
-    do_list "$token" "$api_endpoint"
+    do_list "$token" "$api_endpoint" "$kev1"
 }
 
 cmd_status() {
@@ -151,15 +169,21 @@ do_upgrade() {
     local to="$3"
     local token="$4"
     local api_endpoint="$5"
+    local kev1="$6"
+    local aws_secret="$7"
 
     ensure_jq
     ensure_api_endpoint "$api_endpoint" "$token"
 
-    say "Upgrading cluster $cluster_name to version $to"
-    do_upgrade_controlplane "$cluster_name" "$from" "$to" "$token" "$api_endpoint"
+    say "Upgrading cluster $cluster_name to version $to (kev1=$kev1)"
+    if [[ $kev1 = "false" ]]; then
+        do_upgrade_controlplane_kev2 "$cluster_name" "$from" "$to" "$token" "$api_endpoint"
+    else
+        do_upgrade_controlplane_kev1 "$cluster_name" "$from" "$to" "$token" "$api_endpoint" "$aws_secret"
+    fi
 }
 
-do_upgrade_controlplane() {
+do_upgrade_controlplane_kev2() {
     local cluster_name="$1"
     local from="$2"
     local to="$3"
@@ -198,18 +222,67 @@ do_upgrade_controlplane() {
     ok_or_die "Failed to apply update for ${cluster_name}. Error: $?, command output: ${output}"
 }
 
+do_upgrade_controlplane_kev1() {
+    local cluster_name="$1"
+    local from="$2"
+    local to="$3"
+    local token="$4"
+    local api_endpoint="$5"
+    local aws_secret="$6"
+
+    clusters_list_url="${api_endpoint}/clusters?name=${cluster_name}"
+    
+    say "Getting details for cluster $cluster_name"
+    output=$(curl -fsSL "${clusters_list_url}" -H "Accept: application/json" -H "Authorization: Bearer $token")
+    ok_or_die "Failed to get cluster ${cluster_name} details. Error: $?, command output: ${output}"
+
+    num_records=$(jq ".pagination.total" -r <<< "$output")
+    if [[ "$num_records" != "1" ]]; then
+        die "Expected to find 1 cluster but found $num_records, not upgrading"
+    fi
+
+    say "Checking cluster is active and with expected version $from"
+    current_version=$(jq ".data[0].amazonElasticContainerServiceConfig.kubernetesVersion" -r <<< "$output")
+    current_state=$(jq ".data[0].state" -r <<< "$output")
+    cluster_id=$(jq ".data[0].id" -r <<< "$output")
+
+    if [[ "$current_version" != "$from" ]]; then
+        die "Expected EKS cluster to be version $from but got $current_version, not upgrading"
+    fi
+    if [[ "$current_state" != "active" ]]; then
+        die "Expected EKS cluster to be in 'active' state but got $current_state, not upgrading"
+    fi
+
+    body=$(jq -r ".data[0]|del(.actions)|del(.links)|.amazonElasticContainerServiceConfig.kubernetesVersion = \"$to\"|.amazonElasticContainerServiceConfig.subnets=[]|.amazonElasticContainerServiceConfig.secretKey=\"$aws_secret\"" <<< "$output")
+    
+
+    say "Sending request to upgrade cluster $cluster_name ($cluster_id) to $to"
+    cluster_url="${api_endpoint}/clusters/${cluster_id}?_replace=true"
+
+
+    output=$(curl -fsSL -X PUT "${cluster_url}" -H "Authorization: Bearer $token" -H "Content-Type: application/json" -d "$body")
+    ok_or_die "Failed to apply update for ${cluster_name}. Error: $?, command output: ${output}"
+}
+
 do_list() {
     local token="$1"
     local api_endpoint="$2"
+    local kev1="$3"
 
     ensure_jq
     ensure_api_endpoint "$api_endpoint" "$token"
 
-    say "Getting EKS clusters from Rancher"
+    say "Getting EKS clusters from Rancher (kev1=$kev1)"
 
-    list_url="$api_endpoint/clusters?driver=EKS"
-    output=$(curl -fsSL ${list_url} -H "Accept: application/json" -H "Authorization: Bearer $token")
-    clusters=$(jq '.data[] | [.id, .name, .eksConfig.kubernetesVersion, .state] | @csv' -r <<< "$output") 
+    if [[ "$kev1" = "true" ]]; then
+        list_url="$api_endpoint/clusters?driver=amazonElasticContainerService&provider=eks"
+        output=$(curl -fsSL ${list_url} -H "Accept: application/json" -H "Authorization: Bearer $token")
+        clusters=$(jq '.data[] | [.id, .name, .genericEngineConfig.kubernetesVersion, .state] | @csv' -r <<< "$output")
+    else
+        list_url="$api_endpoint/clusters?driver=EKS"
+        output=$(curl -fsSL ${list_url} -H "Accept: application/json" -H "Authorization: Bearer $token")
+        clusters=$(jq '.data[] | [.id, .name, .eksConfig.kubernetesVersion, .state] | @csv' -r <<< "$output")
+    fi
     
     say "Found the following EKS clusters"
     echo "id,name,version,state"
@@ -249,6 +322,8 @@ cmd_upgrade_help() {
       --to             The version number to upgrade to.
       --token, -t      The Rancher API bearer token to use.
       --endpoint       The Rancher API endpoint.
+      --aws-secret-key The AWS secret key used when creating the cluster. Only needed with --kev1
+      --kev1           Specify this for a kev1 based cluster (default is false)
 EOF
 }
 
@@ -258,6 +333,7 @@ cmd_list_help() {
     OPTIONS:
       --token, -t      The Rancher API bearer token to use.
       --endpoint       The Rancher API endpoint.
+      --kev1           Specify this for a kev1 based cluster (default is false)
 EOF
 }
 
