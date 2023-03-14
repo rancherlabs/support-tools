@@ -32,8 +32,8 @@ There are 2 options to supply these permissions
 The IAM user who's credentials where used to provision the cluster can be augumented by adding the following permissions (via a policy). To do this with the `aws` cli you can run the following command to create the policy:
 
 ```shell
-aws iam create-policy --policy-name Rancher_Support_EKSEBS --policy-document `
-`{
+aws iam create-policy --policy-name Rancher_Support_EKSEBS --policy-document \
+'{
     "Version": "2012-10-17",
     "Statement": [
         {
@@ -56,7 +56,7 @@ aws iam create-policy --policy-name Rancher_Support_EKSEBS --policy-document `
             "Resource": "*"
         }
     ]
-}`
+}'
 
 ```
 
@@ -144,7 +144,7 @@ export KUBECONFIG="<YOUR RANCHER KUBECONFIG PATH>"
     1. option 1 (augmenting existing permissions)
 
     ```shell
-    eks-ebs-enable enable /
+    eks-ebs-enable enable \
         --endpoint $RANCHER_API \
         --bearer-token $RANCHER_TOKEN \
         --kubeconfig $KUBECONFIG \
@@ -155,15 +155,13 @@ export KUBECONFIG="<YOUR RANCHER KUBECONFIG PATH>"
     2. option 2 (separate permissions)
 
     ```shell
-    export AWS_ACCESS_KEY_ID="<YOU_KEY_ID>"
-    export AWS_SECRET_ACCESS_KEY="<YOUR_SECRET_KEY>"
-    eks-ebs-enable enable /
+    eks-ebs-enable enable \
         --endpoint $RANCHER_API \
         --bearer-token $RANCHER_TOKEN \
         --cluster richtest1 \
         --explicit-creds \
-        --access-key-id $AWS_ACCESS_KEY_ID \
-        --access-secret-key $AWS_SECRET_ACCESS_KEY |
+        --access-key-id "<AWS_ACCESS_KEY_ID_VALUE>" \
+        --access-secret-key "<AWS_ACCESS_KEY_SECRET_VALUE>" \
         --debug
 
     ```
