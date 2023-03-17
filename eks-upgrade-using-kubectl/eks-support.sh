@@ -119,7 +119,7 @@ do_upgrade_controlplane_kev1() {
     local to="$3"
     local kubeconfig="$4"
 
-    cluster_id=$(kubectl get clusters.management.cattle.io -o json | jq -r ".items[] | select(.spec.displayName==\"$cluster_name\") | .metadata.name")
+    cluster_id=$(kubectl --kubeconfig "$kubeconfig" get clusters.management.cattle.io -o json | jq -r ".items[] | select(.spec.displayName==\"$cluster_name\") | .metadata.name")
     ok_or_die "Failed to get cluster id ${cluster_name} details. Error: $?, command output: ${cluster_id}"
     if [[ "$cluster_id" == "" ]]; then
         die "Couldn't find cluster with display name $cluster_name"
@@ -127,12 +127,20 @@ do_upgrade_controlplane_kev1() {
     
 
     say "Getting details for cluster $cluster_name"
-    output=$(kubectl get clusters.management.cattle.io "$cluster_id" -o json)
+    output=$(kubectl --kubeconfig "$kubeconfig" get clusters.management.cattle.io "$cluster_id" -o json)
     ok_or_die "Failed to get cluster ${cluster_name} details. Error: $?, command output: ${output}"
 
     say "Checking cluster is active and with expected version $from"
     current_version=$(jq ".spec.genericEngineConfig.kubernetesVersion" -r <<< "$output")
+    driver=$(jq ".status.driver" -r <<< "$output")
+    provider=$(jq ".status.provider" -r <<< "$output")
 
+    if [[ "$driver" != "amazonElasticContainerService" ]]; then
+        die "Expected amazonElasticContainerService driver but got $driver, not upgrading"
+    fi
+    if [[ "$provider" != "eks" ]]; then
+        die "Expected eks driver but got $provider, not upgrading"
+    fi
     if [[ "$current_version" != "$from" ]]; then
         die "Expected EKS cluster to be version $from but got $current_version, not upgrading"
     fi
@@ -146,7 +154,7 @@ spec:
 EOF
     say "Patching Rancher cluster to upgrade cluster $cluster_name ($cluster_id) to $to"
 
-    output=$(kubectl patch clusters.management.cattle.io "$cluster_id"  --patch-file "$temp_file" --type merge)
+    output=$(kubectl --kubeconfig "$kubeconfig" patch clusters.management.cattle.io "$cluster_id"  --patch-file "$temp_file" --type merge)
     ok_or_die "Failed to apply patch for ${cluster_name}. Error: $?, command output: ${output}"
     say "Patched cluster successfully"
 }
@@ -157,7 +165,7 @@ do_upgrade_controlplane_kev2() {
     local to="$3"
     local kubeconfig="$4"
 
-    cluster_id=$(kubectl get clusters.management.cattle.io -o json | jq -r ".items[] | select(.spec.displayName==\"$cluster_name\") | .metadata.name")
+    cluster_id=$(kubectl --kubeconfig "$kubeconfig" get clusters.management.cattle.io -o json | jq -r ".items[] | select(.spec.displayName==\"$cluster_name\") | .metadata.name")
     ok_or_die "Failed to get cluster id ${cluster_name} details. Error: $?, command output: ${cluster_id}"
     if [[ "$cluster_id" == "" ]]; then
         die "Couldn't find cluster with display name $cluster_name"
@@ -165,11 +173,16 @@ do_upgrade_controlplane_kev2() {
     
 
     say "Getting details for cluster $cluster_name"
-    output=$(kubectl get clusters.management.cattle.io "$cluster_id" -o json)
+    output=$(kubectl --kubeconfig "$kubeconfig" get clusters.management.cattle.io "$cluster_id" -o json)
     ok_or_die "Failed to get cluster ${cluster_name} details. Error: $?, command output: ${output}"
 
     say "Checking cluster is active and with expected version $from"
     current_version=$(jq ".spec.eksConfig.kubernetesVersion" -r <<< "$output")
+    driver=$(jq ".status.driver" -r <<< "$output")
+
+    if [[ "$driver" != "EKS" ]]; then
+        die "Expected EKS driver but got $driver, not upgrading"
+    fi
 
     if [[ "$current_version" != "$from" ]]; then
         die "Expected EKS cluster to be version $from but got $current_version, not upgrading"
@@ -184,7 +197,7 @@ spec:
 EOF
     say "Patching Rancher cluster to upgrade cluster $cluster_name ($cluster_id) to $to"
 
-    output=$(kubectl patch clusters.management.cattle.io "$cluster_id"  --patch-file "$temp_file" --type merge)
+    output=$(kubectl --kubeconfig "$kubeconfig" patch clusters.management.cattle.io "$cluster_id"  --patch-file "$temp_file" --type merge)
     ok_or_die "Failed to apply patch for ${cluster_name}. Error: $?, command output: ${output}"
     say "Patched cluster successfully"
 }
@@ -199,10 +212,9 @@ do_list() {
     say "Getting EKS clusters from Rancher (kev1=$kev1)"
 
     if [[ "$kev1" = "true" ]]; then
-    # clusters.management.cattle.io
-        output=$(kubectl get clusters.management.cattle.io -A -o jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.spec.displayName}{" "}{@.spec.genericEngineConfig.kubernetesVersion}{" "}{@.status.provider}{"\n"}{end}' | column -t)
+        output=$(kubectl --kubeconfig "$kubeconfig" get clusters.management.cattle.io -o json | jq '.items[] | select((.status.driver=="amazonElasticContainerService") and (.status.provider="eks")) | [.metadata.name, .spec.displayName, .spec.genericEngineConfig.kubernetesVersion] | @csv' -r)
     else
-        output=$(kubectl get clusters.management.cattle.io -A -o jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.spec.displayName}{" "}{@.spec.eksConfig.kubernetesVersion}{" "}{@.status.provider}{"\n"}{end}' | column -t)
+        output=$(kubectl --kubeconfig "$kubeconfig" get clusters.management.cattle.io -o json | jq '.items[] | select( .status.driver=="EKS" ) | [.metadata.name, .spec.displayName, .spec.eksConfig.kubernetesVersion] | @csv' -r)
     fi
     
     say "Found the following clusters"
