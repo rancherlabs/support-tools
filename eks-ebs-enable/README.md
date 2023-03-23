@@ -161,7 +161,7 @@ export KUBECONFIG="<YOUR RANCHER KUBECONFIG PATH>"
         --cluster richtest1 \
         --explicit-creds \
         --access-key-id "<AWS_ACCESS_KEY_ID_VALUE>" \
-        --access-secret-key "<AWS_ACCESS_KEY_SECRET_VALUE>" \
+        --access-key-secret "<AWS_ACCESS_KEY_SECRET_VALUE>" \
         --debug
 
     ```
