@@ -55,5 +55,6 @@ Rancher 2.x logs-collector
   -e    End day of journald and docker log collection, # of days relative to the current day (ex: -e 5)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2|kubeadm)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
+  -k    specify a custom kubeconfig file location (to be used in combination of -r kubeadm)
   -f    Force log collection if the minimum space isn't available
 ```
