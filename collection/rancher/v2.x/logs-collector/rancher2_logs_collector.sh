@@ -21,9 +21,6 @@ TIMEOUT=60
 PRIORITY_NICE=19 # lowest
 PRIORITY_IONICE="idle" # lowest
 
-# Set the dmesg date to use English, as non-English environments such as Japanese will display non-English characters in it.
-LANG=C
-
 setup() {
 
   TMPDIR=$(mktemp -d $MKTEMP_BASEDIR) || { techo 'Creating temporary directory failed, please check options'; exit 1; }
@@ -112,6 +109,16 @@ sherlock() {
               FOUND="rke"
           fi
       fi
+      if $(command -v kubeadm >/dev/null 2>&1)
+        then
+          if $(kubeadm version >/dev/null 2>&1)
+            then
+              DISTRO=kubeadm
+              echo "kubeadm"
+            else
+              FOUND+="kubeadm"
+          fi
+      fi
       if [ -z ${DISTRO} ]
         then
           echo -e "\n$(timestamp): couldn't detect k8s distro"
@@ -152,6 +159,21 @@ sherlock-data-dir() {
   export CRI_CONFIG_FILE="${RKE2_DIR}/agent/etc/crictl.yaml"
 
 }
+
+verify-kubeconfig() {
+  
+  techo "Verifying cluster access"
+  if [[ -s $CUSTOM_KUBECONFIG ]];
+  then
+    ## Just use the kubeconfig that was set by the user
+    KUBECONFIG=$CUSTOM_KUBECONFIG
+  elif [[ ! -s $CUSTOM_KUBECONFIG ]];
+  then
+    techo "Could not find a custom kubeconfig or check if the location is correct, using default KUBECONFIG"
+    KUBECONFIG="/home/${SUDO_USER}/.kube/config"
+  fi
+}
+
 
 system-all() {
 
@@ -247,18 +269,8 @@ networking() {
   mkdir -p $TMPDIR/networking
   iptables-save > $TMPDIR/networking/iptablessave 2>&1
   ip6tables-save > $TMPDIR/networking/ip6tablessave 2>&1
-  if [ ! "${OSRELEASE}" = "sles" ]
-    then
-      IPTABLES_FLAGS="--wait 1"
-  fi
-  iptables $IPTABLES_FLAGS --numeric --verbose --list --table mangle > $TMPDIR/networking/iptablesmangle 2>&1
-  iptables $IPTABLES_FLAGS --numeric --verbose --list --table nat > $TMPDIR/networking/iptablesnat 2>&1
-  iptables $IPTABLES_FLAGS --numeric --verbose --list > $TMPDIR/networking/iptables 2>&1
-  ip6tables $IPTABLES_FLAGS --numeric --verbose --list --table mangle > $TMPDIR/networking/ip6tablesmangle 2>&1
-  ip6tables $IPTABLES_FLAGS --numeric --verbose --list --table nat > $TMPDIR/networking/ip6tablesnat 2>&1
-  ip6tables $IPTABLES_FLAGS --numeric --verbose --list > $TMPDIR/networking/ip6tables 2>&1
   if $(command -v nft >/dev/null 2>&1); then
-    nft list ruleset  > $TMPDIR/networking/nft_ruleset 2>&1
+   nft list ruleset  > $TMPDIR/networking/nft_ruleset 2>&1
   fi
   if $(command -v netstat >/dev/null 2>&1); then
     if [ "${OSRELEASE}" = "rancheros" ]
@@ -552,8 +564,9 @@ kubeadm-k8s() {
     echo "error: kubectl command not found"
     exit 1
   fi
-
-  KUBECONFIG=${KUBECONFIG:"$USER/.kube/config"}
+  
+  verify-kubeconfig
+  
   techo "Collecting k8s kubeadm cluster logs"
   mkdir -p $TMPDIR/kubeadm/kubectl
   kubectl --kubeconfig=$KUBECONFIG get nodes -o wide > $TMPDIR/kubeadm/kubectl/nodes 2>&1
@@ -561,7 +574,6 @@ kubeadm-k8s() {
   kubectl --kubeconfig=$KUBECONFIG version > $TMPDIR/kubeadm/kubectl/version 2>&1
   kubectl --kubeconfig=$KUBECONFIG get pods -o wide --all-namespaces > $TMPDIR/kubeadm/kubectl/pods 2>&1
   kubectl --kubeconfig=$KUBECONFIG get svc -o wide --all-namespaces > $TMPDIR/kubeadm/kubectl/services 2>&1
-  kubectl --kubeconfig=$KUBECONFIG cluster-info dump > $TMPDIR/kubeadm/kubectl/cluster-info_dump 2>&1
 
   kubectl --kubeconfig=$KUBECONFIG api-resources > $TMPDIR/kubeadm/kubectl/api-resources 2>&1
   KUBEADM_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations)
@@ -592,10 +604,7 @@ kubeadm-k8s() {
   kubectl --kubeconfig=$KUBECONFIG top pod > $TMPDIR/kubeadm/metrics_nodes 2>&1
   kubectl --kubeconfig=$KUBECONFIG top pod --containers=true > $TMPDIR/kubeadm/metrics_containers 2>&1
 
-  techo "Collecting k8s kubeadm static pods info and containers logs"
-  if [ -d /var/log/containers/ ]; then
-     cp -rp /var/log/containers $TMPDIR/kubeadm/containers-varlogs
-  fi
+  techo "Collecting k8s kubeadm static pods list"
   if [ -d $KUBEADM_STATIC_DIR ]; then
      ls -lah $KUBEADM_STATIC_DIR > $TMPDIR/kubeadm/staticpodlist 2>&1
   fi
@@ -879,6 +888,7 @@ help() {
   -E    End date of journald and docker log collection. (ex: -E 2022-12-07)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2|kubeadm)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
+  -k    specify a custom kubeconfig file location (to be used in combination of -r kubeadm)
   -f    Force log collection if the minimum space isn't available"
 
 }
@@ -902,7 +912,7 @@ if [[ $EUID -ne 0 ]] && [[ "${DEV}" == "" ]]
     exit 1
 fi
 
-while getopts "c:d:s:e:S:E:r:fph" opt; do
+while getopts "c:d:s:e:S:E:r:k:fph" opt; do
   case $opt in
     c)
       FLAG_DATA_DIR="${OPTARG}"
@@ -932,6 +942,9 @@ while getopts "c:d:s:e:S:E:r:fph" opt; do
       ;;
     r)
       DISTRO_FLAG="${OPTARG}"
+      ;;
+    k)
+      CUSTOM_KUBECONFIG="${OPTARG}"
       ;;
     f)
       FORCE=1
@@ -1011,3 +1024,4 @@ if [ "${INIT}" = "systemd" ]
 fi
 archive
 cleanup
+
