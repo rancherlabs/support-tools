@@ -594,7 +594,6 @@ kubeadm-k8s() {
   kubectl --kubeconfig=$KUBECONFIG top pod > $TMPDIR/kubeadm/metrics_nodes 2>&1
   kubectl --kubeconfig=$KUBECONFIG top pod --containers=true > $TMPDIR/kubeadm/metrics_containers 2>&1
 
-  techo "Collecting k8s kubeadm static pods list"
   if [ -d $KUBEADM_STATIC_DIR ]; then
      ls -lah $KUBEADM_STATIC_DIR > $TMPDIR/kubeadm/staticpodlist 2>&1
   fi
