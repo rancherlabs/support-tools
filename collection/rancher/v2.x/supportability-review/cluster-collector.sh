@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+#
+# This script runs once as a "Job" in the cluster. Used to run commands
+# that collect info at a cluster level.
+#
+
+CONFIG_DIR="${CONFIG_DIR:-/etc/kube-bench/cfg}"
+SONOBUOY_RESULTS_DIR=${SONOBUOY_RESULTS_DIR:-"/tmp/results"}
+ERROR_LOG_FILE="${SONOBUOY_RESULTS_DIR}/error.log"
+SONOBUOY_DONE_FIE="${SONOBUOY_RESULTS_DIR}/done"
+
+OUTPUT_DIR="${SONOBUOY_RESULTS_DIR}/output"
+LOG_DIR="${OUTPUT_DIR}/logs"
+TAR_OUTPUT_FILE="${SONOBUOY_RESULTS_DIR}/clusterinfo.tar.gz"
+
+handle_error() {
+  if [ "${DEBUG}" == "true" ]  || [ "${DEV}" == "true" ]; then
+    sleep infinity
+  fi
+  echo -n "${ERROR_LOG_FILE}" > "${SONOBUOY_DONE_FIE}"
+}
+
+trap 'handle_error' ERR
+
+set -x
+
+prereqs() {
+  mkdir -p "${OUTPUT_DIR}"
+  mkdir -p "${LOG_DIR}"
+}
+
+collect_common_cluster_info() {
+  kubectl get nodes -o json > nodes.json
+  kubectl get namespaces -o json > namespaces.json
+  kubectl -n default get services -o json > services-default.json
+  kubectl get crds -o json > crds.json
+  kubectl get configmap -n kube-system -o json > kube-system-configmap.json
+  kubectl get ds -n cattle-system-daemonsets -o json > cattle-system-daemonsets.json
+  # TODO: This call might take a lot of time in scale setups. We need to reconsider usage.
+  kubectl get pods -A -o json > pods.json
+  kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
+
+  kubectl cluster-info dump > cluster-info.dump.log
+}
+
+collect_upstream_cluster_info() {
+  kubectl get features.management.cattle.io -o json > features-management.json
+  kubectl get bundledeployments.fleet.cattle.io -A -o json > bundledeployment.json
+  kubectl get deploy -n cattle-system -o json > cattle-system-deploy.json
+  kubectl get bundles.fleet.cattle.io -n fleet-local  -o json > fleet-local-bundle.json
+  kubectl get clusters.management.cattle.io -o json > clusters.management.cattle.io.json
+  kubectl get apps.catalog.cattle.io -n cattle-logging-system -o json > cattle-logging-system-apps.json
+  kubectl get apps.catalog.cattle.io -n cattle-monitoring-system -o json > cattle-monitoring-system-apps.json
+  kubectl get apps.catalog.cattle.io -n cattle-resources-system -o json > cattle-resources-system-apps.json
+  kubectl get settings.management.cattle.io server-version -o json > server-version.json
+  kubectl get backup.resources.cattle.io -o json > backup.json
+}
+
+collect_cluster_info() {
+  collect_common_cluster_info
+  if [ "${IS_UPSTREAM_CLUSTER}" == "true" ]; then
+    collect_upstream_cluster_info
+  fi
+}
+
+
+run_kube_bench() {
+  if [ "${BENCHMARK}" == "" ]; then
+    echo "error: BENCHMARK not specified" | tee "${ERROR_LOG_FILE}"
+    exit 1
+  fi
+
+  CHECK=()
+  if [ "${KB_CHECK}" != "" ]; then
+    CHECK+=("--check")
+    CHECK+=("${KB_CHECK}")
+  fi
+
+  SKIP=()
+  if [ "${KB_SKIP}" != "" ]; then
+    SKIP+=("--skip")
+    SKIP+=("${KB_SKIP}")
+  fi
+
+  GROUP=()
+  if [ "${KB_GROUP}" != "" ]; then
+    GROUP+=("--group")
+    GROUP+=("${KB_GROUP}")
+  fi
+
+  if [[ "${DEV}" == "true" || "${DEBUG}" == "true" ]]; then
+    kube-bench run \
+      --benchmark "${BENCHMARK}" \
+      --nosummary \
+      --noremediations \
+      --v=3 \
+      --config-dir "${CONFIG_DIR}" "${CHECK[@]}" "${SKIP[@]}" "${GROUP[@]}"
+  else
+    kube-bench run \
+      --benchmark "${BENCHMARK}" \
+      --nosummary \
+      --noremediations \
+      --v=0 \
+      --config-dir "${CONFIG_DIR}" \
+      --json \
+      --log_dir "${LOG_DIR}" \
+      --outputfile "cluster-collector-kb-output.json" \
+      "${CHECK[@]}" "${SKIP[@]}" "${GROUP[@]}" 2> "${ERROR_LOG_FILE}"
+  fi
+}
+
+delete_sensitive_info() {
+  echo "nothing to delete yet"
+}
+
+
+main() {
+  echo "start"
+  date "+%Y-%m-%d %H:%M:%S"
+
+  prereqs
+
+  # Note:
+  #       Don't prefix any of the output files. The following line needs to be
+  #       adjusted accordingly.
+  cd "${OUTPUT_DIR}"
+
+  collect_cluster_info
+
+  if [ "${COLLECT_DATA_ONLY}" != "true" ]; then
+    run_kube_bench
+  fi
+
+  delete_sensitive_info
+
+  if [ "${DEBUG}" != "true" ]; then
+    tar czvf "${TAR_OUTPUT_FILE}" -C "${OUTPUT_DIR}" .
+    echo -n "${TAR_OUTPUT_FILE}" > "${SONOBUOY_DONE_FIE}"
+  else
+    echo "Running in DEBUG mode, plugin will NOT exit [cleanup by deleting namespace]."
+  fi
+
+  echo "end"
+  date "+%Y-%m-%d %H:%M:%S"
+
+  # Wait
+  sleep infinity
+}
+
+main
