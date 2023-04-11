@@ -63,52 +63,6 @@ collect_cluster_info() {
   fi
 }
 
-
-run_kube_bench() {
-  if [ "${BENCHMARK}" == "" ]; then
-    echo "error: BENCHMARK not specified" | tee "${ERROR_LOG_FILE}"
-    exit 1
-  fi
-
-  CHECK=()
-  if [ "${KB_CHECK}" != "" ]; then
-    CHECK+=("--check")
-    CHECK+=("${KB_CHECK}")
-  fi
-
-  SKIP=()
-  if [ "${KB_SKIP}" != "" ]; then
-    SKIP+=("--skip")
-    SKIP+=("${KB_SKIP}")
-  fi
-
-  GROUP=()
-  if [ "${KB_GROUP}" != "" ]; then
-    GROUP+=("--group")
-    GROUP+=("${KB_GROUP}")
-  fi
-
-  if [[ "${DEV}" == "true" || "${DEBUG}" == "true" ]]; then
-    kube-bench run \
-      --benchmark "${BENCHMARK}" \
-      --nosummary \
-      --noremediations \
-      --v=3 \
-      --config-dir "${CONFIG_DIR}" "${CHECK[@]}" "${SKIP[@]}" "${GROUP[@]}"
-  else
-    kube-bench run \
-      --benchmark "${BENCHMARK}" \
-      --nosummary \
-      --noremediations \
-      --v=0 \
-      --config-dir "${CONFIG_DIR}" \
-      --json \
-      --log_dir "${LOG_DIR}" \
-      --outputfile "cluster-collector-kb-output.json" \
-      "${CHECK[@]}" "${SKIP[@]}" "${GROUP[@]}" 2> "${ERROR_LOG_FILE}"
-  fi
-}
-
 delete_sensitive_info() {
   echo "nothing to delete yet"
 }
@@ -126,11 +80,6 @@ main() {
   cd "${OUTPUT_DIR}"
 
   collect_cluster_info
-
-  if [ "${COLLECT_DATA_ONLY}" != "true" ]; then
-    run_kube_bench
-  fi
-
   delete_sensitive_info
 
   if [ "${DEBUG}" != "true" ]; then

@@ -107,51 +107,6 @@ collect_networking_info() {
   cp -r -p ${HOST_FS_PREFIX}/etc/cni/net.d/* networking/cni 2>&1
 }
 
-run_kube_bench() {
-  if [ "${BENCHMARK}" == "" ]; then
-    echo "error: BENCHMARK not specified" | tee "${ERROR_LOG_FILE}"
-    exit 1
-  fi
-
-  CHECK=()
-  if [ "${KB_CHECK}" != "" ]; then
-    CHECK+=("--check")
-    CHECK+=("${KB_CHECK}")
-  fi
-
-  SKIP=()
-  if [ "${KB_SKIP}" != "" ]; then
-    SKIP+=("--skip")
-    SKIP+=("${KB_SKIP}")
-  fi
-
-  GROUP=()
-  if [ "${KB_GROUP}" != "" ]; then
-    GROUP+=("--group")
-    GROUP+=("${KB_GROUP}")
-  fi
-
-  if [[ "${DEV}" == "true" || "${DEBUG}" == "true" ]]; then
-    kube-bench run \
-      --benchmark "${BENCHMARK}" \
-      --nosummary \
-      --noremediations \
-      --v=3 \
-      --config-dir "${CONFIG_DIR}" "${CHECK[@]}" "${SKIP[@]}" "${GROUP[@]}"
-  else
-    kube-bench run \
-      --benchmark "${BENCHMARK}" \
-      --nosummary \
-      --noremediations \
-      --v=0 \
-      --config-dir "${CONFIG_DIR}" \
-      --json \
-      --log_dir "${LOG_DIR}" \
-      --outputfile "node-collector-kb-output.json" \
-      "${CHECK[@]}" "${SKIP[@]}" "${GROUP[@]}" 2> "${ERROR_LOG_FILE}"
-  fi
-}
-
 collect_upstream_cluster_specific_info() {
   echo "upstream: no specific commands to be run on node"
 }
@@ -182,10 +137,6 @@ main() {
     collect_upstream_cluster_specific_info
   else
     collect_downstream_cluster_specific_info
-  fi
-
-  if [ "${COLLECT_DATA_ONLY}" != "true" ]; then
-    run_kube_bench
   fi
 
   delete_sensitive_info
