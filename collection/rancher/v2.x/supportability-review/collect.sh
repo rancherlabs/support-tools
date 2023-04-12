@@ -7,6 +7,7 @@ fi
 REGISTRY=${REGISTRY:-"ghcr.io/rancherlabs"}
 REPO=${REPO:-"supportability-review"}
 TAG=${TAG:-"latest"}
+IMAGE="${REGISTRY}/${REPO}:${TAG}"
 
 if [ "${KUBECONFIG}" == "" ]; then
   if [ "${RANCHER_URL}" == "" ]; then
@@ -19,6 +20,7 @@ if [ "${KUBECONFIG}" == "" ]; then
     exit 1
   fi
 
+  docker pull "${IMAGE}"
   docker run --rm \
     -it \
     -v `pwd`:/data \
@@ -27,7 +29,7 @@ if [ "${KUBECONFIG}" == "" ]; then
     -e RANCHER_VERIFY_SSL_CERTS="${RANCHER_VERIFY_SSL_CERTS}" \
     -e REGISTRY="${REGISTRY}" \
     -e TAG="${TAG}" \
-    "${REGISTRY}/${REPO}:${TAG}" \
+     "${IMAGE}" \
     collect_info_from_rancher_setup.py "$@"
 else
   # TODO: Check if it's absolute path
