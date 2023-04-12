@@ -5,7 +5,7 @@ if [ "${DEBUG}" == "true" ]; then
 fi
 
 REGISTRY=${REGISTRY:-"ghcr.io/rancherlabs"}
-REPO=${REPO:-"supportability-review-collector"}
+REPO=${REPO:-"supportability-review"}
 TAG=${TAG:-"latest"}
 
 if [ "${KUBECONFIG}" == "" ]; then
