@@ -45,6 +45,7 @@ collect_systeminfo() {
   fi
 
   cp -p ${HOST_FS_PREFIX}/proc/cpuinfo systeminfo/cpuinfo 2>&1
+  cp -p ${HOST_FS_PREFIX}/proc/meminfo systeminfo/meminfo 2>&1
   cp -p ${HOST_FS_PREFIX}/proc/sys/fs/file-nr systeminfo/file-nr 2>&1
   cp -p ${HOST_FS_PREFIX}/proc/sys/fs/file-max systeminfo/file-max 2>&1
   cp -p ${HOST_FS_PREFIX}/etc/security/limits.conf systeminfo/limits.conf 2>&1

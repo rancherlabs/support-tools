@@ -4,10 +4,17 @@ if [ "${DEBUG}" == "true" ]; then
   set -x
 fi
 
-REGISTRY=${REGISTRY:-"ghcr.io/rancherlabs"}
-REPO=${REPO:-"supportability-review"}
+# Using the same env var format used by dapper
+REGISTRY=${REGISTRY:-"ghcr.io"}
+REPO=${REPO:-"rancherlabs"}
+APP=${APP:-"supportability-review"}
 TAG=${TAG:-"latest"}
-IMAGE="${REGISTRY}/${REPO}:${TAG}"
+IMAGE="${REGISTRY}/${REPO}/${APP}:${TAG}"
+
+if [ "$TAG" != "dev" ]; then
+  echo "pulling image: ${IMAGE}"
+  docker pull "${IMAGE}"
+fi
 
 if [ "${KUBECONFIG}" == "" ]; then
   if [ "${RANCHER_URL}" == "" ]; then
@@ -20,7 +27,6 @@ if [ "${KUBECONFIG}" == "" ]; then
     exit 1
   fi
 
-  docker pull "${IMAGE}"
   docker run --rm \
     -it \
     -v `pwd`:/data \
@@ -28,6 +34,7 @@ if [ "${KUBECONFIG}" == "" ]; then
     -e RANCHER_TOKEN="${RANCHER_TOKEN}" \
     -e RANCHER_VERIFY_SSL_CERTS="${RANCHER_VERIFY_SSL_CERTS}" \
     -e REGISTRY="${REGISTRY}" \
+    -e REPO="${REPO}" \
     -e TAG="${TAG}" \
      "${IMAGE}" \
     collect_info_from_rancher_setup.py "$@"
@@ -39,8 +46,9 @@ else
     -it \
     -v `pwd`:/data \
     -e REGISTRY="${REGISTRY}" \
+    -e REPO="${REPO}" \
     -e TAG="${TAG}" \
     -v ${KUBECONFIG}:/tmp/kubeconfig.yml \
-    "${REGISTRY}/${REPO}:${TAG}" \
+     "${IMAGE}" \
     collect_info_from_rancher_setup.py --kubeconfig /tmp/kubeconfig.yml "$@"
 fi
