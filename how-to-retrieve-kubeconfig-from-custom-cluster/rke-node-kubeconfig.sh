@@ -9,7 +9,7 @@ CONTROLPLANE=$(docker ps -q --filter=name=kube-apiserver)
 RANCHER_IMAGE=$(docker inspect $(docker images -q --filter=label=io.cattle.agent=true) --format='{{index .RepoTags 0}}' | tail -1)
 
 if [ -z $RANCHER_IMAGE ]; then
-  RANCHER_IMAGE="${PRIVATE_REGISTRY}rancher/rancher-agent:v2.2.4"
+  RANCHER_IMAGE="${PRIVATE_REGISTRY}rancher/rancher-agent:v2.6.11"
 fi
 
 if [ -d /opt/rke/etc/kubernetes/ssl ]; then
@@ -25,10 +25,16 @@ if [ -s kubeconfig_admin.yaml ]; then
     echo "This is supposed to be run on a node with the 'controlplane' role as it will try to connect to https://127.0.0.1:6443"
     echo "You can manually change the 'server:' parameter inside 'kubeconfig_admin.yaml' to point to a node with the 'controlplane' role"
   fi
-  echo "Kubeconfig is stored at kubeconfig_admin.yaml"
-  echo "You can use on of the following commands to use it:"
-  echo "docker run --rm --net=host -v $PWD/kubeconfig_admin.yaml:/root/.kube/config --entrypoint bash $RANCHER_IMAGE -c 'kubectl get nodes'"
-  echo "kubectl --kubeconfig kubeconfig_admin.yaml get nodes"
+  echo "Kubeconfig is stored at: kubeconfig_admin.yaml
+
+You can use on of the following commands to use it:
+
+  docker run --rm --net=host -v $PWD/kubeconfig_admin.yaml:/root/.kube/config --entrypoint bash $RANCHER_IMAGE -c 'kubectl get nodes'
+
+  kubectl --kubeconfig kubeconfig_admin.yaml get nodes
+
+Note: if kubectl is not available on the node, the binary can be copied from the kubelet container:
+  docker cp kubelet:/usr/local/bin/kubectl /usr/local/bin/"
 else
   echo "Failed to retrieve kubeconfig"
 fi
