@@ -14,6 +14,9 @@ OUTPUT_DIR="${SONOBUOY_RESULTS_DIR}/output"
 LOG_DIR="${OUTPUT_DIR}/logs"
 TAR_OUTPUT_FILE="${SONOBUOY_RESULTS_DIR}/nodeinfo.tar.gz"
 
+# This is set from outside, otherwise assuming rke
+CLUSTER_PROVIDER=${CLUSTER_PROVIDER:-"rke"}
+
 handle_error() {
   if [ "${DEBUG}" == "true" ]  || [ "${DEV}" == "true" ]; then
     sleep infinity
@@ -81,7 +84,30 @@ collect_networking_info_ip4() {
   ss -tunlp4 > networking/sstunlp4 2>&1
 
   conntrack -S > networking/conntrack.out
-  nft list ruleset  > networking/nft_ruleset 2>&1
+  nft list ruleset > networking/nft_ruleset 2>&1
+
+  for _NAMESERVER in $(awk '/^nameserver/ {print $2}' /host/etc/resolv.conf)
+    do
+      echo "--- Nameserver: ${_NAMESERVER}" >> networking/dns-external 2>&1
+      dig google.com @${_NAMESERVER} >> networking/dns-external 2>&1
+  done
+
+  if kubectl get svc -n kube-system kube-dns > /dev/null 2>&1
+    then
+      _COREDNS_SVC=kube-dns
+    else
+      _COREDNS_SVC=rke2-coredns-rke2-coredns
+  fi
+
+  _COREDNS_SVC_IP=$(kubectl get services -n kube-system ${_COREDNS_SVC} -o=jsonpath='{.spec.clusterIP}')
+  dig kubernetes.default.svc.cluster.local @${_COREDNS_SVC_IP} >> networking/dns-internal 2>&1
+
+  _COREDNS_ENDPOINTS=$(kubectl get endpoints -n kube-system ${_COREDNS_SVC} -o=jsonpath='{.subsets[*].addresses[*].ip}')
+  for _ENDPOINT in ${_COREDNS_ENDPOINTS}
+    do
+      echo "--- CoreDNS endpoint: ${_ENDPOINT}" >> networking/dns-internal-all-endpoints 2>&1
+      dig kubernetes.default.svc.cluster.local @${_ENDPOINT} >> networking/dns-internal-all-endpoints 2>&1
+  done
 }
 
 collect_networking_info_ip6() {
@@ -108,6 +134,52 @@ collect_networking_info() {
   cp -r -p ${HOST_FS_PREFIX}/etc/cni/net.d/* networking/cni 2>&1
 }
 
+collect_rke_node_info() {
+  mkdir -p "${OUTPUT_DIR}/rke"
+  mkdir -p "${OUTPUT_DIR}/docker"
+
+  HOST_DIR=${HOST_FS_PREFIX} rke-os-version.sh > ${OUTPUT_DIR}/rke/rke-os-version-check-result 2>&1
+  HOST_DIR=${HOST_FS_PREFIX} rke-docker-version.sh > ${OUTPUT_DIR}/rke/rke-docker-version-check-result 2>&1
+  curl -s --unix-socket /host/run/docker.sock http://localhost/info > docker/docker_info.json 2>&1
+  cp /host/etc/docker/daemon.json docker/docker_daemon.json 2>&1
+}
+
+collect_rke2_node_info() {
+  mkdir -p "${OUTPUT_DIR}/rke2"
+  echo "rke2: nothing to collect yet"
+}
+
+collect_k3s_node_info() {
+  mkdir -p "${OUTPUT_DIR}/k3s"
+  echo "k3s: nothing to collect yet"
+}
+
+collect_node_info() {
+  collect_systeminfo
+  collect_networking_info
+
+  if [ "${IS_UPSTREAM_CLUSTER}" == "true" ]; then
+    collect_upstream_cluster_specific_info
+  else
+    collect_downstream_cluster_specific_info
+  fi
+
+  case $CLUSTER_PROVIDER in
+    "rke")
+      collect_rke_node_info
+    ;;
+    "rke2")
+      collect_rke2_node_info
+    ;;
+    "k3s")
+      collect_k3s_node_info
+    ;;
+    *)
+      echo "error: CLUSTER_PROVIDER is not set"
+    ;;
+  esac
+}
+
 collect_upstream_cluster_specific_info() {
   echo "upstream: no specific commands to be run on node"
 }
@@ -131,15 +203,7 @@ main() {
   #       adjusted accordingly.
   cd "${OUTPUT_DIR}"
 
-  collect_systeminfo
-  collect_networking_info
-
-  if [ "${IS_UPSTREAM_CLUSTER}" == "true" ]; then
-    collect_upstream_cluster_specific_info
-  else
-    collect_downstream_cluster_specific_info
-  fi
-
+  collect_node_info
   delete_sensitive_info
 
   if [ "${DEBUG}" != "true" ]; then
