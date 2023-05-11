@@ -4,14 +4,9 @@ if [ "${DEBUG}" == "true" ]; then
   set -x
 fi
 
-# Using the same env var format used by dapper
-REGISTRY=${REGISTRY:-"ghcr.io"}
-REPO=${REPO:-"rancherlabs"}
-APP=${APP:-"supportability-review"}
-TAG=${TAG:-"latest"}
-IMAGE="${REGISTRY}/${REPO}/${APP}:${TAG}"
+SR_IMAGE=${SR_IMAGE:-"ghcr.io/rancherlabs/supportability-review:latest"}
 
-if [ "$TAG" != "dev" ]; then
+if [[ "$SR_IMAGE" != *":dev" ]]; then
   echo "pulling image: ${IMAGE}"
   docker pull "${IMAGE}"
 fi
@@ -33,22 +28,22 @@ if [ "${KUBECONFIG}" == "" ]; then
     -e RANCHER_URL="${RANCHER_URL}" \
     -e RANCHER_TOKEN="${RANCHER_TOKEN}" \
     -e RANCHER_VERIFY_SSL_CERTS="${RANCHER_VERIFY_SSL_CERTS}" \
-    -e REGISTRY="${REGISTRY}" \
-    -e REPO="${REPO}" \
-    -e TAG="${TAG}" \
-     "${IMAGE}" \
+     "${SR_IMAGE}" \
     collect_info_from_rancher_setup.py "$@"
 else
   # TODO: Check if it's absolute path
   # TODO: Check if the file exists and it's readable
   echo "KUBECONFIG specified: ${KUBECONFIG}"
+
+  if [ ! -f "${KUBECONFIG}" ]; then
+    echo "error: KUBECONFIG=${KUBECONFIG} specified, but cannot access that file"
+    exit 1
+  fi
+
   docker run --rm \
     -it \
     -v `pwd`:/data \
-    -e REGISTRY="${REGISTRY}" \
-    -e REPO="${REPO}" \
-    -e TAG="${TAG}" \
     -v ${KUBECONFIG}:/tmp/kubeconfig.yml \
-     "${IMAGE}" \
+     "${SR_IMAGE}" \
     collect_info_from_rancher_setup.py --kubeconfig /tmp/kubeconfig.yml "$@"
 fi

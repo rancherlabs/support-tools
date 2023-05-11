@@ -146,12 +146,12 @@ collect_rke_node_info() {
 
 collect_rke2_node_info() {
   mkdir -p "${OUTPUT_DIR}/rke2"
-  echo "rke2: nothing to collect yet"
+  HOST_DIR=${HOST_FS_PREFIX} rke2-os-version.sh > ${OUTPUT_DIR}/rke2/rke2-os-version-check-result 2>&1
 }
 
 collect_k3s_node_info() {
   mkdir -p "${OUTPUT_DIR}/k3s"
-  echo "k3s: nothing to collect yet"
+  HOST_DIR=${HOST_FS_PREFIX} k3s-os-version.sh > ${OUTPUT_DIR}/k3s/k3s-os-version-check-result 2>&1
 }
 
 collect_node_info() {
