@@ -38,7 +38,7 @@ collect_common_cluster_info() {
   kubectl -n default get services -o json > services-default.json
   kubectl get crds -o json > crds.json
   kubectl get configmap -n kube-system -o json > kube-system-configmap.json
-  kubectl get ds -n cattle-system-daemonsets -o json > cattle-system-daemonsets.json
+  kubectl get ds -n cattle-system -o json > cattle-system-daemonsets.json
   # TODO: This call might take a lot of time in scale setups. We need to reconsider usage.
   kubectl get pods -A -o json > pods.json
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
