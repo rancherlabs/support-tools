@@ -52,12 +52,19 @@ collect_systeminfo() {
   cp -p ${HOST_FS_PREFIX}/proc/sys/fs/file-nr systeminfo/file-nr 2>&1
   cp -p ${HOST_FS_PREFIX}/proc/sys/fs/file-max systeminfo/file-max 2>&1
   cp -p ${HOST_FS_PREFIX}/etc/security/limits.conf systeminfo/limits.conf 2>&1
-  cat ${HOST_FS_PREFIX}/etc/*release > systeminfo/osrelease 2>&1
+  # Every system that we officially support has /etc/os-release
+  cat ${HOST_FS_PREFIX}/etc/os-release > systeminfo/os-release 2>&1
+  cat ${HOST_FS_PREFIX}/etc/centos-release > systeminfo/centos-release 2>&1
 
   ps auxfww > systeminfo/ps 2>&1
+  free -m > systeminfo/freem 2>&1
+  df -i /host/var > systeminfo/dfivar 2>&1
+  df /host/var > systeminfo/dfvar 2>&1
 
   # TODO: Check if the sysctl settings are same on the host/inside the container
   sysctl -a > systeminfo/sysctla 2>/dev/null
+
+  kubectl version -o json > systeminfo/kubectl-version.json 2>/dev/null
 }
 
 collect_networking_info_ip4() {
@@ -85,6 +92,8 @@ collect_networking_info_ip4() {
 
   conntrack -S > networking/conntrack.out
   nft list ruleset > networking/nft_ruleset 2>&1
+  cat /proc/sys/net/netfilter/nf_conntrack_max > networking/nf_conntrack_max
+  cat /proc/sys/net/netfilter/nf_conntrack_count > networking/nf_conntrack_count
 
   for _NAMESERVER in $(awk '/^nameserver/ {print $2}' /host/etc/resolv.conf)
     do
@@ -137,21 +146,20 @@ collect_networking_info() {
 collect_rke_node_info() {
   mkdir -p "${OUTPUT_DIR}/rke"
   mkdir -p "${OUTPUT_DIR}/docker"
-
-  HOST_DIR=${HOST_FS_PREFIX} rke-os-version.sh > ${OUTPUT_DIR}/rke/rke-os-version-check-result 2>&1
-  HOST_DIR=${HOST_FS_PREFIX} rke-docker-version.sh > ${OUTPUT_DIR}/rke/rke-docker-version-check-result 2>&1
   curl -s --unix-socket /host/run/docker.sock http://localhost/info > docker/docker_info.json 2>&1
   cp /host/etc/docker/daemon.json docker/docker_daemon.json 2>&1
 }
 
 collect_rke2_node_info() {
   mkdir -p "${OUTPUT_DIR}/rke2"
-  HOST_DIR=${HOST_FS_PREFIX} rke2-os-version.sh > ${OUTPUT_DIR}/rke2/rke2-os-version-check-result 2>&1
+  RKE2_BINARY=$( pgrep -a rke2 | cut -d' ' -f2 )
+  $HOST_FS_PREFIX$RKE2_BINARY --version | head -n1 | cut -d' ' -f 3 | cut -d'.' -f1-2 | tr -d 'v' > ${OUTPUT_DIR}/rke2/kubernetes-version 2>&1
 }
 
 collect_k3s_node_info() {
   mkdir -p "${OUTPUT_DIR}/k3s"
-  HOST_DIR=${HOST_FS_PREFIX} k3s-os-version.sh > ${OUTPUT_DIR}/k3s/k3s-os-version-check-result 2>&1
+  K3S_BINARY=$( pgrep -a k3s | cut -d' ' -f2 )
+  $HOST_FS_PREFIX$K3S_BINARY --version | head -n1 | cut -d' ' -f 3 | cut -d'.' -f1-2 | tr -d 'v' > ${OUTPUT_DIR}/k3s/kubernetes-version 2>&1
 }
 
 collect_node_info() {

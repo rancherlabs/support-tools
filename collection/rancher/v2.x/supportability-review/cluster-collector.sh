@@ -8,6 +8,7 @@ CONFIG_DIR="${CONFIG_DIR:-/etc/kube-bench/cfg}"
 SONOBUOY_RESULTS_DIR=${SONOBUOY_RESULTS_DIR:-"/tmp/results"}
 ERROR_LOG_FILE="${SONOBUOY_RESULTS_DIR}/error.log"
 SONOBUOY_DONE_FIE="${SONOBUOY_RESULTS_DIR}/done"
+HOST_FS_PREFIX="${HOST_FS_PREFIX:-"/host"}"
 
 OUTPUT_DIR="${SONOBUOY_RESULTS_DIR}/output"
 LOG_DIR="${OUTPUT_DIR}/logs"
@@ -33,6 +34,9 @@ prereqs() {
 }
 
 collect_common_cluster_info() {
+  date "+%Y-%m-%d %H:%M:%S" > date.log
+
+  kubectl get version -o json > kubectl-version.json
   kubectl get nodes -o json > nodes.json
   kubectl get namespaces -o json > namespaces.json
   kubectl -n default get services -o json > services-default.json
@@ -42,6 +46,7 @@ collect_common_cluster_info() {
   # TODO: This call might take a lot of time in scale setups. We need to reconsider usage.
   kubectl get pods -A -o json > pods.json
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
+  kubectl get settings.management.cattle.io server-version -o json > server-version.json
 
   kubectl cluster-info dump > cluster-info.dump.log
 }
@@ -53,12 +58,35 @@ collect_rke_info() {
 
 collect_rke2_info() {
   mkdir -p "${OUTPUT_DIR}/rke2"
-  echo "rke2: nothing to collect yet"
+  ls ${HOST_FS_PREFIX}/var/lib/rancher/rke2/ > ${OUTPUT_DIR}/rke2/var-lib-rancher-rke2-directory 2>&1
+
+  #Get RKE2 Configuration file(s), redacting secrets
+  if [ -f "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" ]; then
+    cat ${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/rke2/config.yaml
+  fi
+  if [ -d "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml.d" ]; then
+    mkdir -p "${OUTPUT_DIR}/rke2/config.yaml.d"
+    for yaml in ${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml.d/*.yaml; do
+      cat ${yaml} | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/rke2/config.yaml.d/$(basename ${yaml})
+    done
+  fi
 }
+
 
 collect_k3s_info() {
   mkdir -p "${OUTPUT_DIR}/k3s"
-  echo "k3s: nothing to collect yet"
+  ls ${HOST_FS_PREFIX}/var/lib/rancher/k3s/ > ${OUTPUT_DIR}/k3s/var-lib-rancher-k3s-directory 2>&1
+
+  #Get k3s Configuration file(s), redacting secrets
+  if [ -f "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml" ]; then
+    cat ${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/k3s/config.yaml
+  fi
+  if [ -d "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml.d" ]; then
+    mkdir -p "${OUTPUT_DIR}/k3s/config.yaml.d"
+    for yaml in ${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml.d/*.yaml; do
+      cat ${yaml} | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/k3s/config.yaml.d/$(basename ${yaml})
+    done
+  fi
 }
 
 collect_upstream_cluster_info() {
@@ -70,8 +98,17 @@ collect_upstream_cluster_info() {
   kubectl get apps.catalog.cattle.io -n cattle-logging-system -o json > cattle-logging-system-apps.json
   kubectl get apps.catalog.cattle.io -n cattle-monitoring-system -o json > cattle-monitoring-system-apps.json
   kubectl get apps.catalog.cattle.io -n cattle-resources-system -o json > cattle-resources-system-apps.json
-  kubectl get settings.management.cattle.io server-version -o json > server-version.json
   kubectl get backup.resources.cattle.io -o json > backup.json
+
+  kubectl get settings.management.cattle.io server-version -o json > server-version.json
+  kubectl get settings.management.cattle.io install-uuid -o json > install-uuid.json
+}
+
+collect_app_info() {
+  mkdir -p "${OUTPUT_DIR}/apps"
+
+  kubectl get ds -n longhorn-system -o json > apps/longhorn-system-daemonsets.json
+  kubectl get volumes.longhorn.io -n longhorn-system -o json > apps/longhorn-system-volumes.json
 }
 
 collect_cluster_info() {
@@ -94,6 +131,8 @@ collect_cluster_info() {
       echo "error: CLUSTER_PROVIDER is not set"
     ;;
   esac
+
+  collect_app_info
 }
 
 delete_sensitive_info() {
