@@ -36,7 +36,7 @@ prereqs() {
 collect_common_cluster_info() {
   date "+%Y-%m-%d %H:%M:%S" > date.log
 
-  kubectl get version -o json > kubectl-version.json
+  kubectl version -o json > kubectl-version.json
   kubectl get nodes -o json > nodes.json
   kubectl get namespaces -o json > namespaces.json
   kubectl -n default get services -o json > services-default.json
@@ -47,6 +47,7 @@ collect_common_cluster_info() {
   kubectl get pods -A -o json > pods.json
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
   kubectl get settings.management.cattle.io server-version -o json > server-version.json
+  kubectl get clusters.management.cattle.io -o json > clusters.management.cattle.io.json
 
   kubectl cluster-info dump > cluster-info.dump.log
 }
@@ -94,7 +95,6 @@ collect_upstream_cluster_info() {
   kubectl get bundledeployments.fleet.cattle.io -A -o json > bundledeployment.json
   kubectl get deploy -n cattle-system -o json > cattle-system-deploy.json
   kubectl get bundles.fleet.cattle.io -n fleet-local  -o json > fleet-local-bundle.json
-  kubectl get clusters.management.cattle.io -o json > clusters.management.cattle.io.json
   kubectl get apps.catalog.cattle.io -n cattle-logging-system -o json > cattle-logging-system-apps.json
   kubectl get apps.catalog.cattle.io -n cattle-monitoring-system -o json > cattle-monitoring-system-apps.json
   kubectl get apps.catalog.cattle.io -n cattle-resources-system -o json > cattle-resources-system-apps.json
