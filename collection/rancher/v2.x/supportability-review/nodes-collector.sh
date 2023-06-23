@@ -136,9 +136,24 @@ collect_networking_info_ip6() {
   ss -tunlp6 > networking/sstunlp6 2>&1
 }
 
+collect_websock_info() {
+  # echo "SGVsbG8sIHdvcmxkIQ==" | base64 -d
+  # Hello, world!
+  echo "${RANCHER_URL}" > networking/rancher_url 2>&1
+  curl -s --include --no-buffer \
+  --header "Connection: Upgrade" \
+  --header "Upgrade: websocket" \
+  --header "Host: "${RANCHER_URL} \
+  --header "Origin: "${RANCHER_URL} \
+  --header "Sec-WebSocket-Key: SGVsbG8sIHdvcmxkIQ==" \
+  --header "Sec-WebSocket-Version: 13" ${RANCHER_URL}/healthz \
+  -o networking/rancher_websocket_check
+}
+
 collect_networking_info() {
   collect_networking_info_ip4
   collect_networking_info_ip6
+  collect_websock_info
 
   cp -r -p ${HOST_FS_PREFIX}/etc/cni/net.d/* networking/cni 2>&1
 }
