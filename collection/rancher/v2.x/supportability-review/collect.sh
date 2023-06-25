@@ -4,6 +4,23 @@ if [ "${DEBUG}" == "true" ]; then
   set -x
 fi
 
+HELP_MENU() {
+echo "Supportability Review
+Usage: collect.sh [ -h ]
+
+All flags are optional
+
+-h	Print help menu for Supportability Review
+
+Environment variables:
+
+  RANCHER_URL: Specify Rancher Server URL (Ex: https://rancher.example.com)
+  RANCHER_TOKEN: Specify Rancher Token to connect to Rancher Server
+  SR_IMAGE: Use this variable to point to custom container image of Supportability Review
+
+"
+}
+
 SR_IMAGE=${SR_IMAGE:-"ghcr.io/rancherlabs/supportability-review:latest"}
 
 if [[ "$SR_IMAGE" != *":dev" ]]; then
@@ -20,6 +37,10 @@ if [ "${KUBECONFIG}" == "" ]; then
   if [ "${RANCHER_TOKEN}" == "" ]; then
     echo "error: RANCHER_TOKEN is not set"
     exit 1
+  fi
+
+  if [ "$1" == "-h" ]; then
+    HELP_MENU
   fi
 
   docker run --rm \
