@@ -24,8 +24,8 @@ Environment variables:
 SR_IMAGE=${SR_IMAGE:-"ghcr.io/rancherlabs/supportability-review:latest"}
 
 if [[ "$SR_IMAGE" != *":dev" ]]; then
-  echo "pulling image: ${IMAGE}"
-  docker pull "${IMAGE}"
+  echo "pulling image: ${SR_IMAGE}"
+  docker pull "${SR_IMAGE}"
 fi
 
 if [ "${KUBECONFIG}" == "" ]; then
