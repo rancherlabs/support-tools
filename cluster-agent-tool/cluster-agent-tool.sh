@@ -441,7 +441,7 @@ if [[ "${PASSWORD}" == "" ]] && [[ ${LOGINTOKEN// /} == "" ]]; then
 fi
 
 #get default route interface
-DEFAULT_ROUTE_IFACE=$(ip route | grep default | cut -d' ' -f5)
+DEFAULT_ROUTE_IFACE=$(ip route | grep default | cut -d' ' -f5 | head -1)
 #Get local IP for determining cluster ID
 DEFAULT_IP="$(ip a show ${DEFAULT_ROUTE_IFACE} | grep inet | grep -v inet6 | awk '{print $2}' | cut -f1 -d'/')"
 
