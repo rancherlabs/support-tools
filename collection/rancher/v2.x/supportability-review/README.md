@@ -97,6 +97,14 @@ The script needs to be run on the node, using the root user or a user in the `do
     --sonobuoy-image=$DST_SONOBUOY_IMAGE
   ```
 
+ #### If using nerdctl and containerd instead of docker
+ 
+ To run with nerdctl, please set the CONTAINERD_ADDRESS variable
+
+ ```shell
+ export CONTAINERD_ADDRESS=<your containerd socket used by nerdctl>
+ ```
+
 **4. Share the generated support bundle with SUSE Rancher Support Team.**
 
 Output will be written as a tar.gz archive in the same path where the script is run.
