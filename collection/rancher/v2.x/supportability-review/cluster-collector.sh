@@ -4,7 +4,6 @@
 # that collect info at a cluster level.
 #
 
-CONFIG_DIR="${CONFIG_DIR:-/etc/kube-bench/cfg}"
 SONOBUOY_RESULTS_DIR=${SONOBUOY_RESULTS_DIR:-"/tmp/results"}
 ERROR_LOG_FILE="${SONOBUOY_RESULTS_DIR}/error.log"
 SONOBUOY_DONE_FIE="${SONOBUOY_RESULTS_DIR}/done"

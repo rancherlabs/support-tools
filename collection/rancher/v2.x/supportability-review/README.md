@@ -13,6 +13,7 @@ Please review the below files for details:
 
 - [cluster-collector.sh](./cluster-collector.sh)
 - [nodes-collector.sh](./nodes-collector.sh) ## Runs on every node of the cluster.
+- [systems-summary.sh](./systems-summary.sh)
 
 ## Prerequisites
 
