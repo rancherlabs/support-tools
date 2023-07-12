@@ -241,6 +241,17 @@ system-rhel() {
 
 }
 
+system-sles() {
+
+  if $(command -v rpm >/dev/null 2>&1); then
+    rpm -qa > $TMPDIR/systeminfo/packages-rpm 2>&1
+  fi
+  if $(command -v apparmor_status >/dev/null 2>&1); then
+    apparmor_status > $TMPDIR/systeminfo/sles-apparmorstatus 2>&1
+  fi
+
+}
+
 networking() {
 
   techo "Collecting network info"
@@ -980,6 +991,10 @@ if [[ "${OSRELEASE}" = "rhel" || "${OSRELEASE}" = "centos" ]]
 elif [ "${OSRELEASE}" = "ubuntu" ]
   then
     system-ubuntu
+fi
+if [ "${OSRELEASE}" = "sles" ]
+  then
+    system-sles
 fi
 if [ "${DISTRO}" = "rke" ]
   then
