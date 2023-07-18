@@ -46,8 +46,6 @@ fi
 
 # Start an async deletion process for each chunk.
 for (( i = 0; i < $last_idx; i+= $chunk_size )); do
-    echo "i: $i" # XXX: DEBUG
-
     last_chunk_idx=$(( $i + $chunk_size - 1 ))
     if [ $last_chunk_idx -ge $last_idx ]; then
         last_chunk_idx=$last_idx
