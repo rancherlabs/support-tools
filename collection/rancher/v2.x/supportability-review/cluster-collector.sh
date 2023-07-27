@@ -40,10 +40,12 @@ collect_common_cluster_info() {
   kubectl get namespaces -o json > namespaces.json
   kubectl -n default get services -o json > services-default.json
   kubectl get crds -o json > crds.json
-  kubectl get configmap -n kube-system -o json > kube-system-configmap.json
   kubectl get ds -n cattle-system -o json > cattle-system-daemonsets.json
   # TODO: This call might take a lot of time in scale setups. We need to reconsider usage.
   kubectl get pods -A -o json > pods.json
+  jq -cr '.items | length' pods.json > pod-count
+  jq -cr '[([.items[].spec.containers | length] | add), ([.items[].spec.initContainers | length] | add)] | add' pods.json > container-count
+  jq -cr '[[.items[].spec.nodeName] | group_by(.) | map({(.[0]): length}) | add | to_entries[] | select(.value > 110) | .key] | length' pods.json > count-of-nodes-with-more-than-110-pods
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
   kubectl get settings.management.cattle.io server-version -o json > server-version.json
   kubectl get clusters.management.cattle.io -o json > clusters.management.cattle.io.json
@@ -54,6 +56,11 @@ collect_common_cluster_info() {
 collect_rke_info() {
   mkdir -p "${OUTPUT_DIR}/rke"
   echo "rke: nothing to collect yet"
+
+  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.network.plugin' > ${OUTPUT_DIR}/rke/cni
+  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.kubernetesVersion' > ${OUTPUT_DIR}/rke/kubernetesVersion
+  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.services.etcd | del(.backupConfig.s3BackupConfig)' > ${OUTPUT_DIR}/rke/etcd.json
+  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.dns' > ${OUTPUT_DIR}/rke/dns.json
 }
 
 collect_rke2_info() {
@@ -98,6 +105,7 @@ collect_upstream_cluster_info() {
   kubectl get apps.catalog.cattle.io -n cattle-monitoring-system -o json > cattle-monitoring-system-apps.json
   kubectl get apps.catalog.cattle.io -n cattle-resources-system -o json > cattle-resources-system-apps.json
   kubectl get backup.resources.cattle.io -o json > backup.json
+  jq '[.items[] | select(.metadata.namespace == "cattle-system" and .metadata.labels.app == "rancher") | .spec.nodeName] | unique | length' pods.json > unique-rancher-pod-count-by-node
 
   kubectl get settings.management.cattle.io server-version -o json > server-version.json
   kubectl get settings.management.cattle.io install-uuid -o json > install-uuid.json
@@ -135,7 +143,7 @@ collect_cluster_info() {
 }
 
 delete_sensitive_info() {
-  echo "nothing to delete yet"
+  rm pods.json
 }
 
 

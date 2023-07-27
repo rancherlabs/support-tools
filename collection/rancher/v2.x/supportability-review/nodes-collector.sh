@@ -160,20 +160,46 @@ collect_networking_info() {
 collect_rke_node_info() {
   mkdir -p "${OUTPUT_DIR}/rke"
   mkdir -p "${OUTPUT_DIR}/docker"
-  curl -s --unix-socket /host/run/docker.sock http://localhost/info > docker/docker_info.json 2>&1
-  cp /host/etc/docker/daemon.json docker/docker_daemon.json 2>&1
+  curl -s --unix-socket ${HOST_FS_PREFIX}/run/docker.sock http://localhost/info > ${OUTPUT_DIR}/docker/docker_info.json 2>&1
+  cp ${HOST_FS_PREFIX}/etc/docker/daemon.json ${OUTPUT_DIR}/docker/docker_daemon.json 2>&1
+  collect_rke_certs
 }
 
 collect_rke2_node_info() {
   mkdir -p "${OUTPUT_DIR}/rke2"
   RKE2_BINARY=$( pgrep -a rke2 | cut -d' ' -f2 )
   $HOST_FS_PREFIX$RKE2_BINARY --version | head -n1 | cut -d' ' -f 3 | cut -d'.' -f1-2 | tr -d 'v' > ${OUTPUT_DIR}/rke2/kubernetes-version 2>&1
+
+  #Get RKE2 Configuration file(s), redacting secrets
+  if [ -f "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" ]; then
+    cat ${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/rke2/config.yaml
+  fi
+  if [ -d "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml.d" ]; then
+    mkdir -p "${OUTPUT_DIR}/rke2/config.yaml.d"
+    for yaml in ${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml.d/*.yaml; do
+      cat ${yaml} | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/rke2/config.yaml.d/$(basename ${yaml})
+    done
+  fi
+  sherlock-rke2-data-dir
+  collect_rke2_certs
 }
 
 collect_k3s_node_info() {
   mkdir -p "${OUTPUT_DIR}/k3s"
   K3S_BINARY=$( pgrep -a k3s | cut -d' ' -f2 )
   $HOST_FS_PREFIX$K3S_BINARY --version | head -n1 | cut -d' ' -f 3 | cut -d'.' -f1-2 | tr -d 'v' > ${OUTPUT_DIR}/k3s/kubernetes-version 2>&1
+
+  #Get k3s Configuration file(s), redacting secrets
+  if [ -f "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml" ]; then
+    cat ${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/k3s/config.yaml
+  fi
+  if [ -d "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml.d" ]; then
+    mkdir -p "${OUTPUT_DIR}/k3s/config.yaml.d"
+    for yaml in ${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml.d/*.yaml; do
+      cat ${yaml} | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/k3s/config.yaml.d/$(basename ${yaml})
+    done
+  fi
+  collect_k3s_certs
 }
 
 collect_node_info() {
@@ -208,6 +234,69 @@ collect_upstream_cluster_specific_info() {
 
 collect_downstream_cluster_specific_info() {
   echo "downstream: no specific commands to be run on node"
+}
+
+collect_rke_certs() {
+  mkdir -p ${OUTPUT_DIR}/rke/certs
+  if [ -d ${HOST_FS_PREFIX}/opt/rke/etc/kubernetes/ssl ]; then
+    CERTS=$(find ${HOST_FS_PREFIX}/opt/rke/etc/kubernetes/ssl -type f -name *.pem | grep -v "\-key\.pem$")
+    for CERT in $CERTS; do
+      openssl x509 -in $CERT -text -noout > ${OUTPUT_DIR}/rke/certs/$(basename $CERT) 2>&1
+    done
+  elif [ -d ${HOST_FS_PREFIX}/etc/kubernetes/ssl ]; then
+    CERTS=$(find ${HOST_FS_PREFIX}/etc/kubernetes/ssl -type f -name *.pem | grep -v "\-key\.pem$")
+    for CERT in $CERTS; do
+      openssl x509 -in $CERT -text -noout > ${OUTPUT_DIR}/rke/certs/$(basename $CERT) 2>&1
+    done
+  fi
+}
+
+collect_k3s_certs() {
+  if [ -d ${HOST_FS_PREFIX}/var/lib/rancher/k3s ]; then
+    mkdir -p ${OUTPUT_DIR}/k3s/certs/agent
+    AGENT_CERTS=$(find ${HOST_FS_PREFIX}/var/lib/rancher/k3s/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+    for CERT in $AGENT_CERTS; do
+      openssl x509 -in $CERT -text -noout > ${OUTPUT_DIR}/k3s/certs/agent/$(basename $CERT) 2>&1
+    done
+    if [ -d ${HOST_FS_PREFIX}/var/lib/rancher/k3s/server/tls ]; then
+      mkdir -p ${OUTPUT_DIR}/k3s/certs/server
+      SERVER_CERTS=$(find ${HOST_FS_PREFIX}/var/lib/rancher/k3s/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+      for CERT in $SERVER_CERTS; do
+        openssl x509 -in $CERT -text -noout > ${OUTPUT_DIR}/k3s/certs/server/$(basename $CERT) 2>&1
+      done
+    fi
+  fi
+}
+
+collect_rke2_certs() {
+  if [ -d ${RKE2_DIR} ]; then
+    mkdir -p ${OUTPUT_DIR}/rke2/certs/agent
+    AGENT_CERTS=$(find ${RKE2_DIR}/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+    for CERT in $AGENT_CERTS; do
+      openssl x509 -in $CERT -text -noout > ${OUTPUT_DIR}/rke2/certs/agent/$(basename $CERT) 2>&1
+    done
+    if [ -d ${RKE2_DIR}/server/tls ]; then
+      techo "Collecting rke2 server certificates"
+      mkdir -p ${OUTPUT_DIR}/rke2/certs/server
+      SERVER_CERTS=$(find ${RKE2_DIR}/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+      for CERT in $SERVER_CERTS; do
+        openssl x509 -in $CERT -text -noout > ${OUTPUT_DIR}/rke2/certs/server/$(basename $CERT) 2>&1
+      done
+    fi
+  fi
+}
+
+sherlock-rke2-data-dir() {
+
+  if [ -f ${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml ]; then
+      CUSTOM_DIR=$(awk '$1 ~ /data-dir:/ {print $2}' ${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml)
+  fi
+  if [[ -z "${CUSTOM_DIR}" ]]; then
+    RKE2_DIR="${HOST_FS_PREFIX}/var/lib/rancher/rke2"
+  else
+    RKE2_DIR="${HOST_FS_PREFIX}/${CUSTOM_DIR}"
+  fi
+
 }
 
 delete_sensitive_info() {
