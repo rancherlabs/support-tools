@@ -115,7 +115,15 @@ collect_app_info() {
   mkdir -p "${OUTPUT_DIR}/apps"
 
   kubectl get ds -n longhorn-system -o json > apps/longhorn-system-daemonsets.json
+  NUM_OF_LONGHORN_DS=`jq -cr '.items | length' apps/longhorn-system-daemonsets.json`
+  if [ $NUM_OF_LONGHORN_DS -eq 0 ]; then
+    rm apps/longhorn-system-daemonsets.json
+  fi
+
   kubectl get volumes.longhorn.io -n longhorn-system -o json > apps/longhorn-system-volumes.json
+  if [ ! -s apps/longhorn-system-volumes.json ]; then
+    rm apps/longhorn-system-volumes.json
+  fi
 }
 
 collect_cluster_info() {
