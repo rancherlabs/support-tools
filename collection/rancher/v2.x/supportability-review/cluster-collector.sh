@@ -109,6 +109,7 @@ collect_upstream_cluster_info() {
 
   kubectl get settings.management.cattle.io server-version -o json > server-version.json
   kubectl get settings.management.cattle.io install-uuid -o json > install-uuid.json
+  kubectl get nodes.management.cattle.io -A -o json > nodes-cattle.json
 }
 
 collect_app_info() {
