@@ -100,6 +100,7 @@ collect_upstream_cluster_info() {
   kubectl get features.management.cattle.io -o json > features-management.json
   kubectl get bundledeployments.fleet.cattle.io -A -o json > bundledeployment.json
   kubectl get deploy -n cattle-system -o json > cattle-system-deploy.json
+  kubectl get configmap -n kube-system cattle-controllers -o json > cattle-controllers-configmap.json
   kubectl get bundles.fleet.cattle.io -n fleet-local  -o json > fleet-local-bundle.json
   kubectl get apps.catalog.cattle.io -n cattle-logging-system -o json > cattle-logging-system-apps.json
   kubectl get apps.catalog.cattle.io -n cattle-monitoring-system -o json > cattle-monitoring-system-apps.json
