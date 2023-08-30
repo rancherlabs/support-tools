@@ -389,9 +389,20 @@ k3s-logs() {
   k3s crictl images > $TMPDIR/${DISTRO}/crictl/images 2>&1
   k3s crictl imagefsinfo > $TMPDIR/${DISTRO}/crictl/imagefsinfo 2>&1
   k3s crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
-  if [ -f /etc/systemd/system/k3s.service ]
+  if [ -f /etc/systemd/system/${DISTRO}.service ]
     then
-      cp -p /etc/systemd/system/k3s.service $TMPDIR/${DISTRO}/k3s.service
+      cp -p /etc/systemd/system/${DISTRO}.service $TMPDIR/${DISTRO}/${DISTRO}.service
+  fi
+  if [ -f /etc/rancher/${DISTRO}/config.yaml ]
+    then
+      grep -Ev "token|access-key|secret-key" /etc/rancher/${DISTRO}/config.yaml >& $TMPDIR/${DISTRO}/config.yaml
+  fi
+  if [ -d /etc/rancher/${DISTRO}/config.yaml.d ]
+    then
+      for _FILE in $(ls /etc/rancher/${DISTRO}/config.yaml.d)
+        do
+          grep -Ev "token|access-key|secret-key" /etc/rancher/${DISTRO}/config.yaml.d/$_FILE >& $TMPDIR/${DISTRO}/$_FILE
+      done
   fi
 
 }
@@ -414,21 +425,21 @@ rke2-logs() {
   ${RKE2_DIR}/bin/crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
   if [ -f /usr/local/lib/systemd/system/rke2-agent.service ]
     then
-      cp -p /usr/local/lib/systemd/system/rke2*.service $TMPDIR/${DISTRO}/
+      cp -p /usr/local/lib/systemd/system/${DISTRO}*.service $TMPDIR/${DISTRO}/
   fi
   if [ -f /var/lib/rancher/${DISTRO}/agent/containerd/containerd.log ]
     then
-      cp -p /var/lib/rancher/${DISTRO}/agent/containerd/containerd.log $TMPDIR/rke2
+      cp -p /var/lib/rancher/${DISTRO}/agent/containerd/containerd.log $TMPDIR/${DISTRO}
   fi
   if [ -f /etc/rancher/${DISTRO}/config.yaml ]
     then
-      grep -v token /etc/rancher/${DISTRO}/config.yaml >& $TMPDIR/${DISTRO}/config.yaml
+      grep -Ev "token|access-key|secret-key" /etc/rancher/${DISTRO}/config.yaml >& $TMPDIR/${DISTRO}/config.yaml
   fi
   if [ -d /etc/rancher/${DISTRO}/config.yaml.d ]
     then
       for _FILE in $(ls /etc/rancher/${DISTRO}/config.yaml.d)
         do
-          grep -v token /etc/rancher/${DISTRO}/config.yaml.d/$_FILE >& $TMPDIR/${DISTRO}/$_FILE
+          grep -Ev "token|access-key|secret-key" /etc/rancher/${DISTRO}/config.yaml.d/$_FILE >& $TMPDIR/${DISTRO}/$_FILE
       done
   fi
 
