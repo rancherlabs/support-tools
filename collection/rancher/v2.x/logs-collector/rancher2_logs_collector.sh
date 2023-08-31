@@ -540,6 +540,12 @@ rke2-k8s() {
     done
   fi
 
+  if [ -d ${RKE2_DIR}/agent/pod-manifests ]; then
+    techo "Collecting rke2 static pod manifests"
+    mkdir -p $TMPDIR/rke2/pod-manifests
+    cp -p ${RKE2_DIR}/agent/pod-manifests/* $TMPDIR/rke2/pod-manifests
+  fi
+
   techo "Collecting rke2 agent/server logs"
   for RKE2_LOG_DIR in agent server
     do
