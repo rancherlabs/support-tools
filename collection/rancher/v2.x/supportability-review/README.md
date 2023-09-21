@@ -131,7 +131,7 @@ ERRO[0000] could not retrieve list of pods: pods is forbidden: User "u-mrhdf" ca
 The user (Bearer Token) has access but not full permission. ## Cluster member vs Owner
 
 ## Additional use
-The script could be run in RKE1 or K3s clusters not managed by Rancher
+The script could be run in RKE1 or K3S clusters not managed by Rancher
 ### Note
 
 1. **Download the `collect.sh` script on a Linux node and make it executable**
