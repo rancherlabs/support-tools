@@ -468,7 +468,7 @@ k3s-k8s() {
     unset KUBECONFIG
     k3s kubectl api-resources > $TMPDIR/k3s/kubectl/api-resources 2>&1
     K3S_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations)
-    K3S_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases pods pvc replicasets roles rolebindings statefulsets)
+    K3S_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases networkpolicies pods pvc replicasets roles rolebindings statefulsets)
     for OBJECT in "${K3S_OBJECTS[@]}"; do
       k3s kubectl get ${OBJECT} -o wide > $TMPDIR/k3s/kubectl/${OBJECT} 2>&1
     done
@@ -513,7 +513,7 @@ rke2-k8s() {
     KUBECONFIG=/etc/rancher/rke2/rke2.yaml
     ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG api-resources > $TMPDIR/rke2/kubectl/api-resources 2>&1
     RKE2_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations)
-    RKE2_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases pods pvc replicasets roles rolebindings statefulsets)
+    RKE2_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases networkpolicies pods pvc replicasets roles rolebindings statefulsets)
     for OBJECT in "${RKE2_OBJECTS[@]}"; do
       ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get ${OBJECT} -o wide > $TMPDIR/rke2/kubectl/${OBJECT} 2>&1
     done
