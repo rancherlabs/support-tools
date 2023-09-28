@@ -333,20 +333,12 @@ provisioning-crds() {
       ctlcmd="docker exec kubelet kubectl --kubeconfig=${KUBECONFIG}"
   elif [ "${DISTRO}" = "k3s" ]
     then
-      KUBECONFIG=/var/lib/rancher/k3s/agent/kubelet.kubeconfig
+      KUBECONFIG=/etc/rancher/k3s/k3s.yaml
       ctlcmd="k3s kubectl --kubeconfig=$KUBECONFIG"
   elif [ "${DISTRO}" = "rke2" ]
     then
-      if [ -f ${RKE2_DIR}/agent/kubelet.kubeconfig ]; then
-        mkdir -p $TMPDIR/rke2/kubectl
-        KUBECONFIG=${RKE2_DIR}/agent/kubelet.kubeconfig
-        ctlcmd="${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG"
-      fi
-
-      if [ -f /etc/rancher/rke2/rke2.yaml ]; then
-        KUBECONFIG=/etc/rancher/rke2/rke2.yaml
-	ctlcmd="${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG"
-      fi
+      KUBECONFIG=/etc/rancher/rke2/rke2.yaml
+      ctlcmd="${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG"
   fi
 
 
