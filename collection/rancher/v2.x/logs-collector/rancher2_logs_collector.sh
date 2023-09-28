@@ -793,19 +793,20 @@ rke-etcd() {
 
   if docker ps --format='{{.Names}}' | grep -q ^etcd$ >/dev/null 2>&1; then
     techo "Collecting etcdctl output"
-    PARAM=""
-    # Check for older versions with incorrectly set ETCDCTL_ENDPOINT vs the correct ETCDCTL_ENDPOINTS
-    # If ETCDCTL_ENDPOINTS is empty, its an older version
-    if [ -z $(docker exec etcd printenv ETCDCTL_ENDPOINTS) ]; then
-      ENDPOINT=$(docker exec etcd printenv ETCDCTL_ENDPOINT)
-      if echo $ENDPOINT | grep -vq 0.0.0.0; then
-        PARAM="--endpoints=$(docker exec etcd printenv ETCDCTL_ENDPOINT)"
-      fi
-    fi
-    docker exec etcd sh -c "etcdctl $PARAM member list"  > $TMPDIR/etcd/memberlist 2>&1
-    docker exec -e ETCDCTL_ENDPOINTS=$(docker exec etcd /bin/sh -c "etcdctl $PARAM member list | cut -d, -f5 | sed -e 's/ //g' | paste -sd ','") etcd etcdctl endpoint status --write-out table > $TMPDIR/etcd/endpointstatus 2>&1
-    docker exec -e ETCDCTL_ENDPOINTS=$(docker exec etcd /bin/sh -c "etcdctl $PARAM member list | cut -d, -f5 | sed -e 's/ //g' | paste -sd ','") etcd etcdctl endpoint health > $TMPDIR/etcd/endpointhealth 2>&1
-    docker exec etcd sh -c "etcdctl $PARAM alarm list" > $TMPDIR/etcd/alarmlist 2>&1
+    docker exec etcd etcdctl member list > $TMPDIR/etcd/memberlist 2>&1
+    ETCDCTL_ENDPOINTS=$(cut -d, -f5 $TMPDIR/etcd/memberlist | sed -e 's/ //g' | paste -sd ',')
+    docker exec -e ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcd etcdctl endpoint status --write-out table > $TMPDIR/etcd/endpointstatus 2>&1
+    docker exec -e ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcd etcdctl endpoint health > $TMPDIR/etcd/endpointhealth 2>&1
+    docker exec -e ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcd etcdctl alarm list > $TMPDIR/etcd/alarmlist 2>&1
+
+    techo "Collecting rke etcd metrics"
+    KEY=$(find /etc/kubernetes/ssl/ -name "kube-etcd-*-key.pem" | head -n1)
+    CERT=$(echo $KEY | sed 's/-key//g')
+    ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b' $TMPDIR/etcd/memberlist | uniq)
+    for ENDPOINT in ${ETCD_ENDPOINTS}
+      do
+        curl -sL --cacert /etc/kubernetes/ssl/kube-ca.pem --key $KEY --cert $CERT https://$ENDPOINT:2379/metrics > $TMPDIR/etcd/etcd-metrics-$ENDPOINT.txt
+    done
   fi
 
 }
@@ -816,10 +817,21 @@ rke2-etcd() {
   if [ ! -z ${RKE2_ETCD} ]; then
     techo "Collecting rke2 etcd info"
     mkdir -p $TMPDIR/etcd
-    ETCDCTL_ENDPOINTS=$(${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "etcdctl --cert ${RKE2_DIR}/server/tls/etcd/server-client.crt --key ${RKE2_DIR}/server/tls/etcd/server-client.key --cacert ${RKE2_DIR}/server/tls/etcd/server-ca.crt member list | cut -d, -f5 | sed -e 's/ //g' | paste -sd ','")
-    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${RKE2_DIR}/server/tls/etcd/server-client.crt --key ${RKE2_DIR}/server/tls/etcd/server-client.key --cacert ${RKE2_DIR}/server/tls/etcd/server-ca.crt --write-out table endpoint status" > $TMPDIR/etcd/endpointstatus 2>&1
-    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${RKE2_DIR}/server/tls/etcd/server-client.crt --key ${RKE2_DIR}/server/tls/etcd/server-client.key --cacert ${RKE2_DIR}/server/tls/etcd/server-ca.crt endpoint health" > $TMPDIR/etcd/endpointhealth 2>&1
-    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${RKE2_DIR}/server/tls/etcd/server-client.crt --key ${RKE2_DIR}/server/tls/etcd/server-client.key --cacert ${RKE2_DIR}/server/tls/etcd/server-ca.crt alarm list" > $TMPDIR/etcd/alarmlist 2>&1
+    ETCD_CERT=${RKE2_DIR}/server/tls/etcd/server-client.crt
+    ETCD_KEY=${RKE2_DIR}/server/tls/etcd/server-client.key
+    ETCD_CACERT=${RKE2_DIR}/server/tls/etcd/server-ca.crt
+    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} member list" > $TMPDIR/etcd/memberlist 2>&1
+    ETCDCTL_ENDPOINTS=$(cut -d, -f5 $TMPDIR/etcd/memberlist | sed -e 's/ //g' | paste -sd ',')
+    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --write-out table endpoint status" > $TMPDIR/etcd/endpointstatus 2>&1
+    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} endpoint health" > $TMPDIR/etcd/endpointhealth 2>&1
+    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} alarm list" > $TMPDIR/etcd/alarmlist 2>&1
+
+    techo "Collecting rke2 etcd metrics"
+    ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b' $TMPDIR/etcd/memberlist | uniq)
+    for ENDPOINT in ${ETCD_ENDPOINTS}
+      do
+        curl -sL --cacert ${ETCD_CACERT} --key ${ETCD_KEY} --cert ${ETCD_CERT} https://$ENDPOINT:2379/metrics > $TMPDIR/etcd/etcd-metrics-$ENDPOINT.txt
+    done
   fi
 
   if [ -d "${RKE2_DIR}/server/db/etcd" ]; then
@@ -827,6 +839,28 @@ rke2-etcd() {
   fi
   if [ -d "${RKE2_DIR}/server/db/snapshots" ]; then
     find "${RKE2_DIR}/server/db/snapshots" -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbsnapshots 2>&1
+  fi
+
+}
+
+k3s-etcd() {
+
+  (echo > /dev/tcp/127.0.0.1/2379) &> /dev/null
+  if [ $? -eq 0  ]; then
+    techo "Collecting k3s etcd info"
+    mkdir -p $TMPDIR/etcd
+    K3S_DIR=/var/lib/rancher/k3s
+    ETCD_CERT=${K3S_DIR}/server/tls/etcd/server-client.crt
+    ETCD_KEY=${K3S_DIR}/server/tls/etcd/server-client.key
+    ETCD_CACERT=${K3S_DIR}/server/tls/etcd/server-ca.crt
+    curl -sL --cacert ${ETCD_CACERT} --key ${ETCD_KEY} --cert ${ETCD_CERT} https://localhost:2379/v3/cluster/member/list -X POST > $TMPDIR/etcd/memberlist.json 2>&1
+
+    techo "Collecting k3s etcd metrics"
+    ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b' $TMPDIR/etcd/memberlist.json | uniq)
+    for ENDPOINT in ${ETCD_ENDPOINTS}
+      do
+        curl -sL --cacert ${ETCD_CACERT} --key ${ETCD_KEY} --cert ${ETCD_CERT} https://$ENDPOINT:2379/metrics > $TMPDIR/etcd/etcd-metrics-$ENDPOINT.txt
+    done
   fi
 
 }
@@ -1017,6 +1051,7 @@ elif [ "${DISTRO}" = "k3s" ]
     k3s-logs
     k3s-k8s
     k3s-certs
+    k3s-etcd
 elif [ "${DISTRO}" = "rke2" ]
   then
     rke2-logs
