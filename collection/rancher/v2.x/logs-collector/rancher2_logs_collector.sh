@@ -26,8 +26,11 @@ LANG=C
 
 setup() {
 
-  TMPDIR=$(mktemp -d $MKTEMP_BASEDIR) || { techo 'Creating temporary directory failed, please check options'; exit 1; }
-  techo "Created ${TMPDIR}"
+  TMPDIR_BASE=$(mktemp -d $MKTEMP_BASEDIR) || { techo 'Creating temporary directory failed, please check options'; exit 1; }
+  techo "Created ${TMPDIR_BASE}"
+  LOGNAME="$(hostname)-$(date +'%Y-%m-%d_%H_%M_%S')"
+  mkdir -p "${TMPDIR_BASE}/${LOGNAME}"
+  TMPDIR="${TMPDIR_BASE}/${LOGNAME}"
 
 }
 
@@ -864,20 +867,21 @@ timeout_cmd() {
 
 archive() {
 
-  FILEDIR=$(dirname $TMPDIR)
-  FILENAME="$(hostname)-$(date +'%Y-%m-%d_%H_%M_%S').tar"
-  tar --create --file ${FILEDIR}/${FILENAME} --directory ${TMPDIR}/ .
-  ## gzip separately for Rancher OS
-  gzip ${FILEDIR}/${FILENAME}
-
-  techo "Created ${FILEDIR}/${FILENAME}.gz"
+  DIR_NAME=$(dirname ${TMPDIR_BASE})
+  tar --create --gzip --file ${DIR_NAME}/${LOGNAME}.tar.gz --directory ${TMPDIR_BASE}/ .
+  if [ $? -eq -0 ]
+    then
+      techo "Created ${DIR_NAME}/${LOGNAME}.tar.gz"
+    else
+      techo "Creating the tar archive did not complete successfully"
+  fi
 
 }
 
 cleanup() {
 
-  techo "Removing ${TMPDIR}"
-  rm -r -f "${TMPDIR}" >/dev/null 2>&1
+  techo "Removing ${TMPDIR_BASE}"
+  rm -r -f "${TMPDIR_BASE}" >/dev/null 2>&1
 
 }
 
