@@ -322,6 +322,69 @@ networking() {
 
 }
 
+provisioning-crds() {
+  #eventually move rancher commands into generic logic
+  techo "Collecting provisioning info"
+  mkdir -p $TMPDIR/rancher/rancher-prov
+
+  if [ "${DISTRO}" = "rke" ]
+    then
+      KUBECONFIG=/etc/kubernetes/ssl/kubecfg-kube-controller-manager.yaml
+      ctlcmd="docker exec kubelet kubectl --kubeconfig=${KUBECONFIG}"
+  elif [ "${DISTRO}" = "k3s" ]
+    then
+      KUBECONFIG=/var/lib/rancher/k3s/agent/kubelet.kubeconfig
+      ctlcmd="k3s kubectl --kubeconfig=$KUBECONFIG"
+  elif [ "${DISTRO}" = "rke2" ]
+    then
+      if [ -f ${RKE2_DIR}/agent/kubelet.kubeconfig ]; then
+        mkdir -p $TMPDIR/rke2/kubectl
+        KUBECONFIG=${RKE2_DIR}/agent/kubelet.kubeconfig
+        ctlcmd="${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG"
+      fi
+
+      if [ -f /etc/rancher/rke2/rke2.yaml ]; then
+        KUBECONFIG=/etc/rancher/rke2/rke2.yaml
+	ctlcmd="${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG"
+      fi
+  fi
+
+
+  ${ctlcmd} get clusters.management.cattle.io -o yaml > $TMPDIR/rancher/rancher-prov/clusters 2>&1
+  ${ctlcmd} get nodes.management.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/nodes 2>&1
+
+  ${ctlcmd} get custommachines.rke.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/custom-machines 2>&1
+  ${ctlcmd} get etcdsnapshots.rke.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/etcdsnapshots 2>&1
+  ${ctlcmd} get rkebootstraps.rke.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/rke-bootstrap 2>&1
+  ${ctlcmd} get rkebootstraptemplates.rke.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/rke-bootstrap-template 2>&1
+  ${ctlcmd} get rkeclusters.rke.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/rke-clusters 2>&1
+  ${ctlcmd} get rkecontrolplanes.rke.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/rke-controlplane 2>&1
+  ${ctlcmd} get clusters.provisioning.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/cluster-provisioning 2>&1
+
+  ${ctlcmd} get amazonec2machines.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/ec2-machines 2>&1
+  ${ctlcmd} get amazonec2machinetemplates.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/ec2-machine-tmpl 2>&1
+  ${ctlcmd} get azuremachines.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/azure-machines 2>&1
+  ${ctlcmd} get azuremachinetemplates.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/azure-machine-tmpl 2>&1
+  ${ctlcmd} get digitaloceanmachines.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/do-machines 2>&1
+  ${ctlcmd} get digitaloceanmachinetemplates.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/do-machine-tmpl 2>&1
+  ${ctlcmd} get harvestermachines.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/harvester-machines 2>&1
+  ${ctlcmd} get harvestermachinetemplates.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/harvester-machine-tmpl 2>&1
+  ${ctlcmd} get linodemachines.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/linode-machines 2>&1
+  ${ctlcmd} get linodemachinetemplates.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/linode-machine-tmpl 2>&1
+  ${ctlcmd} get vmwarevspheremachines.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/vsphere-machines 2>&1
+  ${ctlcmd} get vmwarevspheremachinetemplates.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/vsphere-machine-tmpl 2>&1
+
+  ${ctlcmd} get amazonec2configs.rke-machine-config.cattle.io  -o yaml -A > $TMPDIR/rancher/rancher-prov/ec2-config 2>&1
+  ${ctlcmd} get azureconfigs.rke-machine-config.cattle.io  -o yaml -A > $TMPDIR/rancher/rancher-prov/azure-config 2>&1
+  ${ctlcmd} get digitaloceanconfigs.rke-machine-config.cattle.io  -o yaml -A > $TMPDIR/rancher/rancher-prov/do-config 2>&1
+  ${ctlcmd} get harvesterconfigs.rke-machine-config.cattle.io  -o yaml -A > $TMPDIR/rancher/rancher-prov/harvester-config 2>&1
+  ${ctlcmd} get linodeconfigs.rke-machine-config.cattle.io  -o yaml -A > $TMPDIR/rancher/rancher-prov/linode-config 2>&1
+  ${ctlcmd} get vmwarevsphereconfigs.rke-machine-config.cattle.io  -o yaml -A > $TMPDIR/rancher/rancher-prov/vsphere-config 2>&1
+
+  ${ctlcmd} get configmap cattle-controllers -n kube-system -o yaml > $TMPDIR/rancher/rancher-prov/cattle-controller-cfgmap 2>&1
+
+}
+
 rke-logs() {
 
   techo "Collecting docker info"
@@ -1029,6 +1092,7 @@ fi
 sherlock
 system-all
 networking
+provisioning-crds
 if [[ "${OSRELEASE}" = "rhel" || "${OSRELEASE}" = "centos" ]]
   then
     system-rhel
