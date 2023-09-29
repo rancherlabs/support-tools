@@ -341,37 +341,11 @@ provisioning-crds() {
       ctlcmd="${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG"
   fi
 
+  CRDS=("clusters.management.cattle.io" "nodes.management.cattle.io"  "custommachines.rke.cattle.io" "etcdsnapshots.rke.cattle.io" "rkebootstraps.rke.cattle.io" "rkebootstraptemplates.rke.cattle.io" "rkeclusters.rke.cattle.io" "rkecontrolplanes.rke.cattle.io" "clusters.provisioning.cattle.io"  "amazonec2machines.rke-machine.cattle.io" "amazonec2machinetemplates.rke-machine.cattle.io" "azuremachines.rke-machine.cattle.io" "azuremachinetemplates.rke-machine.cattle.io" "digitaloceanmachines.rke-machine.cattle.io" "digitaloceanmachinetemplates.rke-machine.cattle.io" "harvestermachines.rke-machine.cattle.io" "harvestermachinetemplates.rke-machine.cattle.io" "linodemachines.rke-machine.cattle.io" "linodemachinetemplates.rke-machine.cattle.io" "vmwarevspheremachines.rke-machine.cattle.io" "vmwarevspheremachinetemplates.rke-machine.cattle.io" "amazonec2configs.rke-machine-config.cattle.io" "azureconfigs.rke-machine-config.cattle.io" "digitaloceanconfigs.rke-machine-config.cattle.io" "harvesterconfigs.rke-machine-config.cattle.io" "linodeconfigs.rke-machine-config.cattle.io" "vmwarevsphereconfigs.rke-machine-config.cattle.io")
 
-  ${ctlcmd} get clusters.management.cattle.io -o yaml > $TMPDIR/rancher/rancher-prov/clusters 2>&1
-  ${ctlcmd} get nodes.management.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/nodes 2>&1
-
-  ${ctlcmd} get custommachines.rke.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/custom-machines 2>&1
-  ${ctlcmd} get etcdsnapshots.rke.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/etcdsnapshots 2>&1
-  ${ctlcmd} get rkebootstraps.rke.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/rke-bootstrap 2>&1
-  ${ctlcmd} get rkebootstraptemplates.rke.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/rke-bootstrap-template 2>&1
-  ${ctlcmd} get rkeclusters.rke.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/rke-clusters 2>&1
-  ${ctlcmd} get rkecontrolplanes.rke.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/rke-controlplane 2>&1
-  ${ctlcmd} get clusters.provisioning.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/cluster-provisioning 2>&1
-
-  ${ctlcmd} get amazonec2machines.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/ec2-machines 2>&1
-  ${ctlcmd} get amazonec2machinetemplates.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/ec2-machine-tmpl 2>&1
-  ${ctlcmd} get azuremachines.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/azure-machines 2>&1
-  ${ctlcmd} get azuremachinetemplates.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/azure-machine-tmpl 2>&1
-  ${ctlcmd} get digitaloceanmachines.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/do-machines 2>&1
-  ${ctlcmd} get digitaloceanmachinetemplates.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/do-machine-tmpl 2>&1
-  ${ctlcmd} get harvestermachines.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/harvester-machines 2>&1
-  ${ctlcmd} get harvestermachinetemplates.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/harvester-machine-tmpl 2>&1
-  ${ctlcmd} get linodemachines.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/linode-machines 2>&1
-  ${ctlcmd} get linodemachinetemplates.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/linode-machine-tmpl 2>&1
-  ${ctlcmd} get vmwarevspheremachines.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/vsphere-machines 2>&1
-  ${ctlcmd} get vmwarevspheremachinetemplates.rke-machine.cattle.io -o yaml -A > $TMPDIR/rancher/rancher-prov/vsphere-machine-tmpl 2>&1
-
-  ${ctlcmd} get amazonec2configs.rke-machine-config.cattle.io  -o yaml -A > $TMPDIR/rancher/rancher-prov/ec2-config 2>&1
-  ${ctlcmd} get azureconfigs.rke-machine-config.cattle.io  -o yaml -A > $TMPDIR/rancher/rancher-prov/azure-config 2>&1
-  ${ctlcmd} get digitaloceanconfigs.rke-machine-config.cattle.io  -o yaml -A > $TMPDIR/rancher/rancher-prov/do-config 2>&1
-  ${ctlcmd} get harvesterconfigs.rke-machine-config.cattle.io  -o yaml -A > $TMPDIR/rancher/rancher-prov/harvester-config 2>&1
-  ${ctlcmd} get linodeconfigs.rke-machine-config.cattle.io  -o yaml -A > $TMPDIR/rancher/rancher-prov/linode-config 2>&1
-  ${ctlcmd} get vmwarevsphereconfigs.rke-machine-config.cattle.io  -o yaml -A > $TMPDIR/rancher/rancher-prov/vsphere-config 2>&1
+  for item in "${CRDS[@]}"; do
+    ${ctlcmd} get ${item} -o yaml -A > $TMPDIR/rancher/rancher-prov/${item} 2>&1
+  done
 
   ${ctlcmd} get configmap cattle-controllers -n kube-system -o yaml > $TMPDIR/rancher/rancher-prov/cattle-controller-cfgmap 2>&1
 
