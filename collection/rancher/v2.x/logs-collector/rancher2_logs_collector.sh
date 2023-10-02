@@ -324,30 +324,21 @@ networking() {
 
 provisioning-crds() {
 
-  if [ "${DISTRO}" = "rke" ]
+  if [[ "${DISTRO}" = "rke" && -f /etc/kubernetes/ssl/kubecfg-kube-controller-manager.yaml ]]
     then
-      if [ -f /etc/kubernetes/ssl/kubecfg-kube-controller-manager.yaml ]
-        then
-          KUBECONFIG=/etc/kubernetes/ssl/kubecfg-kube-controller-manager.yaml
-          ctlcmd="${RKE2_DIR}/bin/kubectl --kubeconfig=${KUBECONFIG}"
-          CONTROL_PLANE=1
-      fi
-  elif [ "${DISTRO}" = "k3s" ]
+      KUBECONFIG=/etc/kubernetes/ssl/kubecfg-kube-controller-manager.yaml
+      ctlcmd="docker exec kubelet kubectl --kubeconfig=${KUBECONFIG}"
+      CONTROL_PLANE=1
+  elif [[ "${DISTRO}" = "k3s" &&  -d /var/lib/rancher/${DISTRO}/server ]]
     then
-      if [ -d /var/lib/rancher/${DISTRO}/server ]
-        then
-          KUBECONFIG=/etc/rancher/${DISTRO}/k3s.yaml
-          ctlcmd="k3s kubectl --kubeconfig=${KUBECONFIG}"
-          CONTROL_PLANE=1
-      fi
-  elif [ "${DISTRO}" = "rke2" ]
+      KUBECONFIG=/etc/rancher/${DISTRO}/k3s.yaml
+      ctlcmd="k3s kubectl --kubeconfig=${KUBECONFIG}"
+      CONTROL_PLANE=1
+  elif [[ "${DISTRO}" = "rke2" &&  -f /etc/rancher/${DISTRO}/rke2.yaml ]]
     then
-      if [ -f /etc/rancher/${DISTRO}/rke2.yaml ]
-        then
-          KUBECONFIG=/etc/rancher/${DISTRO}/rke2.yaml
-          ctlcmd="${RKE2_DIR}/bin/kubectl --kubeconfig=${KUBECONFIG}"
-          CONTROL_PLANE=1
-      fi
+      KUBECONFIG=/etc/rancher/${DISTRO}/rke2.yaml
+      ctlcmd="${RKE2_DIR}/bin/kubectl --kubeconfig=${KUBECONFIG}"
+      CONTROL_PLANE=1
   fi
 
   if [ -n "$CONTROL_PLANE" ]
