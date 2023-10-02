@@ -667,7 +667,7 @@ var-log() {
       if [ -d /var/log/${STAT_PACKAGE} ]
         then
           mkdir -p $TMPDIR/systemlogs/${STAT_PACKAGE}-data
-          find /var/log/${STAT_PACKAGE} -mtime -7 -exec cp -rp {} $TMPDIR/systemlogs/${STAT_PACKAGE}-data \;
+          find /var/log/${STAT_PACKAGE} -mtime -7 -type f -exec cp -p {} $TMPDIR/systemlogs/${STAT_PACKAGE}-data \;
       fi
   done
 
