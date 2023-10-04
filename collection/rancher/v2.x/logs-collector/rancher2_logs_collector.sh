@@ -837,10 +837,10 @@ rke-etcd() {
     techo "Collecting rke etcd metrics"
     KEY=$(find /etc/kubernetes/ssl/ -name "kube-etcd-*-key.pem" | head -n1)
     CERT=$(echo $KEY | sed 's/-key//g')
-    ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b' $TMPDIR/etcd/memberlist | uniq)
+    ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}:2379\b' $TMPDIR/etcd/memberlist | uniq)
     for ENDPOINT in ${ETCD_ENDPOINTS}
       do
-        curl -sL --cacert /etc/kubernetes/ssl/kube-ca.pem --key $KEY --cert $CERT https://$ENDPOINT:2379/metrics > $TMPDIR/etcd/etcd-metrics-$ENDPOINT.txt
+        curl -sL --connect-timeout 5 --cacert /etc/kubernetes/ssl/kube-ca.pem --key $KEY --cert $CERT https://$ENDPOINT/metrics > $TMPDIR/etcd/etcd-metrics-$ENDPOINT.txt
     done
   fi
 
@@ -862,10 +862,10 @@ rke2-etcd() {
     ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} alarm list" > $TMPDIR/etcd/alarmlist 2>&1
 
     techo "Collecting rke2 etcd metrics"
-    ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b' $TMPDIR/etcd/memberlist | uniq)
+    ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}:2379\b' $TMPDIR/etcd/memberlist | uniq)
     for ENDPOINT in ${ETCD_ENDPOINTS}
       do
-        curl -sL --cacert ${ETCD_CACERT} --key ${ETCD_KEY} --cert ${ETCD_CERT} https://$ENDPOINT:2379/metrics > $TMPDIR/etcd/etcd-metrics-$ENDPOINT.txt
+        curl -sL --connect-timeout 5 --cacert ${ETCD_CACERT} --key ${ETCD_KEY} --cert ${ETCD_CERT} https://$ENDPOINT/metrics > $TMPDIR/etcd/etcd-metrics-$ENDPOINT.txt
     done
   fi
 
@@ -891,10 +891,10 @@ k3s-etcd() {
     curl -sL --cacert ${ETCD_CACERT} --key ${ETCD_KEY} --cert ${ETCD_CERT} https://localhost:2379/v3/cluster/member/list -X POST > $TMPDIR/etcd/memberlist.json 2>&1
 
     techo "Collecting k3s etcd metrics"
-    ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b' $TMPDIR/etcd/memberlist.json | uniq)
+    ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}:2379\b' $TMPDIR/etcd/memberlist.json | uniq)
     for ENDPOINT in ${ETCD_ENDPOINTS}
       do
-        curl -sL --cacert ${ETCD_CACERT} --key ${ETCD_KEY} --cert ${ETCD_CERT} https://$ENDPOINT:2379/metrics > $TMPDIR/etcd/etcd-metrics-$ENDPOINT.txt
+        curl -sL --connect-timeout 5 --cacert ${ETCD_CACERT} --key ${ETCD_KEY} --cert ${ETCD_CERT} https://$ENDPOINT/metrics > $TMPDIR/etcd/etcd-metrics-$ENDPOINT.txt
     done
   fi
 
