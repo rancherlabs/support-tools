@@ -27,7 +27,7 @@ run() {
     else
       techo "No volumes exist, skipping container volume cleanup..."
   fi
-  if [[ ${CLEANUP_IMAGES} -eq 1 ]]
+  if [[ ${DELETE_IMAGES} -eq 1 ]]
     then
       IMAGES=$(docker images -q)
       if [[ -n ${IMAGES} ]]
@@ -37,9 +37,11 @@ run() {
           techo "No images exist, skipping container image cleanup..."
       fi
   fi
-  if [[ ${FLUSH_IPTABLES} -eq 1 ]]
+  if [[ -z ${SKIP_FLUSH_IPTABLES} ]]
     then
       flush-iptables
+    else
+      techo "Skipping flush of iptables rules..."
   fi
   techo "Done!"
 
@@ -62,7 +64,7 @@ cleanup-dirs() {
 
   if [ -n "${DELETE_SNAPSHOTS}" ]
     then
-      techo "Removing etcd snapshots"
+      techo "Removing etcd snapshots..."
       rm -rf /opt/rke
   fi
   techo "Removing directories..."
@@ -124,17 +126,19 @@ flush-iptables() {
 help() {
 
   echo "Rancher 2.x extended cleanup
-  Usage: bash extended-cleanup-rancher2.sh [ -f -i ]
+  Usage: bash extended-cleanup-rancher2.sh [ -f -i -s ]
 
   All flags are optional
 
-  -f | --flush-iptables     Flush all iptables rules (includes a Docker restart)
-  -i | --flush-images       Cleanup all container images
+  -f | --skip-iptables      Skip flush of iptables rules
+  -i | --delete-images      Cleanup all container images
   -s | --delete-snapshots   Cleanup all etcd snapshots
   -h                        This help menu
 
-  !! Warning, this script removes containers and all data specific to Kubernetes and Rancher
-  !! Backup data as needed before running this script, and use at your own risk."
+    !! Warning, this script flushes iptables rules, removes containers, and all data specific to Kubernetes and Rancher
+    !! Docker will be restarted when flushing iptables rules
+    !! Backup data as needed before running this script
+    !! Use at your own risk"
 
 }
 
@@ -160,13 +164,13 @@ fi
 while test $# -gt 0
   do
     case ${1} in
-      -f|--flush-iptables)
+      -f|--skip-iptables)
         shift
-        FLUSH_IPTABLES=1
+        SKIP_FLUSH_IPTABLES=1
         ;;
-      -i|--flush-images)
+      -i|--delete-images)
         shift
-        CLEANUP_IMAGES=1
+        DELETE_IMAGES=1
         ;;
       -s|--delete-snapshots)
         shift
