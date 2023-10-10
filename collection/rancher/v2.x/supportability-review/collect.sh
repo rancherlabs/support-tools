@@ -23,20 +23,27 @@ Environment variables:
 
 SR_IMAGE=${SR_IMAGE:-"ghcr.io/rancherlabs/supportability-review:latest"}
 
-if [[ "$SR_IMAGE" != *":dev" ]]; then
-  echo "pulling image: ${SR_IMAGE}"
-  docker pull "${SR_IMAGE}"
+if [ "${CONTAINER_RUNTIME}" == "" ]; then
+  if command -v docker &> /dev/null; then
+    echo "setting CONTAINER_RUNTIME=docker"
+    CONTAINER_RUNTIME="docker"
+  else
+    if command -v nerdctl &> /dev/null; then
+      echo "setting CONTAINER_RUNTIME=nerdctl"
+      CONTAINER_RUNTIME="nerdctl"
+    elif command -v crictl &> /dev/null; then
+      echo "setting CONTAINER_RUNTIME=crictl"
+      CONTAINER_RUNTIME="crictl"
+    else
+      echo "error: couldn't detect CONTAINER_RUNTIME"
+      exit 1
+    fi
+  fi
 fi
 
-if [ ! `command -v docker` && `command -v nerdctl` && `command -v crictl` ]; then
-
-  if [ "${CONTAINERD_ADDRESS}" == "" ]; then
-    echo "error: CONTAINERD_ADDRESS is not set"
-    exit 1
-  fi
-  CONTAINER_RUNTIME=nerdctl
-else
-  CONTAINER_RUNTIME=docker
+if [[ "$SR_IMAGE" != *":dev" ]]; then
+  echo "pulling image: ${SR_IMAGE}"
+  $CONTAINER_RUNTIME pull "${SR_IMAGE}"
 fi
 
 if [ "${KUBECONFIG}" == "" ]; then

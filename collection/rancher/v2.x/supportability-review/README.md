@@ -125,7 +125,7 @@ export SR_COLLECT_CLUSTER_INFO_DUMP=1
 ```
 
 ## FAQ
-1) Rancher downstrean clusters are X but the scan does not detect all
+1) Rancher downstream clusters are X but the scan does not detect all
 ```
 INFO     | sscan |__main__:collect_info_from_clusters_using_rancher_api:288 - No of clusters detected: 2
 ```

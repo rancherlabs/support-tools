@@ -168,7 +168,6 @@ collect_rke_node_info() {
 collect_rke2_node_info() {
   mkdir -p "${OUTPUT_DIR}/rke2"
   RKE2_BINARY=$( pgrep -a rke2 | cut -d' ' -f2 )
-  $HOST_FS_PREFIX$RKE2_BINARY --version | head -n1 | cut -d' ' -f 3 | cut -d'.' -f1-2 | tr -d 'v' > ${OUTPUT_DIR}/rke2/kubernetes-version 2>&1
 
   #Get RKE2 Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" ]; then
@@ -187,7 +186,6 @@ collect_rke2_node_info() {
 collect_k3s_node_info() {
   mkdir -p "${OUTPUT_DIR}/k3s"
   K3S_BINARY=$( pgrep -a k3s | cut -d' ' -f2 )
-  $HOST_FS_PREFIX$K3S_BINARY --version | head -n1 | cut -d' ' -f 3 | cut -d'.' -f1-2 | tr -d 'v' > ${OUTPUT_DIR}/k3s/kubernetes-version 2>&1
 
   #Get k3s Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml" ]; then
