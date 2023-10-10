@@ -116,6 +116,14 @@ Usage: collect.sh [ --cluster  <cluster-name> --cluster <cluster-id>]
 
 All flags are optional.
 ```
+
+## Config ENV variables
+
+```shell
+# To enable collection of cluster-info dump
+export SR_COLLECT_CLUSTER_INFO_DUMP=1
+```
+
 ## FAQ
 1) Rancher downstrean clusters are X but the scan does not detect all
 ```

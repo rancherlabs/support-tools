@@ -50,7 +50,11 @@ collect_common_cluster_info() {
   kubectl get settings.management.cattle.io server-version -o json > server-version.json
   kubectl get clusters.management.cattle.io -o json > clusters.management.cattle.io.json
 
-  kubectl cluster-info dump > cluster-info.dump.log
+  # Make collection optional
+  if [ ! -z "${SR_COLLECT_CLUSTER_INFO_DUMP}" ]; then
+    echo "SR_COLLECT_CLUSTER_INFO_DUMP is set, hence collecting cluster-info dump"
+    kubectl cluster-info dump > cluster-info.dump.log
+  fi
 }
 
 collect_rke_info() {
