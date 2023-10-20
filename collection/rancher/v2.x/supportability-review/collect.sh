@@ -27,17 +27,15 @@ if [ "${CONTAINER_RUNTIME}" == "" ]; then
   if command -v docker &> /dev/null; then
     echo "setting CONTAINER_RUNTIME=docker"
     CONTAINER_RUNTIME="docker"
+  elif command -v nerdctl &> /dev/null; then
+    echo "setting CONTAINER_RUNTIME=nerdctl"
+    CONTAINER_RUNTIME="nerdctl"
+  elif command -v podman &> /dev/null; then
+    echo "setting CONTAINER_RUNTIME=podman"
+    CONTAINER_RUNTIME="podman"
   else
-    if command -v nerdctl &> /dev/null; then
-      echo "setting CONTAINER_RUNTIME=nerdctl"
-      CONTAINER_RUNTIME="nerdctl"
-    elif command -v crictl &> /dev/null; then
-      echo "setting CONTAINER_RUNTIME=crictl"
-      CONTAINER_RUNTIME="crictl"
-    else
-      echo "error: couldn't detect CONTAINER_RUNTIME"
-      exit 1
-    fi
+    echo "error: couldn't detect CONTAINER_RUNTIME"
+    exit 1
   fi
 fi
 

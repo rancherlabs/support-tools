@@ -69,7 +69,7 @@ The script needs to be run on the node, using the root user or a user in the `do
   ./collect.sh
   ```
 
-**Note:** Ensure the docker daemon is running.
+**Note:** Ensure the docker daemon is running or `nerdctl` is installed or `podman` is installed.
 
   #### For Airgap setup
 
