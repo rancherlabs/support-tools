@@ -391,7 +391,10 @@ k3s-logs() {
   k3s crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
   if [ -f /etc/systemd/system/${DISTRO}.service ]
     then
-      cp -p /etc/systemd/system/${DISTRO}.service $TMPDIR/${DISTRO}/${DISTRO}.service
+      sed -e '/--token/{n;s/.*/\t<token redacted>/}' \
+          -e '/--etcd-s3-access-key/{n;s/.*/\t<access-key redacted>/}' \
+          -e '/--etcd-s3-secret-key/{n;s/.*/\t<secret-key redacted>/}' \
+          /etc/systemd/system/${DISTRO}*.service >& $TMPDIR/${DISTRO}/${DISTRO}.service
   fi
   if [ -f /etc/rancher/${DISTRO}/config.yaml ]
     then
