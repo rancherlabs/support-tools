@@ -137,12 +137,13 @@ collect_networking_info_ip6() {
 
 collect_websock_info() {
   # echo "SGVsbG8sIHdvcmxkIQ==" | base64 -d
-  # Hello, world!
-  echo "${RANCHER_URL}" > networking/rancher_url 2>&1
+  RANCHER_HOST="${RANCHER_URL//http?(s):\/\//}"
+  echo ${RANCHER_URL} > networking/rancher_url 2>&1
+  echo ${RANCHER_HOST%/} >> networking/rancher_url 2>&1
   curl -s --include --no-buffer \
   --header "Connection: Upgrade" \
   --header "Upgrade: websocket" \
-  --header "Host: "${RANCHER_URL} \
+  --header "Host: "${RANCHER_HOST%/} \
   --header "Origin: "${RANCHER_URL} \
   --header "Sec-WebSocket-Key: SGVsbG8sIHdvcmxkIQ==" \
   --header "Sec-WebSocket-Version: 13" ${RANCHER_URL}/healthz \

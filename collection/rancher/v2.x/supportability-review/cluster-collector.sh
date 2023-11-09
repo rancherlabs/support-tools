@@ -46,6 +46,9 @@ collect_common_cluster_info() {
   jq -cr '.items | length' pods.json > pod-count
   jq -cr '[([.items[].spec.containers | length] | add), ([.items[].spec.initContainers | length] | add)] | add' pods.json > container-count
   jq -cr '[[.items[].spec.nodeName] | group_by(.) | map({(.[0]): length}) | add | to_entries[] | select(.value > 110) | .key] | length' pods.json > count-of-nodes-with-more-than-110-pods
+  jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' pods.json > terminating-pods
+  kubectl get services -A -o json > services.json
+  jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' services.json > terminating-services
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
   kubectl get settings.management.cattle.io server-version -o json > server-version.json
   kubectl get clusters.management.cattle.io -o json > clusters.management.cattle.io.json
@@ -159,6 +162,7 @@ collect_cluster_info() {
 
 delete_sensitive_info() {
   rm pods.json
+  rm services.json
 }
 
 
