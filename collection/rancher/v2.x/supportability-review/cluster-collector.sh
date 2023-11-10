@@ -34,6 +34,8 @@ prereqs() {
 
 collect_common_cluster_info() {
   date "+%Y-%m-%d %H:%M:%S" > date.log
+  echo ${RANCHER_URL} > rancher_url 2>&1
+  echo ${HOSTED_RANCHER_HOSTNAME_SUFFIX} > hosted_rancher_hostname_suffix 2>&1
 
   kubectl version -o json > kubectl-version.json
   kubectl get nodes -o json > nodes.json

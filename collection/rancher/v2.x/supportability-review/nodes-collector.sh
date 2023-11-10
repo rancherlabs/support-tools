@@ -137,9 +137,10 @@ collect_networking_info_ip6() {
 
 collect_websock_info() {
   # echo "SGVsbG8sIHdvcmxkIQ==" | base64 -d
-  RANCHER_HOST="${RANCHER_URL//http?(s):\/\//}"
+  RANCHER_HOST=$(echo ${RANCHER_URL} | sed -E 's/^http(s)?:\/\///')
   echo ${RANCHER_URL} > networking/rancher_url 2>&1
-  echo ${RANCHER_HOST%/} >> networking/rancher_url 2>&1
+  echo ${RANCHER_HOST%/} > networking/rancher_host 2>&1
+  echo ${HOSTED_RANCHER_HOSTNAME_SUFFIX} > networking/hosted_rancher_hostname_suffix 2>&1
   curl -s --include --no-buffer \
   --header "Connection: Upgrade" \
   --header "Upgrade: websocket" \
