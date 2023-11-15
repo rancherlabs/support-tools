@@ -76,7 +76,7 @@ The script needs to be run on the node, using the root user or a user in the `do
   To be able to run this tool in an airgap environment, two images need to be mirrored in the private registry.
 
   - Supportability Review Image (SR Image): `ghcr.io/rancherlabs/supportability-review:latest`
-  - Sonobuoy Image: `rancher/mirrored-sonobuoy-sonobuoy:v0.56.7`
+  - Sonobuoy Image: `rancher/mirrored-sonobuoy-sonobuoy:v0.57.0`
 
   ```
   export SRC_SR_IMAGE="ghcr.io/rancherlabs/supportability-review:latest"
@@ -84,8 +84,8 @@ The script needs to be run on the node, using the root user or a user in the `do
   docker tag $SRC_SR_IMAGE $DST_SR_IMAGE
   docker push $DST_SR_IMAGE
 
-  export SRC_SONOBUOY_IMAGE="rancher/mirrored-sonobuoy-sonobuoy:v0.56.7"
-  export DST_SONOBUOY_IMAGE="registry.example.com/sonobuoy:v0.56.7"
+  export SRC_SONOBUOY_IMAGE="rancher/mirrored-sonobuoy-sonobuoy:v0.57.0"
+  export DST_SONOBUOY_IMAGE="registry.example.com/sonobuoy:v0.57.0"
   docker tag $SRC_SONOBUOY_IMAGE $DST_SONOBUOY_IMAGE
   docker push $DST_SONOBUOY_IMAGE
   ```
