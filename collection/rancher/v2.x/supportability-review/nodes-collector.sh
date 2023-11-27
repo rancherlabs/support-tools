@@ -192,6 +192,8 @@ collect_k3s_node_info() {
   #Get k3s Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml" ]; then
     cat ${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/k3s/config.yaml
+  else
+    touch ${OUTPUT_DIR}/k3s/config.yaml
   fi
   if [ -d "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml.d" ]; then
     mkdir -p "${OUTPUT_DIR}/k3s/config.yaml.d"

@@ -63,7 +63,7 @@ Please review the below files for details:
 
 **3. Run the collection script**
 
-The script needs to be run on the node, using the root user or a user in the `docker` group.
+The script needs to be run on a linux machine running docker with access to your Rancher instance, using the root user or a user in the `docker` group. 
 
   ```shell
   ./collect.sh
@@ -148,8 +148,7 @@ The script could be run in RKE1/RKE2/K3S clusters not managed by Rancher
    export KUBECONFIG="/pathto/kubeconfig.yaml"
    ```
 3. **Run the collection script**
-
- The script needs to be run directly on the node, using the root user or a user in the ```docker group```. Ensure the docker daemon is running.
+ The script needs to be run on a linux machine running docker with access to your Kubernetes instance, using the root user or a user in the `docker` group.
 ```
  ./collect.sh
 ```
