@@ -54,6 +54,8 @@ collect_common_cluster_info() {
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
   kubectl get settings.management.cattle.io server-version -o json > server-version.json
   kubectl get clusters.management.cattle.io -o json > clusters.management.cattle.io.json
+  kubectl get storageclasses.storage.k8s.io -A -o json > storageclasses.storage.k8s.io.json
+  kubectl get persistentvolumeclaims -A -o json > persistentvolumeclaims.json
 
   # Make collection optional
   if [ ! -z "${SR_COLLECT_CLUSTER_INFO_DUMP}" ]; then
