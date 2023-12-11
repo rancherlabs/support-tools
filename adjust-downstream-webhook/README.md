@@ -12,7 +12,7 @@ Since each version of the webhook is one-to-one compatible with a specific versi
 ```bash
 ## Create a token through the UI. The token should have no scope and be made for a user who is a global admin.
 read -s RANCHER_TOKEN && export RANCHER_TOKEN
-## The server URL for Rancher - you can get this value in the "server-url" setting. The example format should be: https://rancher-test.home
+## The server URL for Rancher - you can get this value in the "server-url" setting. You can find it by going to Global Settings => Settings => server-url. The example format should be: https://rancher-test.home
 read -s RANCHER_URL && export RANCHER_URL
 bash adjust-downstream-webhook.sh
 ```
