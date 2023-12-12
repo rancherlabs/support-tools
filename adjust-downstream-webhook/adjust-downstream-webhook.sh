@@ -7,6 +7,7 @@ usage: bash adjust-downstream-webhook.sh [--insecure-skip-tls-verify]
 This script adjusts the rancher-webhook chart release in all clusters managed by Rancher (excluding the local cluster).
 Depending on the version of Rancher, it either deletes the downstream webhook release, adjusts its version and restarts, or does nothing.
 Requires kubectl and helm to be installed and available on \$PATH.
+Requires rancher-charts helm repo. If you don't have it, please add: helm repo add rancher-charts https://charts.rancher.io && helm repo update
 
 RANCHER_URL without a trailing slash must be set with the server URL of Rancher.
 RANCHER_TOKEN must be set with an admin token generated with no scope.
