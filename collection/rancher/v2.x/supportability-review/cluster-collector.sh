@@ -56,6 +56,7 @@ collect_common_cluster_info() {
   kubectl get clusters.management.cattle.io -o json > clusters.management.cattle.io.json
   kubectl get storageclasses.storage.k8s.io -A -o json > storageclasses.storage.k8s.io.json
   kubectl get persistentvolumeclaims -A -o json > persistentvolumeclaims.json
+  kubectl get apps.catalog.cattle.io -n cattle-monitoring-system -o json > cattle-monitoring-system-apps.json
 
   # Make collection optional
   if [ ! -z "${SR_COLLECT_CLUSTER_INFO_DUMP}" ]; then
@@ -81,6 +82,8 @@ collect_rke2_info() {
   #Get RKE2 Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" ]; then
     cat ${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/rke2/config.yaml
+  else
+    touch ${OUTPUT_DIR}/rke2/config.yaml
   fi
   if [ -d "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml.d" ]; then
     mkdir -p "${OUTPUT_DIR}/rke2/config.yaml.d"
@@ -116,7 +119,6 @@ collect_upstream_cluster_info() {
   kubectl get configmap -n kube-system cattle-controllers -o json > cattle-controllers-configmap.json
   kubectl get bundles.fleet.cattle.io -n fleet-local  -o json > fleet-local-bundle.json
   kubectl get apps.catalog.cattle.io -n cattle-logging-system -o json > cattle-logging-system-apps.json
-  kubectl get apps.catalog.cattle.io -n cattle-monitoring-system -o json > cattle-monitoring-system-apps.json
   kubectl get apps.catalog.cattle.io -n cattle-resources-system -o json > cattle-resources-system-apps.json
   kubectl get backup.resources.cattle.io -o json > backup.json
   jq '[.items[] | select(.metadata.namespace == "cattle-system" and .metadata.labels.app == "rancher") | .spec.nodeName] | unique | length' pods.json > unique-rancher-pod-count-by-node
