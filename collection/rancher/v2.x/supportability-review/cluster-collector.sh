@@ -43,12 +43,24 @@ collect_common_cluster_info() {
   kubectl -n default get services -o json > services-default.json
   kubectl get crds -o json > crds.json
   kubectl get ds -n cattle-system -o json > cattle-system-daemonsets.json
+  kubectl get ds -n kube-system -o json > kube-system-daemonsets.json
+  kubectl get ds -n calico-system -o json > calico-system-daemonsets.json
   # TODO: This call might take a lot of time in scale setups. We need to reconsider usage.
   kubectl get pods -A -o json > pods.json
   jq -cr '.items | length' pods.json > pod-count
   jq -cr '[([.items[].spec.containers | length] | add), ([.items[].spec.initContainers | length] | add)] | add' pods.json > container-count
   jq -cr '[[.items[].spec.nodeName] | group_by(.) | map({(.[0]): length}) | add | to_entries[] | select(.value > 110) | .key] | length' pods.json > count-of-nodes-with-more-than-110-pods
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' pods.json > terminating-pods
+  jq -c '.items[]' nodes.json | {
+    RESULT_JSON=""
+    while read -r item; do
+      NODENAME=$(echo $item | tr '\n' ' ' | jq -cr '.metadata.name')
+      IP_LIST=$(jq ".items[] | select(.spec.nodeName == \"$NODENAME\") | .status.podIPs[].ip" pods.json | jq -s '.')
+      ADDITONAL_JSON=$(echo "{\""$NODENAME"\":" $IP_LIST "}")
+      RESULT_JSON=$(jq -s add <<< "$RESULT_JSON $ADDITONAL_JSON")
+    done
+    echo ${RESULT_JSON} | jq '.' > pod-ipaddresses.json
+  }
   kubectl get services -A -o json > services.json
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' services.json > terminating-services
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
