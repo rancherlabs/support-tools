@@ -135,7 +135,6 @@ collect_upstream_cluster_info() {
   kubectl get backup.resources.cattle.io -o json > backup.json
   jq '[.items[] | select(.metadata.namespace == "cattle-system" and .metadata.labels.app == "rancher") | .spec.nodeName] | unique | length' pods.json > unique-rancher-pod-count-by-node
 
-  kubectl get settings.management.cattle.io server-version -o json > server-version.json
   kubectl get settings.management.cattle.io install-uuid -o json > install-uuid.json
   kubectl get nodes.management.cattle.io -A -o json > nodes-cattle.json
   kubectl get --no-headers tokens.management.cattle.io | wc -l > token-count.txt
