@@ -79,7 +79,7 @@ sherlock() {
       fi
     else
       echo -n "$(timestamp): Detecting k8s distribution... "
-      if $(command -v k3s >/dev/null 2>&1)
+      if $(command -v k3s >/dev/null 2>&1) || $(command -v /opt/bin/k3s >/dev/null 2>&1)
         then
           if $(k3s crictl ps >/dev/null 2>&1)
             then
@@ -89,7 +89,7 @@ sherlock() {
               FOUND+="k3s"
           fi
       fi
-      if $(command -v rke2 >/dev/null 2>&1)
+      if $(command -v rke2 >/dev/null 2>&1) || $(command -v /opt/rke2/bin/rke2 >/dev/null 2>&1)
         then
           sherlock-data-dir
           if $(${RKE2_DIR}/bin/crictl ps >/dev/null 2>&1)
