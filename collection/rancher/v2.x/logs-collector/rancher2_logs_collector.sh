@@ -99,6 +99,8 @@ sherlock() {
             else
               FOUND+="rke2"
           fi
+          echo "$(timestamp): Using RKE2 binaries in... ${RKE2_BIN}"
+          echo "$(timestamp): Using data-dir... ${RKE2_DIR}"
       fi
       if $(command -v docker >/dev/null 2>&1)
         then
@@ -135,13 +137,19 @@ sherlock() {
       echo "other"
   fi
 
-  echo "$(timestamp): Using discovered data-dir... ${RKE2_DIR}"
-
 }
 
 sherlock-data-dir() {
 
-  RKE2_BIN=$(dirname $(which rke2))
+  which rke2 > /dev/null 2>&1
+  if [ $? -eq 0 ]
+    then
+      RKE2_BIN=$(dirname $(which rke2))
+  elif [ -f /opt/rke2/bin/rke2 ]
+    then
+      RKE2_BIN=$(dirname /opt/rke2/bin/rke2)
+  fi
+
   if [ -f /etc/rancher/${DISTRO}/config.yaml ]
     then
       CUSTOM_DIR=$(awk '$1 ~ /data-dir:/ {print $2}' /etc/rancher/${DISTRO}/config.yaml)
