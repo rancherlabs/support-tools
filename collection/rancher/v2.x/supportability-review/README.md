@@ -124,6 +124,91 @@ All flags are optional.
 export SR_COLLECT_CLUSTER_INFO_DUMP=1
 ```
 
+## Security Policies
+If you are using Security Policies, they may prevent collect.sh from working. This section provides solutions for each Security Policy Tool.
+
+### Kyverno
+You can use the `exclude` field to bypass Security Policy errors.
+
+For example, suppose you were using the [Disallow Privilege Escalation Policy](https://kyverno.io/policies/pod-security/restricted/disallow-privilege-escalation/disallow-privilege-escalation/) with the following YAML file.
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privilege-escalation
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: privilege-escalation
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: >-
+          Privilege escalation is disallowed. The fields
+          spec.containers[*].securityContext.allowPrivilegeEscalation,
+          spec.initContainers[*].securityContext.allowPrivilegeEscalation,
+          and spec.ephemeralContainers[*].securityContext.allowPrivilegeEscalation
+          must be set to `false`.
+        pattern:
+          spec:
+            =(ephemeralContainers):
+            - securityContext:
+                allowPrivilegeEscalation: "false"
+            =(initContainers):
+            - securityContext:
+                allowPrivilegeEscalation: "false"
+            containers:
+            - securityContext:
+                allowPrivilegeEscalation: "false"
+```
+
+In this case, `collect.sh` outputs the following error and exits abnormally.
+
+```
+ERRO[0000] error attempting to run sonobuoy: failed to create object: failed to create API resource sonobuoy: admission webhook "validate.kyverno.svc-fail" denied the request:
+
+resource Pod/sonobuoy/sonobuoy was blocked due to the following policies
+
+disallow-privilege-escalation:
+  privilege-escalation: 'validation error: Privilege escalation is disallowed. The
+    fields spec.containers[*].securityContext.allowPrivilegeEscalation, spec.initContainers[*].securityContext.allowPrivilegeEscalation,
+    and spec.ephemeralContainers[*].securityContext.allowPrivilegeEscalation must
+    be set to `false`. rule privilege-escalation failed at path /spec/containers/0/securityContext/'
+Traceback (most recent call last):
+  File "/etc/rancher/supportability-review/data_collection/collect_info_from_rancher_setup.py", line 689, in <module>
+    collect_info_using_kubeconfig(
+  File "/etc/rancher/supportability-review/data_collection/collect_info_from_rancher_setup.py", line 373, in collect_info_using_kubeconfig
+    myc.run()
+  File "/etc/rancher/supportability-review/data_collection/collect_info_from_rancher_setup.py", line 218, in run
+    self.collect()
+  File "/etc/rancher/supportability-review/data_collection/collect_info_from_rancher_setup.py", line 252, in collect
+    subprocess.run(sonobuoy_run_cmd, check=True)
+  File "/usr/lib64/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['sonobuoy', 'run', '--config', '/etc/sonobuoy/sonobuoy-config.json', '--kubeconfig', '/tmp/kubeconfig.yml', '--sonobuoy-image', 'rancher/mirrored-sonobuoy-sonobuoy:v0.57.0', '--namespace-psa-enforce-level', 'privileged', '--aggregator-node-selector', 'kubernetes.io/os:linux', '--wait', '--plugin', '/etc/rancher/supportability-review/data_collection/tmp/output/edc77d17-7bb1-4d39-be56-66ecc9b5e554/cluster-collector.yaml', '--plugin', '/etc/rancher/supportability-review/data_collection/tmp/output/edc77d17-7bb1-4d39-be56-66ecc9b5e554/nodes-collector.yaml']' returned non-zero exit status 1.
+```
+To work around this, add an `exclude` field to the YAML file that allows `sonobuoy` namespaces. If you are using another namespace, specify it.
+```
+--- disallow-privilege-escalation.yaml	2024-01-24 13:26:16.047008000 +0900
++++ disallow-privilege-escalation-sonobuoy.yaml	2024-01-24 13:32:59.532158949 +0900
+@@ -12,6 +12,11 @@
+         - resources:
+             kinds:
+               - Pod
++      exclude:
++        any:
++        - resources:
++            namespaces:
++            - sonobuoy
+       validate:
+         message: >-
+           Privilege escalation is disallowed. The fields
+```
+
 ## FAQ
 1) Rancher downstream clusters are X but the scan does not detect all
 ```
