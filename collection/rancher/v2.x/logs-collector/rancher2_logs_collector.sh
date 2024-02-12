@@ -686,6 +686,11 @@ kubeadm-k8s() {
 
 var-log() {
 
+  if [ -n "${START_DAY}" ]
+    then
+      VAR_LOG_DAYS=${START_DAY}
+  fi
+
   techo "Collecting system logs from /var/log"
   mkdir -p $TMPDIR/systemlogs
 
