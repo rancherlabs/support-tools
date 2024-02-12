@@ -51,6 +51,43 @@ collect_common_cluster_info() {
   jq -cr '[([.items[].spec.containers | length] | add), ([.items[].spec.initContainers | length] | add)] | add' pods.json > container-count
   jq -cr '[[.items[].spec.nodeName] | group_by(.) | map({(.[0]): length}) | add | to_entries[] | select(.value > 110) | .key] | length' pods.json > count-of-nodes-with-more-than-110-pods
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' pods.json > terminating-pods
+  jq -c '.items[]' pods.json | {
+    while read -r item; do
+      # Skip sonobuoy pods because they are in ContainerCreating state
+      namespace=$(echo $item | tr '\n' ' ' | jq -cr '.metadata.namespace')
+      if [ $namespace == $SONOBUOY_NAMESPACE ]; then
+        continue
+      fi
+
+      name=$(echo $item | tr '\n' ' ' | jq -cr '.metadata.name')
+      has_container_statuses=$(echo $item | tr '\n' ' ' | jq -cr '.status | has("containerStatuses")')
+      if [ $has_container_statuses == "false" ]; then
+        echo $name
+        continue
+      fi
+      container_statuses=$(echo $item | tr '\n' ' ' | jq -cr '.status.containerStatuses')
+      echo $container_statuses | jq -c '.[]' | {
+        while read -r status; do
+          # Check Running Pod
+          has_running=$(echo $status | tr '\n' ' ' | jq -cr '.state | has("running")')
+          if [ $has_running == "true" ]; then
+            continue
+          fi
+
+          # Check Completed Job
+          has_terminated=$(echo $status | tr '\n' ' ' | jq -cr '.state | has("terminated")')
+          if [ $has_terminated == "true" ]; then
+            reason_is_completed=$(echo $status | tr '\n' ' ' | jq -cr '.state.terminated.reason == "Completed"')
+            if [ $reason_is_completed == "true" ]; then
+              continue
+            fi
+          fi
+
+          echo $name
+        done
+      }
+    done
+  } > invalid-pods
   jq -c '.items[]' nodes.json | {
     RESULT_JSON=""
     while read -r item; do
