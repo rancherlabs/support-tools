@@ -35,13 +35,27 @@ prereqs() {
   mkdir -p "${LOG_DIR}"
 }
 
+get_symlink_destination() {
+  LS_RESULT=$(ls -l $1)
+  if [[ $LS_RESULT == *"->"* ]]; then
+    IFS=' ' read -ra ADDR <<< "$LS_RESULT"
+    LINK_DESTINATION=${ADDR[-1]}
+    if [[ $LINK_DESTINATION == /* ]]; then
+      echo "${HOST_FS_PREFIX}$LINK_DESTINATION"
+      return
+    fi
+  fi
+  echo $1
+}
+
 collect_systeminfo() {
   if [ -d ${HOST_FS_PREFIX} ]; then
     ls -l ${HOST_FS_PREFIX} > ls-l-host.log
   fi
 
   cp -p ${HOST_FS_PREFIX}/etc/hosts systeminfo/etchosts 2>&1
-  cp -p ${HOST_FS_PREFIX}/etc/resolv.conf systeminfo/etcresolvconf 2>&1
+  ETC_RESOLVE_CONF_PATH="$(get_symlink_destination ${HOST_FS_PREFIX}/etc/resolv.conf)"
+  cp -p ${ETC_RESOLVE_CONF_PATH} systeminfo/etcresolvconf 2>&1
   if [ -e ${HOST_FS_PREFIX}/run/systemd/resolve/resolv.conf ];then
     cp -p ${HOST_FS_PREFIX}/run/systemd/resolve/resolv.conf systeminfo/systemd-resolved 2>&1
   fi
@@ -57,8 +71,8 @@ collect_systeminfo() {
 
   ps auxfww > systeminfo/ps 2>&1
   free -m > systeminfo/freem 2>&1
-  df -i /host/var > systeminfo/dfivar 2>&1
-  df /host/var > systeminfo/dfvar 2>&1
+  df -i ${HOST_FS_PREFIX}/var > systeminfo/dfivar 2>&1
+  df ${HOST_FS_PREFIX}/var > systeminfo/dfvar 2>&1
 
   # TODO: Check if the sysctl settings are same on the host/inside the container
   sysctl -a > systeminfo/sysctla 2>/dev/null
@@ -92,10 +106,10 @@ collect_networking_info_ip4() {
 
   conntrack -S > networking/conntrack.out
   nft list ruleset > networking/nft_ruleset 2>&1
-  cat /proc/sys/net/netfilter/nf_conntrack_max > networking/nf_conntrack_max
-  cat /proc/sys/net/netfilter/nf_conntrack_count > networking/nf_conntrack_count
+  cat ${HOST_FS_PREFIX}/proc/sys/net/netfilter/nf_conntrack_max > networking/nf_conntrack_max
+  cat ${HOST_FS_PREFIX}/proc/sys/net/netfilter/nf_conntrack_count > networking/nf_conntrack_count
 
-  for _NAMESERVER in $(awk '/^nameserver/ {print $2}' /host/etc/resolv.conf)
+  for _NAMESERVER in $(awk '/^nameserver/ {print $2}' systeminfo/etcresolvconf)
     do
       echo "--- Nameserver: ${_NAMESERVER}" >> networking/dns-external 2>&1
       dig google.com @${_NAMESERVER} >> networking/dns-external 2>&1
