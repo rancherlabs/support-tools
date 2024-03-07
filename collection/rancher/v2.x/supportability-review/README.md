@@ -109,14 +109,6 @@ The script needs to be run on a linux machine running docker with access to your
 
 Output will be written as a tar.gz archive in the same path where the script is run.
 
-## Flags
-```shell
-Rancher Supportability Review
-Usage: collect.sh [ --cluster  <cluster-name> --cluster <cluster-id>]
-
-All flags are optional.
-```
-
 ## Config ENV variables
 
 ```shell

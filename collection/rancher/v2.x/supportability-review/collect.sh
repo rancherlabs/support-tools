@@ -37,6 +37,18 @@ if [ "${CONTAINER_RUNTIME}" == "" ]; then
     echo "error: couldn't detect CONTAINER_RUNTIME"
     exit 1
   fi
+else
+  supported_runtime=false
+  for runtime in docker nerdctl podman; do
+    if [ "${CONTAINER_RUNTIME}" == ${runtime} ]; then
+      supported_runtime=true
+      break
+    fi
+  done
+  if [ "${supported_runtime}" == false ]; then
+    echo "error: unsupported CONTAINER_RUNTIME. Use docker|nerdctl|podman."
+    exit 1
+  fi
 fi
 
 if [[ "$SR_IMAGE" != *":dev" ]]; then
