@@ -57,9 +57,9 @@ cleanup-containers() {
 cleanup-dirs() {
 
   techo "Unmounting filesystems..."
-  for mount in $(mount | grep tmpfs | grep '/var/lib/kubelet' | awk '{ print $3 }')
+  for mount in $(mount | grep '/var/lib/kubelet' | awk '{ print $3 }')
     do
-      umount $mount
+      umount -f $mount
   done
 
   if [ -n "${DELETE_SNAPSHOTS}" ]
@@ -67,6 +67,7 @@ cleanup-dirs() {
       techo "Removing etcd snapshots..."
       rm -rf /opt/rke
   fi
+
   techo "Removing directories..."
   for DIR in "${CLEANUP_DIRS[@]}"
     do
