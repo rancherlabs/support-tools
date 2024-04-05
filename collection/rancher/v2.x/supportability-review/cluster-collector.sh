@@ -49,7 +49,13 @@ collect_common_cluster_info() {
   kubectl get pods -A -o json > pods.json
   jq -cr '.items | length' pods.json > pod-count
   jq -cr '[([.items[].spec.containers | length] | add), ([.items[].spec.initContainers | length] | add)] | add' pods.json > container-count
-  jq -cr '[[.items[].spec.nodeName] | group_by(.) | map({(.[0]): length}) | add | to_entries[] | select(.value > 110) | .key] | length' pods.json > count-of-nodes-with-more-than-110-pods
+  cat pods.json | jq -cr '
+.items
+| map(.spec.nodeName)
+| group_by(.)
+| map({name: .[0], count: length})
+| {items: .}
+' > pod-count-per-node.json
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' pods.json > terminating-pods
   jq -c '.items[]' pods.json | {
     while read -r item; do
@@ -106,7 +112,13 @@ collect_common_cluster_info() {
   kubectl get clusters.management.cattle.io -o json > clusters.management.cattle.io.json
   kubectl get storageclasses.storage.k8s.io -A -o json > storageclasses.storage.k8s.io.json
   kubectl get persistentvolumeclaims -A -o json > persistentvolumeclaims.json
+  kubectl get apps.catalog.cattle.io -n cattle-logging-system -o json > cattle-logging-system-apps.json
+  kubectl get apps.catalog.cattle.io -n istio-system -o json > istio-system-apps.json
+  kubectl get apps.catalog.cattle.io -n cis-operator-system -o json > cis-operator-system-apps.json
   kubectl get apps.catalog.cattle.io -n cattle-monitoring-system -o json > cattle-monitoring-system-apps.json
+  if [ $(jq '.items | length' cattle-monitoring-system-apps.json) -lt 1 ]; then
+    rm cattle-monitoring-system-apps.json
+  fi
 
   # Make collection optional
   if [ ! -z "${SR_COLLECT_CLUSTER_INFO_DUMP}" ]; then
@@ -127,7 +139,6 @@ collect_rke_info() {
 
 collect_rke2_info() {
   mkdir -p "${OUTPUT_DIR}/rke2"
-  ls ${HOST_FS_PREFIX}/var/lib/rancher/rke2/ > ${OUTPUT_DIR}/rke2/var-lib-rancher-rke2-directory 2>&1
 
   #Get RKE2 Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" ]; then
@@ -146,7 +157,6 @@ collect_rke2_info() {
 
 collect_k3s_info() {
   mkdir -p "${OUTPUT_DIR}/k3s"
-  ls ${HOST_FS_PREFIX}/var/lib/rancher/k3s/ > ${OUTPUT_DIR}/k3s/var-lib-rancher-k3s-directory 2>&1
 
   #Get k3s Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml" ]; then
@@ -168,10 +178,13 @@ collect_upstream_cluster_info() {
   kubectl get deploy -n cattle-system -o json > cattle-system-deploy.json
   kubectl get configmap -n kube-system cattle-controllers -o json > cattle-controllers-configmap.json
   kubectl get bundles.fleet.cattle.io -n fleet-local  -o json > fleet-local-bundle.json
-  kubectl get apps.catalog.cattle.io -n cattle-logging-system -o json > cattle-logging-system-apps.json
   kubectl get apps.catalog.cattle.io -n cattle-resources-system -o json > cattle-resources-system-apps.json
   kubectl get backup.resources.cattle.io -o json > backup.json
   jq '[.items[] | select(.metadata.namespace == "cattle-system" and .metadata.labels.app == "rancher") | .spec.nodeName] | unique | length' pods.json > unique-rancher-pod-count-by-node
+  number_of_rancher_pods=$(jq -cr '[.items[] | select(.metadata.namespace == "cattle-system" and .metadata.labels.app == "rancher") | .metadata.name] | length' pods.json)
+  if [ $number_of_rancher_pods ]; then
+    jq -cr '[.items[] | select(.metadata.namespace == "cattle-system" and .metadata.labels.app == "rancher")] | .[0] | .status.containerStatuses[0].imageID | split("@") | .[1] | split(":") | .[1]' pods.json > rancher-imageid.txt
+  fi
 
   kubectl get settings.management.cattle.io install-uuid -o json > install-uuid.json
   kubectl get nodes.management.cattle.io -A -o json > nodes-cattle.json
