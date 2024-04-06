@@ -4,7 +4,7 @@ This script is designed to clean a node provisioned with the RKE1 distribution u
 
 The node will be cleaned of all state to ensure it is consistent to reuse in a cluster or other use case.
 
-For [RKE2](https://docs.rke2.io/install/linux_uninstall/) and [K3s](https://rancher.com/docs/k3s/latest/en/installation/uninstall/) nodes, use the uninstall.sh script created during installation
+For [RKE2](https://docs.rke2.io/install/uninstall) and [K3s](https://rancher.com/docs/k3s/latest/en/installation/uninstall/) nodes, use the uninstall.sh script created during installation
 
 > **Warning** this script will delete all containers, volumes, network interfaces, and directories that relate to Rancher and Kubernetes. It will also flush all iptables rules and optionally delete container images.
 
