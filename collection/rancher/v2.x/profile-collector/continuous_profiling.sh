@@ -55,25 +55,25 @@ while true; do
 		done
 
 		echo Getting logs for $pod
-		kubectl logs --since 5m -n cattle-system $pod -c ${CONTAINER} >${TMPDIR}/$pod.log
+		kubectl logs --since 5m -n cattle-system $pod -c ${CONTAINER} >${TMPDIR}/${pod}.log
 		echo
 
 		echo Getting previous logs for $pod
-		kubectl logs -n cattle-system $pod -c ${CONTAINER} --previous=true >${TMPDIR}/previous-$pod.log
+		kubectl logs -n cattle-system $pod -c ${CONTAINER} --previous=true >${TMPDIR}/${pod}-previous.log
 		echo
 
 		if [ "$APP" == "rancher" ]; then
 			echo Getting rancher-audit-logs for $pod
-			kubectl logs --since 5m -n cattle-system $pod -c rancher-audit-log >${TMPDIR}/audit-${pod}.log
+			kubectl logs --since 5m -n cattle-system $pod -c rancher-audit-log >${TMPDIR}/${pod}-audit.log
 			echo
 		fi
 
 		echo Getting rancher-event-logs for $pod
-		kubectl events --for pod/$pod -n cattle-system >${TMPDIR}/events-${pod}.log
+		kubectl events --for pod/$pod -n cattle-system >${TMPDIR}/${pod}-events.log
 		echo
 
 		echo Getting describe for $pod
-		kubectl describe pod $pod -n cattle-system >${TMPDIR}/describe-${pod}.log
+		kubectl describe pod $pod -n cattle-system >${TMPDIR}/${pod}-describe.log
 		echo
 	done
 
