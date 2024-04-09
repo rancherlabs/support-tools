@@ -37,7 +37,7 @@ while true; do
 	echo "Created ${TMPDIR}"
 	echo
 
-	echo "Started: $(date -Iseconds)" >>${TMPDIR}/timestamps.txt
+	echo "Start: $(date -Iseconds)" >>${TMPDIR}/timestamps.txt
 
 	kubectl top pods -A >>${TMPDIR}/toppods.log
 	kubectl top nodes >>${TMPDIR}/topnodes.log
@@ -48,7 +48,7 @@ while true; do
 	fi
 
 	for pod in $(kubectl -n cattle-system get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name); do
-		for profile in $PROFILES; do
+		for profile in ${PROFILES}; do
 			echo Getting $profile profile for $pod
 			kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile} -o ${profile}
 			kubectl cp -n cattle-system -c ${CONTAINER} ${pod}:${profile} ${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
@@ -86,7 +86,7 @@ while true; do
 	echo "Getting pod details"
 	kubectl get pods -A -o wide >${TMPDIR}/get_pods_A_wide.log
 
-	echo "Finished: $(date -Iseconds)" >>${TMPDIR}/timestamps.txt
+	echo "End:   $(date -Iseconds)" >>${TMPDIR}/timestamps.txt
 
 	CLUSTER_PREFIX="sandbox"
 	FILENAME="${CLUSTER_PREFIX}-profile-$(date +'%Y-%m-%d_%H_%M').tar.xz"
