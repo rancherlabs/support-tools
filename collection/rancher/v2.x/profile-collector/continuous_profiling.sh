@@ -37,7 +37,7 @@ while true; do
 	echo "Created ${TMPDIR}"
 	echo
 
-	date -Iseconds >>${TMPDIR}/start_date
+	echo "Started: $(date -Iseconds)" >>${TMPDIR}/timestamps.txt
 
 	kubectl top pods -A >>${TMPDIR}/toppods.log
 	kubectl top nodes >>${TMPDIR}/topnodes.log
@@ -86,7 +86,7 @@ while true; do
 	echo "Getting pod details"
 	kubectl get pods -A -o wide >${TMPDIR}/get_pods_A_wide.log
 
-	date -Iseconds >>${TMPDIR}/end_date
+	echo "Finished: $(date -Iseconds)" >>${TMPDIR}/timestamps.txt
 
 	CLUSTER_PREFIX="sandbox"
 	FILENAME="${CLUSTER_PREFIX}-profile-$(date +'%Y-%m-%d_%H_%M').tar.xz"
