@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Azure storage container SAS URL and token for uploading. Only creation permission is necessary
+# Optional Azure storage container SAS URL and token for uploading. Only creation permission is necessary.
 BLOB_URL=
 BLOB_TOKEN=
 
@@ -88,8 +88,11 @@ while true; do
 	echo "Creating tarball ${FILENAME}"
 	tar cfJ /tmp/${FILENAME} --directory ${TMPDIR}/ .
 
-	echo "Uploading ${FILENAME}"
-	curl -H "x-ms-blob-type: BlockBlob" --upload-file /tmp/${FILENAME} "${BLOB_URL}/${FILENAME}?${BLOB_TOKEN}"
+	# Upload to Azure Blob Storage if URL was set
+	if [ -n "$BLOB_URL" ]; then
+		echo "Uploading ${FILENAME}"
+		curl -H "x-ms-blob-type: BlockBlob" --upload-file /tmp/${FILENAME} "${BLOB_URL}/${FILENAME}?${BLOB_TOKEN}"
+	fi
 
 	echo
 	echo "Removing ${TMPDIR}"
