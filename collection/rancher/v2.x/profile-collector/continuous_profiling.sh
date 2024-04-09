@@ -3,6 +3,9 @@
 # Which app to profile? Supported choices: rancher, cattle-cluster-agent
 APP=cattle-cluster-agent
 
+# Which profiles to collect? Supported choices: goroutine, heap, threadcreate, block, mutex, profile
+PROFILES="goroutine heap"
+
 # Optional Azure storage container SAS URL and token for uploading. Only creation permission is necessary.
 BLOB_URL=
 BLOB_TOKEN=
@@ -45,17 +48,11 @@ while true; do
 	fi
 
 	for pod in $(kubectl -n cattle-system get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name); do
-		echo Getting heap for $pod
-		kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/heap -o heap
-		kubectl cp -n cattle-system -c ${CONTAINER} ${pod}:heap ${TMPDIR}/${pod}-heap-$(date +'%Y-%m-%dT%H_%M_%S')
-
-		echo Getting goroutine for $pod
-		kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s localhost:6060/debug/pprof/goroutine -o goroutine
-		kubectl cp -n cattle-system -c ${CONTAINER} ${pod}:goroutine ${TMPDIR}/${pod}-goroutine-$(date +'%Y-%m-%dT%H_%M_%S')
-		echo Getting profile for $pod
-
-		kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/profile?seconds=30 -o profile
-		kubectl cp -n cattle-system -c ${CONTAINER} ${pod}:profile ${TMPDIR}/${pod}-profile-$(date +'%Y-%m-%dT%H_%M_%S')
+		for profile in $PROFILES; do
+			echo Getting $profile profile for $pod
+			kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile} -o ${profile}
+			kubectl cp -n cattle-system -c ${CONTAINER} ${pod}:${profile} ${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
+		done
 
 		echo Getting logs for $pod
 		kubectl logs --since 5m -n cattle-system $pod -c ${CONTAINER} >${TMPDIR}/$pod.log
