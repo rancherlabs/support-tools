@@ -1,17 +1,18 @@
 #!/bin/bash
 
+# Which app to profile? Supported choices: rancher, cattle-cluster-agent
+APP=cattle-cluster-agent
+
 # Optional Azure storage container SAS URL and token for uploading. Only creation permission is necessary.
 BLOB_URL=
 BLOB_TOKEN=
 
 cleanup() {
-	echo "Cleaning up..."
-	echo "Setting rancher logs back to error"
+	# APP=rancher only: set logging back to normal
 	kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
-		echo $rancherpod
+		echo Setting $rancherpod back to normal logging
 		kubectl -n cattle-system exec $rancherpod -c rancher -- loglevel --set error
 	done
-	echo "Cleanup complete. Exiting."
 	exit 0
 }
 
@@ -20,9 +21,9 @@ trap cleanup SIGINT
 export TZ=UTC
 
 while true; do
-	echo Setting rancher debug logs
+	# APP=rancher only: set logging to debug level
 	kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
-		echo $rancherpod
+		echo Setting $rancherpod debug logging
 		kubectl -n cattle-system exec $rancherpod -c rancher -- loglevel --set debug
 	done
 
@@ -38,30 +39,37 @@ while true; do
 	kubectl top pods -A >>${TMPDIR}/toppods.log
 	kubectl top nodes >>${TMPDIR}/topnodes.log
 
-	for pod in $(kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name); do
+	CONTAINER=rancher
+	if [ "$APP" == "cattle-cluster-agent" ]; then
+		CONTAINER=cluster-register
+	fi
+
+	for pod in $(kubectl -n cattle-system get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name); do
 		echo Getting heap for $pod
-		kubectl exec -n cattle-system $pod -c rancher -- curl -s http://localhost:6060/debug/pprof/heap -o heap
-		kubectl cp -n cattle-system -c rancher ${pod}:heap ${TMPDIR}/${pod}-heap-$(date +'%Y-%m-%dT%H_%M_%S')
+		kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/heap -o heap
+		kubectl cp -n cattle-system -c ${CONTAINER} ${pod}:heap ${TMPDIR}/${pod}-heap-$(date +'%Y-%m-%dT%H_%M_%S')
 
 		echo Getting goroutine for $pod
-		kubectl exec -n cattle-system $pod -c rancher -- curl -s localhost:6060/debug/pprof/goroutine -o goroutine
-		kubectl cp -n cattle-system -c rancher ${pod}:goroutine ${TMPDIR}/${pod}-goroutine-$(date +'%Y-%m-%dT%H_%M_%S')
+		kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s localhost:6060/debug/pprof/goroutine -o goroutine
+		kubectl cp -n cattle-system -c ${CONTAINER} ${pod}:goroutine ${TMPDIR}/${pod}-goroutine-$(date +'%Y-%m-%dT%H_%M_%S')
 		echo Getting profile for $pod
 
-		kubectl exec -n cattle-system $pod -c rancher -- curl -s http://localhost:6060/debug/pprof/profile?seconds=30 -o profile
-		kubectl cp -n cattle-system -c rancher ${pod}:profile ${TMPDIR}/${pod}-profile-$(date +'%Y-%m-%dT%H_%M_%S')
+		kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/profile?seconds=30 -o profile
+		kubectl cp -n cattle-system -c ${CONTAINER} ${pod}:profile ${TMPDIR}/${pod}-profile-$(date +'%Y-%m-%dT%H_%M_%S')
 
 		echo Getting logs for $pod
-		kubectl logs --since 5m -n cattle-system $pod -c rancher >${TMPDIR}/$pod.log
+		kubectl logs --since 5m -n cattle-system $pod -c ${CONTAINER} >${TMPDIR}/$pod.log
 		echo
 
 		echo Getting previous logs for $pod
-		kubectl logs -n cattle-system $pod -c rancher --previous=true >${TMPDIR}/previous-$pod.log
+		kubectl logs -n cattle-system $pod -c ${CONTAINER} --previous=true >${TMPDIR}/previous-$pod.log
 		echo
 
-		echo Getting rancher-audit-logs for $pod
-		kubectl logs --since 5m -n cattle-system $pod -c rancher-audit-log >${TMPDIR}/audit-${pod}.log
-		echo
+		if [ "$APP" == "rancher" ]; then
+			echo Getting rancher-audit-logs for $pod
+			kubectl logs --since 5m -n cattle-system $pod -c rancher-audit-log >${TMPDIR}/audit-${pod}.log
+			echo
+		fi
 
 		echo Getting rancher-event-logs for $pod
 		kubectl events --for pod/$pod -n cattle-system >${TMPDIR}/events-${pod}.log
@@ -73,9 +81,9 @@ while true; do
 	done
 
 	echo "Getting TCP connection counts"
-	kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
+	kubectl -n cattle-system get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
 		echo -n "$rancherpod : "
-		kubectl -n cattle-system exec $rancherpod -c rancher -- bash -c "ls -l /proc/\`pgrep rancher\`/fd | grep socket | wc -l"
+		kubectl -n cattle-system exec $rancherpod -c ${CONTAINER} -- bash -c "ls -l /proc/\`pgrep rancher\`/fd | grep socket | wc -l"
 	done >>${TMPDIR}/tcp_connections
 
 	echo "Getting pod details"
