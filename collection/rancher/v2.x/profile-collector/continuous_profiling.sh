@@ -77,12 +77,6 @@ while true; do
 		echo
 	done
 
-	echo "Getting TCP connection counts"
-	kubectl -n cattle-system get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
-		echo -n "$rancherpod : "
-		kubectl -n cattle-system exec $rancherpod -c ${CONTAINER} -- bash -c "ls -l /proc/\`pgrep rancher\`/fd | grep socket | wc -l"
-	done >>${TMPDIR}/tcp_connections
-
 	echo "Getting pod details"
 	kubectl get pods -A -o wide >${TMPDIR}/get_pods_A_wide.log
 
