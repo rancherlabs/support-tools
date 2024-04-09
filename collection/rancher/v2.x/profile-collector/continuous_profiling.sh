@@ -6,6 +6,12 @@ APP=cattle-cluster-agent
 # Which profiles to collect? Supported choices: goroutine, heap, threadcreate, block, mutex, profile
 PROFILES="goroutine heap"
 
+# How many seconds to wait between captures?
+SLEEP=120
+
+# Prefix for profile tarball name
+PREFIX="agent"
+
 # Optional Azure storage container SAS URL and token for uploading. Only creation permission is necessary.
 BLOB_URL=
 BLOB_TOKEN=
@@ -82,8 +88,7 @@ while true; do
 
 	echo "End:   $(date -Iseconds)" >>${TMPDIR}/timestamps.txt
 
-	CLUSTER_PREFIX="sandbox"
-	FILENAME="${CLUSTER_PREFIX}-profile-$(date +'%Y-%m-%d_%H_%M').tar.xz"
+	FILENAME="${PREFIX}-profiles-$(date +'%Y-%m-%d_%H_%M').tar.xz"
 	echo "Creating tarball ${FILENAME}"
 	tar cfJ /tmp/${FILENAME} --directory ${TMPDIR}/ .
 
@@ -97,10 +102,6 @@ while true; do
 	echo "Removing ${TMPDIR}"
 	rm -r -f "${TMPDIR}" >/dev/null 2>&1
 
-	echo "Sleeping until the next capture..."
-	# we want to at least one capture every 4 minutes
-	# most time is spent in CPU profiling which takes 30s per rancher pod, and there is 3 of them = 90s
-	# allow for another 30s for all other processing, that makes 2 minutes total
-	# thus sleep for the remaining 2 minutes
-	sleep 120
+	echo "Sleeping ${SLEEP} seconds before next capture..."
+	sleep ${SLEEP}
 done
