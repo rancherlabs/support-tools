@@ -75,7 +75,7 @@ while true; do
 		fi
 
 		echo Getting rancher-event-logs for $pod
-		kubectl events --for pod/$pod -n cattle-system >${TMPDIR}/${pod}-events.log
+		kubectl get event --namespace cattle-system --field-selector involvedObject.name=${pod} >${TMPDIR}/${pod}-events.log		
 		echo
 
 		echo Getting describe for $pod
