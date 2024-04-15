@@ -30,6 +30,7 @@ trap cleanup SIGINT
 export TZ=UTC
 
 collect() {
+
 	while true; do
 		# APP=rancher only: set logging to debug level
 		kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
@@ -106,4 +107,25 @@ collect() {
 		echo "Sleeping ${SLEEP} seconds before next capture..."
 		sleep ${SLEEP}
 	done
+
 }
+
+while getopts "d:h" opt; do
+	case $opt in
+	d)
+		MKTEMP_BASEDIR="-p ${OPTARG}"
+		;;
+	h)
+		help && exit 0
+		;;
+	:)
+		techo "Option -$OPTARG requires an argument."
+		exit 1
+		;;
+	*)
+		help && exit 0
+		;;
+	esac
+done
+
+collect
