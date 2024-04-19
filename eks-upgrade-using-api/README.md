@@ -41,19 +41,29 @@ export RANCHER_API="<YOUR RANCHER API ENDPOINT>"
 
 > The output will list all the found EKS clusters with their name, id, current version and state.
 
-5. For each EKS cluster you want to upgrade run the following command:
+### Upgrading EKS Clusters
+
+1. For each EKS cluster you want to upgrade run the following command:
 
 ```bash
 # For v2
-./eks-support.sh upgrade -t $RANCHER_TOKEN --endpoint $RANCHER_API --from 1.22 --to 1.23 --name richtest1
+./eks-support.sh upgrade -t $RANCHER_TOKEN --endpoint $RANCHER_API --from 1.22 --to 1.23 --name <EKS_CLUSTER_NAME>
 # For v1
-./eks-support.sh upgrade -t $RANCHER_TOKEN --endpoint $RANCHER_API --from 1.22 --to 1.23 --name richtest1 --aws-secret-key "<AWS SECRET FOR CLUSTER>" --kev1
+./eks-support.sh upgrade -t $RANCHER_TOKEN --endpoint $RANCHER_API --from 1.22 --to 1.23 --name <EKS_CLUSTER_NAME> --aws-secret-key "<AWS SECRET FOR CLUSTER>" --kev1
 ```
 
 > Replace the values of --from, --to and --name with your values.
 
-6. The cluster will start to upgrade. You can check the status of a specific cluster using this command:
+2. The cluster will start to upgrade. You can check the status of a specific cluster using this command:
 
 ```bash
 ./eks-support.sh status -t $RANCHER_TOKEN --endpoint $RANCHER_API --name richtest1
 ```
+
+### Unsetting Node Groups as managed fields for imported EKS Clusters (only for KEv2)
+
+```bash
+# For v2
+./eks-support.sh unset_nodegroups -t $RANCHER_TOKEN --endpoint $RANCHER_API --name <EKS_CLUSTER_NAME>
+```
+
