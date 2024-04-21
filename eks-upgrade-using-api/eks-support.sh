@@ -81,6 +81,48 @@ cmd_upgrade() {
     do_upgrade "$cluster_name" "$from" "$to" "$token" "$api_endpoint" "$kev1" "$aws_secret"
 }
 
+cmd_unset_nodegroups() {
+    local token=""
+    local api_endpoint=""
+    local cluster_name=""
+
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        "-h" | "--help")
+            cmd_unset_nodegroups_help
+            exit 1
+            ;;
+        "-n" | "--name")
+            shift
+            cluster_name="$1"
+            ;;
+        "-t" | "--token")
+            shift
+            token="$1"
+            ;;
+        "--endpoint")
+            shift
+            api_endpoint="$1"
+            ;;
+        *)
+            die "Unknown argument: $1. Please use --help for help"
+        esac
+        shift
+    done
+
+    if [[ "$cluster_name" == "" ]]; then
+        die "You must supply a cluster name"
+    fi
+    if [[ "$token" == "" ]]; then
+        die "You must supply a api token"
+    fi
+    if [[ "$api_endpoint" == "" ]]; then
+        die "You must supply an api endpoint"
+    fi
+
+    do_unset_nodegroups_kev2 "$cluster_name" "$token" "$api_endpoint"
+}
+
 cmd_list() {
     local token=""
     local api_endpoint=""
@@ -264,6 +306,43 @@ do_upgrade_controlplane_kev1() {
     ok_or_die "Failed to apply update for ${cluster_name}. Error: $?, command output: ${output}"
 }
 
+do_unset_nodegroups_kev2() {
+    local cluster_name="$1"
+    local token="$2"
+    local api_endpoint="$3"
+
+    clusters_list_url="${api_endpoint}/clusters?name=${cluster_name}"
+
+    say "Getting details for cluster $cluster_name"
+    output=$(curl -fsSL "${clusters_list_url}" -H "Accept: application/json" -H "Authorization: Bearer $token")
+    ok_or_die "Failed to get cluster ${cluster_name} details. Error: $?, command output: ${output}"
+
+    num_records=$(jq ".pagination.total" -r <<< "$output")
+    if [[ "$num_records" != "1" ]]; then
+        die "Expected to find 1 cluster but found $num_records, not upgrading"
+    fi
+
+    say "Checking cluster is active and imported"
+    current_state=$(jq ".data[0].state" -r <<< "$output")
+    cluster_id=$(jq ".data[0].id" -r <<< "$output")
+    is_imported=$(jq ".data[0].eksConfig.imported" -r <<< "$output")
+
+    if [[ "$is_imported" == "false" ]]; then
+        die "Expected EKS cluster needs to be imported, not changing"
+    fi
+    if [[ "$current_state" != "active" ]]; then
+        die "Expected EKS cluster to be in 'active' state but got $current_state, not changing"
+    fi
+
+    say "Sending request to unmange node groups for cluster $cluster_name ($cluster_id)"
+    cluster_url="${api_endpoint}/clusters/${cluster_id}"
+
+    body="{ \"name\": \"$cluster_name\", \"eksConfig\": { \"nodeGroups\": null }}"
+
+    output=$(curl -fsSL -X PUT "${cluster_url}" -H "Authorization: Bearer $token" -H "Content-Type: application/json" -d "$body")
+    ok_or_die "Failed to apply update for ${cluster_name}. Error: $?, command output: ${output}"
+}
+
 do_list() {
     local token="$1"
     local api_endpoint="$2"
@@ -327,6 +406,16 @@ cmd_upgrade_help() {
 EOF
 }
 
+cmd_unset_nodegroups_help() {
+  cat <<EOF
+  unset_nodegroups     Unset nodegroups for EKS clusters
+    OPTIONS:
+      --name, -n       The name of the cluster to update.
+      --token, -t      The Rancher API bearer token to use.
+      --endpoint       The Rancher API endpoint.
+EOF
+}
+
 cmd_list_help() {
 	cat <<EOF
   list                 List the EKS cluster ids.
@@ -358,7 +447,8 @@ EOF
 
 	cmd_list_help
 	cmd_upgrade_help
-    cmd_status_help
+	cmd_status_help
+	cmd_unset_nodegroups_help
 }
 
 ## ENSURE FUNCS
