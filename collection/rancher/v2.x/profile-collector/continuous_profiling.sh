@@ -1,16 +1,22 @@
 #!/bin/bash
-
 # Which app to profile? Supported choices: rancher, cattle-cluster-agent
-APP=cattle-cluster-agent
+APP=rancher
 
 # Which profiles to collect? Supported choices: goroutine, heap, threadcreate, block, mutex, profile
-PROFILES="goroutine heap"
+# Default profiles
+DEFAULT_PROFILES=("goroutine" "heap" "profile")
+
+# Assign default values to PROFILES if not provided by user
+PROFILES=("${DEFAULT_PROFILES[@]}")
 
 # How many seconds to wait between captures?
 SLEEP=120
 
 # Prefix for profile tarball name
-PREFIX="agent"
+PREFIX="rancher"
+
+# Profile collection time (only required for CPU profiles)
+DURATION=30
 
 # Optional Azure storage container SAS URL and token for uploading. Only creation permission is necessary.
 BLOB_URL=
@@ -28,6 +34,20 @@ cleanup() {
 trap cleanup SIGINT
 
 export TZ=UTC
+
+help() {
+	echo "Rancher 2.x profile-collector
+  Usage: profile-collector.sh [-a rancher -p goroutine heap ]
+
+  All flags are optional
+
+  -a    Application, either rancher or cattle-cluster-agent
+  -p    Profiles to be collected: goroutine, heap, threadcreate, block, mutex, profile
+  -s    Sleep time between loops in seconds
+  -t    Time of CPU profile collections
+  -h    This help"
+
+}
 
 collect() {
 
@@ -56,9 +76,13 @@ collect() {
 		fi
 
 		for pod in $(kubectl -n cattle-system get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name); do
-			for profile in ${PROFILES}; do
+			for profile in ${PROFILES[@]}; do
 				echo Getting $profile profile for $pod
-				kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile} -o ${profile}
+				if [ "$profile" == "profile" ]; then
+					kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile}?seconds=${DURATION} -o ${profile}
+				else
+					kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile} -o ${profile}
+				fi
 				kubectl cp -n cattle-system -c ${CONTAINER} ${pod}:${profile} ${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
 			done
 
@@ -110,10 +134,38 @@ collect() {
 
 }
 
-while getopts "d:h" opt; do
+while getopts "a:p:d:s:t:h" opt; do
 	case $opt in
-	d)
-		MKTEMP_BASEDIR="-p ${OPTARG}"
+	a)
+		APP="${OPTARG}"
+		if [ "${APP}" != "rancher" ] && [ "${APP}" != "cattle-cluster-agent" ]; then
+			help
+		fi
+		;;
+	p)
+		IFS=',' read -r -a PROFILES <<<"${OPTARG}"
+
+		# Check if the array is populated correctly (for debugging)
+		echo "Profiles array: ${PROFILES[@]}"
+
+		# Iterate over each profile in the array
+		for profile in "${PROFILES[@]}"; do
+			case $profile in
+			goroutine | heap | threadcreate | block | mutex | profile)
+				# Valid profile, do nothing
+				;;
+			*)
+				echo "Invalid profile: $profile"
+				help && exit 0
+				;;
+			esac
+		done
+		;;
+	s)
+		SLEEP="${OPTARG}"
+		;;
+	t)
+		DURATION="${OPTARG}"
 		;;
 	h)
 		help && exit 0
