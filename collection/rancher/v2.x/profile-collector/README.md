@@ -14,7 +14,7 @@ Output will be written to `/tmp` as a tar.gz archive named `<pod-name>-<date>.ta
 
 ## Usage
 
-The script needs to be downloaded and run with kubectl access to the cluster where Rancher or Rancher Agents are running
+The script needs to be downloaded and run with a kubeconfig file pointed to the local Rancher cluster or a downstream cluster where cattle-cluster-agent pods are running
 
 ### Download and run the script
 * Save the script as: `continuous_profiling.sh`
