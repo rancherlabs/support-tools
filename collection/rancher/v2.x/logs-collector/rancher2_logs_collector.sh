@@ -37,6 +37,7 @@ setup() {
   LOGNAME="$(hostname)-$(date +'%Y-%m-%d_%H_%M_%S')"
   mkdir -p "${TMPDIR_BASE}/${LOGNAME}"
   TMPDIR="${TMPDIR_BASE}/${LOGNAME}"
+  export PATH=$PATH:/usr/local/bin:/opt/rke2/bin:/opt/bin
 
 }
 
@@ -85,17 +86,17 @@ sherlock() {
       fi
     else
       echo -n "$(timestamp): Detecting k8s distribution... "
-      if $(command -v k3s >/dev/null 2>&1) || $(command -v /opt/bin/k3s >/dev/null 2>&1)
+      if $(command -v k3s >/dev/null 2>&1)
         then
           if $(k3s crictl ps >/dev/null 2>&1)
             then
               DISTRO=k3s
               echo "k3s"
             else
-              FOUND+="k3s"
+              FOUND+="k3s "
           fi
       fi
-      if $(command -v rke2 >/dev/null 2>&1) || $(command -v /opt/rke2/bin/rke2 >/dev/null 2>&1)
+      if $(command -v rke2 >/dev/null 2>&1)
         then
           sherlock-data-dir
           if $(${RKE2_DIR}/bin/crictl ps >/dev/null 2>&1)
@@ -103,7 +104,7 @@ sherlock() {
               DISTRO=rke2
               echo "rke2"
             else
-              FOUND+="rke2"
+              FOUND+="rke2 "
           fi
           echo "$(timestamp): Using RKE2 binaries in... ${RKE2_BIN}"
           echo "$(timestamp): Using data-dir... ${RKE2_DIR}"
@@ -120,7 +121,7 @@ sherlock() {
                   techo "Found rke, but another distribution ("${DISTRO}") was also found, using "${DISTRO}"..."
               fi
             else
-              FOUND="rke"
+              FOUND+="rke "
           fi
       fi
       if [ -z ${DISTRO} ]
@@ -151,9 +152,6 @@ sherlock-data-dir() {
   if [ $? -eq 0 ]
     then
       RKE2_BIN=$(dirname $(which rke2))
-  elif [ -f /opt/rke2/bin/rke2 ]
-    then
-      RKE2_BIN=$(dirname /opt/rke2/bin/rke2)
   fi
 
   if [ -f /etc/rancher/${DISTRO}/config.yaml ]
