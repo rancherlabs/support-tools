@@ -120,6 +120,18 @@ collect_common_cluster_info() {
     rm cattle-monitoring-system-apps.json
   fi
 
+  # Collect API version info
+  mkdir -p "${OUTPUT_DIR}/api_version"
+  kubectl get CronJob -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/CronJob.json
+  kubectl get CSIStorageCapacity -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/CSIStorageCapacity.json
+  kubectl get EndpointSlice -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/EndpointSlice.json
+  kubectl get Event -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/Event.json
+  kubectl get FlowSchema -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/FlowSchema.json
+  kubectl get HorizontalPodAutoscaler -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/HorizontalPodAutoscaler.json
+  kubectl get PodDisruptionBudget -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/PodDisruptionBudget.json
+  kubectl get PodSecurityPolicy -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/PodSecurityPolicy.json
+  kubectl get RuntimeClass -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/RuntimeClass.json
+
   # Make collection optional
   if [ ! -z "${SR_COLLECT_CLUSTER_INFO_DUMP}" ]; then
     echo "SR_COLLECT_CLUSTER_INFO_DUMP is set, hence collecting cluster-info dump"
@@ -129,16 +141,17 @@ collect_common_cluster_info() {
 
 collect_rke_info() {
   mkdir -p "${OUTPUT_DIR}/rke"
-  echo "rke: nothing to collect yet"
 
   kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.network.plugin' > ${OUTPUT_DIR}/rke/cni
-  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.kubernetesVersion' > ${OUTPUT_DIR}/rke/kubernetesVersion
   kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.services.etcd | del(.backupConfig.s3BackupConfig)' > ${OUTPUT_DIR}/rke/etcd.json
+  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.services.kubeController' > ${OUTPUT_DIR}/rke/kubeController.json
   kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.dns' > ${OUTPUT_DIR}/rke/dns.json
 }
 
 collect_rke2_info() {
   mkdir -p "${OUTPUT_DIR}/rke2"
+
+  jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-controller-manager") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-controller-manager-args.json
 
   #Get RKE2 Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" ]; then
@@ -171,6 +184,14 @@ collect_k3s_info() {
     done
   fi
 }
+
+
+collect_harvester_info() {
+  mkdir -p "${OUTPUT_DIR}/harvester"
+
+  kubectl get deploy -n harvester-system -o json > harvester/harvester-system-deploy.json
+}
+
 
 collect_upstream_cluster_info() {
   kubectl get features.management.cattle.io -o json > features-management.json
@@ -221,6 +242,9 @@ collect_cluster_info() {
     ;;
     "k3s")
       collect_k3s_info
+    ;;
+    "harvester")
+      collect_harvester_info
     ;;
     *)
       echo "error: CLUSTER_PROVIDER is not set"
