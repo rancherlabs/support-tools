@@ -75,7 +75,7 @@ spec:
     app: webserver-bad
 
 ---
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: webserver-good
@@ -85,12 +85,14 @@ spec:
     http:
       paths:
       - backend:
-          serviceName: webserver-good
-          servicePort: 80
+          service:
+            name: webserver-good
+            port:
+              number: 80
         path: /
-
+        pathType: ImplementationSpecific
 ---
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: webserver-bad
@@ -100,6 +102,9 @@ spec:
     http:
       paths:
       - backend:
-          serviceName: webserver-bad
-          servicePort: 80
+          service:
+            name: webserver-bad
+            port:
+              number: 80
         path: /
+        pathType: ImplementationSpecific
