@@ -37,7 +37,7 @@ export TZ=UTC
 
 help() {
 	echo "Rancher 2.x profile-collector
-  Usage: profile-collector.sh [-a rancher -p goroutine heap ]
+  Usage: profile-collector.sh [-a rancher -p goroutine,heap ]
 
   All flags are optional
 
