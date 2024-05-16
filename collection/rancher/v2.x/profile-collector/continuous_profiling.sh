@@ -37,12 +37,12 @@ export TZ=UTC
 
 help() {
 	echo "Rancher 2.x profile-collector
-  Usage: profile-collector.sh [-a rancher -p goroutine heap ]
+  Usage: profile-collector.sh [-a rancher -p goroutine,heap ]
 
   All flags are optional
 
   -a    Application, either rancher or cattle-cluster-agent
-  -p    Profiles to be collected: goroutine, heap, threadcreate, block, mutex, profile
+  -p    Profiles to be collected (comma separated): goroutine,heap,threadcreate,block,mutex,profile
   -s    Sleep time between loops in seconds
   -t    Time of CPU profile collections
   -h    This help"
