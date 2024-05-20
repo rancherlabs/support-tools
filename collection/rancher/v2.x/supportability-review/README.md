@@ -60,6 +60,28 @@ Please review the below files for details:
   export RANCHER_TOKEN="token-a1b2c:hp7nxfs25w5g7rlc6gkasddhzpphfjbgmcqg6g2kpv52gxg7tl2fgpq2q"
   ```
 
+  #### Additional tolerations
+
+  Some Kubernetes nodes could have it's own taints. If you want to run collector on the nodes, please prepare `yaml` file contains `tolerations` like trailing. To ignore all the taints, just use `operator: Exists`.
+
+  ```yaml
+  tolerations:
+  - operator: Exists
+  - effect: NoSchedule
+    operator: Exists
+  - key: "key1"
+    operator: "Equal"
+    value: "value1"
+    effect: "NoSchedule"
+  - key: "key1"
+    operator: "Exists"
+    effect: "NoSchedule"
+  ```
+
+  And specifiy its absolute path with `SONOBUOY_TOLARATION_FILE` environment variable.
+  ```shell
+  export SONOBUOY_TOLARATION_FILE=<absolute path to the file>
+  ```
 
 **3. Run the collection script**
 
