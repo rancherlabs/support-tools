@@ -108,7 +108,6 @@ collect_common_cluster_info() {
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' services.json > terminating-services
   kubectl get deploy -n cattle-system -o json | jq '.items[] | select(.metadata.name=="cattle-cluster-agent") | .status.conditions[] | select(.type=="Available") | .status == "True"' > cattle-cluster-agent-is-running
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
-  kubectl get deploy -n cattle-neuvector-system -o json > cattle-neuvector-system-deploy.json
   kubectl get settings.management.cattle.io server-version -o json > server-version.json
   kubectl get clusters.management.cattle.io -o json > clusters.management.cattle.io.json
   kubectl get storageclasses.storage.k8s.io -A -o json > storageclasses.storage.k8s.io.json
