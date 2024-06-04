@@ -18,6 +18,9 @@ PREFIX="rancher"
 # Profile collection time (only required for CPU profiles)
 DURATION=30
 
+# Support tarball file (profiles will be added here)
+MAIN_FILENAME="profiles-$(date +'%Y-%m-%d_%H_%M').tar"
+
 # Optional Azure storage container SAS URL and token for uploading. Only creation permission is necessary.
 BLOB_URL=
 BLOB_TOKEN=
@@ -122,6 +125,8 @@ collect() {
 		if [ -n "$BLOB_URL" ]; then
 			echo "Uploading ${FILENAME}"
 			curl -H "x-ms-blob-type: BlockBlob" --upload-file /tmp/${FILENAME} "${BLOB_URL}/${FILENAME}?${BLOB_TOKEN}"
+		else
+			tar rf "$MAIN_FILENAME" /tmp/${FILENAME}
 		fi
 
 		echo
