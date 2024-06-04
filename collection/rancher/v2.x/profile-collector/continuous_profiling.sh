@@ -28,7 +28,7 @@ BLOB_TOKEN=
 cleanup() {
 	# APP=rancher only: set logging back to normal
 	kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
-		echo Setting $rancherpod back to normal logging
+		techo Setting $rancherpod back to normal logging
 		kubectl -n cattle-system exec $rancherpod -c rancher -- loglevel --set error
 	done
 	exit 0
@@ -57,15 +57,15 @@ collect() {
 	while true; do
 		# APP=rancher only: set logging to debug level
 		kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
-			echo Setting $rancherpod debug logging
+			techo Setting $rancherpod debug logging
 			kubectl -n cattle-system exec $rancherpod -c rancher -- loglevel --set debug
 		done
 
 		TMPDIR=$(mktemp -d $MKTEMP_BASEDIR) || {
-			echo 'Creating temporary directory failed, please check options'
+			techo 'Creating temporary directory failed, please check options'
 			exit 1
 		}
-		echo "Created ${TMPDIR}"
+		techo "Created ${TMPDIR}"
 		echo
 
 		echo "Start: $(date -Iseconds)" >>${TMPDIR}/timestamps.txt
@@ -80,7 +80,7 @@ collect() {
 
 		for pod in $(kubectl -n cattle-system get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name); do
 			for profile in ${PROFILES[@]}; do
-				echo Getting $profile profile for $pod
+				techo Getting $profile profile for $pod
 				if [ "$profile" == "profile" ]; then
 					kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile}?seconds=${DURATION} -o ${profile}
 				else
@@ -89,51 +89,51 @@ collect() {
 				kubectl cp -n cattle-system -c ${CONTAINER} ${pod}:${profile} ${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
 			done
 
-			echo Getting logs for $pod
+			techo Getting logs for $pod
 			kubectl logs --since 5m -n cattle-system $pod -c ${CONTAINER} >${TMPDIR}/${pod}.log
 			echo
 
-			echo Getting previous logs for $pod
+			techo Getting previous logs for $pod
 			kubectl logs -n cattle-system $pod -c ${CONTAINER} --previous=true >${TMPDIR}/${pod}-previous.log
 			echo
 
 			if [ "$APP" == "rancher" ]; then
-				echo Getting rancher-audit-logs for $pod
+				techo Getting rancher-audit-logs for $pod
 				kubectl logs --since 5m -n cattle-system $pod -c rancher-audit-log >${TMPDIR}/${pod}-audit.log
 				echo
 			fi
 
-			echo Getting rancher-event-logs for $pod
+			techo Getting rancher-event-logs for $pod
 			kubectl get event --namespace cattle-system --field-selector involvedObject.name=${pod} >${TMPDIR}/${pod}-events.log
 			echo
 
-			echo Getting describe for $pod
+			techo Getting describe for $pod
 			kubectl describe pod $pod -n cattle-system >${TMPDIR}/${pod}-describe.log
 			echo
 		done
 
-		echo "Getting pod details"
+		techo "Getting pod details"
 		kubectl get pods -A -o wide >${TMPDIR}/get_pods_A_wide.log
 
-		echo "End:   $(date -Iseconds)" >>${TMPDIR}/timestamps.txt
+		techo "End:   $(date -Iseconds)" >>${TMPDIR}/timestamps.txt
 
 		FILENAME="${PREFIX}-profiles-$(date +'%Y-%m-%d_%H_%M').tar.xz"
-		echo "Creating tarball ${FILENAME}"
+		techo "Creating tarball ${FILENAME}"
 		tar cfJ /tmp/${FILENAME} --directory ${TMPDIR}/ .
 
 		# Upload to Azure Blob Storage if URL was set
 		if [ -n "$BLOB_URL" ]; then
-			echo "Uploading ${FILENAME}"
+			techo "Uploading ${FILENAME}"
 			curl -H "x-ms-blob-type: BlockBlob" --upload-file /tmp/${FILENAME} "${BLOB_URL}/${FILENAME}?${BLOB_TOKEN}"
 		else
 			tar rf "$MAIN_FILENAME" /tmp/${FILENAME}
 		fi
 
 		echo
-		echo "Removing ${TMPDIR}"
+		techo "Removing ${TMPDIR}"
 		rm -r -f "${TMPDIR}" >/dev/null 2>&1
 
-		echo "Sleeping ${SLEEP} seconds before next capture..."
+		techo "Sleeping ${SLEEP} seconds before next capture..."
 		sleep ${SLEEP}
 	done
 
@@ -151,7 +151,7 @@ while getopts "a:p:d:s:t:h" opt; do
 		IFS=',' read -r -a PROFILES <<<"${OPTARG}"
 
 		# Check if the array is populated correctly (for debugging)
-		echo "Profiles array: ${PROFILES[@]}"
+		techo "Profiles array: ${PROFILES[@]}"
 
 		# Iterate over each profile in the array
 		for profile in "${PROFILES[@]}"; do
@@ -160,7 +160,7 @@ while getopts "a:p:d:s:t:h" opt; do
 				# Valid profile, do nothing
 				;;
 			*)
-				echo "Invalid profile: $profile"
+				techo "Invalid profile: $profile"
 				help && exit 0
 				;;
 			esac
@@ -184,5 +184,11 @@ while getopts "a:p:d:s:t:h" opt; do
 		;;
 	esac
 done
+
+techo() {
+
+	echo "$(timestamp): $*"
+
+}
 
 collect
