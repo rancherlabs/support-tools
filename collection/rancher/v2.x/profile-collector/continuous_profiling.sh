@@ -185,8 +185,12 @@ while getopts "a:p:d:s:t:h" opt; do
 	esac
 done
 
-techo() {
+timestamp() {
+	date "+%Y-%m-%d %H:%M:%S"
 
+}
+
+techo() {
 	echo "$(timestamp): $*"
 
 }
