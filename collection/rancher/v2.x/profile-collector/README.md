@@ -33,6 +33,8 @@ The script needs to be downloaded and run with a kubeconfig file pointed to the 
   sudo bash continuous_profiling.sh
   ```
   The script will run until it receives a SIGKILL (Ctrl-C)
+  A tarball will be generated at the same folder where the script is running. Please share that file with Rancher support.
+
 ## Flags
 
 ```
