@@ -37,7 +37,7 @@ Please review the below files for details:
 
 ## How to use
 
-**1. Download the `collect.sh` script on a Linux node and make it executable**
+**1. Download the `collect.sh` script on a Linux environment and make it executable**
 
    - **Using wget**
 
