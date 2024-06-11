@@ -97,11 +97,11 @@ The script needs to be run on a linux machine running docker with access to your
 
   To be able to run this tool in an airgap environment, two images need to be mirrored in the private registry.
 
-  - Supportability Review Image (SR Image): `ghcr.io/rancherlabs/supportability-review:latest`
+  - Supportability Review Image (SR Image): `ghcr.io/rancher/supportability-review:latest`
   - Sonobuoy Image: `rancher/mirrored-sonobuoy-sonobuoy:v0.57.0`
 
   ```
-  export SRC_SR_IMAGE="ghcr.io/rancherlabs/supportability-review:latest"
+  export SRC_SR_IMAGE="ghcr.io/rancher/supportability-review:latest"
   export DST_SR_IMAGE="registry.example.com/supportability-review:latest"
   docker tag $SRC_SR_IMAGE $DST_SR_IMAGE
   docker push $DST_SR_IMAGE
