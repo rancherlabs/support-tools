@@ -1,15 +1,15 @@
 # Fleet | GitRepo Secret Backup Restore Patch
 
-This is a patching script to ensure all secrets used by Fleet `GitRepos` are backed up by the Racnher Backups tool.
+This is a patching script to ensure all secrets used by Fleet `GitRepos` are backed up by the Rancher Backups tool.
 
-The script is designed to fix existing clusters using Fleet and Rancher Backups. When run, it ensures that all secrets used by GitRepos are backed up. Although a bug fix is in progress, it will not be retroactive. Therefore, this script can resolve the current issue.
+From Rancher v2.8.?? (TBD) and v2.9.0 all `Secrets` created via the Fleet UI in Rancher will be included in Rancher Backups.
 
-Additionally, the bug fix will only address `Secrets` created via the Fleet UI of Rancher. It does not cover secrets created outside of the Fleet UI, as those secrets cannot be guaranteed to be "fleet-owned."
+Any GitRepo `Secrets` created before this, or outside of the Fleet UI in Rancher, will not be included in Rancher Backups.
 
 By running this patching script on your Rancher cluster, it will identify all secrets used by GitRepos and label them as managed by Fleet. This labeling ensures they are backed up by Rancher Backups.
 
 ## Running the script
-To run this script you simply need a valid KUBECONFIG to connect to your Racnher cluster. Then execute the shell script:
+To run this script you simply need a valid KUBECONFIG to connect to your Rancher cluster. Then execute the shell script:
 > ./patch_gitrepo_secrets.sh
 
 When run you should see output similar to:
