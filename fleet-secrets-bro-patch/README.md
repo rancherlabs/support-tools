@@ -15,7 +15,7 @@ To run this script you simply need a valid KUBECONFIG to connect to your Rancher
 When run you should see output similar to:
 
 ```bash
-./patch_gitrepo_secrets.sh
+# ./patch_gitrepo_secrets.sh
 Patching unique secret combinations:
 Patching secret: fleet-default:auth-helm-creds
 secret/auth-helm-creds patched
@@ -24,3 +24,13 @@ secret/auth-gitlab-creds patched (no change)
 ```
 
 Note: If the secret already has the necessary label it will look like the `secret/auth-gitlab-creds` line above.
+
+### Dry-run
+Optionally you can run the script with dry-run flag `-D`, it will produce output like:
+```bash
+# ./patch_gitrepo_secrets.sh -D
+Patching unique secret combinations:
+Would patch secret: fleet-default/auth-6w5gn
+Would patch secret: fleet-default/auth-lfkdr
+Would patch secret: fleet-local/auth-gitlab-creds
+```

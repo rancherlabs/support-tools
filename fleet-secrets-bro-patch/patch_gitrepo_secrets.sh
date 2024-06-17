@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 
+DRYRUN=0
+
+while getopts "D:" opt; do
+  case $opt in
+    D) DRYRUN=1;;
+    \?) echo "Invalid option: -$OPTARG"; exit 1;;
+  esac
+done
+
 output=$(kubectl get gitrepo -A -o custom-columns=NAMESPACE:.metadata.namespace,CLIENT:.spec.clientSecretName,HELM:.spec.helmSecretName,HELMPATHS:.spec.helmSecretNameForPaths --no-headers)
 
 secret_combinations=()
@@ -24,6 +33,10 @@ for combination in "${sorted_secret_combinations[@]}"; do
   IFS=':'
   # Read the input string into two variables
   read -r namespace name <<< "$combination"
-  echo "Patching secret: $combination"
-  kubectl patch secret -n "$namespace" "$name" -p '{"metadata": {"labels": {"fleet.cattle.io/managed": "true"}}}'
+  if [ $DRYRUN -eq 1 ]; then
+    echo "[DRY-RUN] Would patch secret: $namespace/$name"
+  else
+    echo "Patching secret: $combination"
+    kubectl patch secret -n "$namespace" "$name" -p '{"metadata": {"labels": {"fleet.cattle.io/managed": "true"}}}'
+  fi
 done
