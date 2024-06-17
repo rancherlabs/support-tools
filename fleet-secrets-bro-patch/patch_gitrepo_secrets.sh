@@ -16,7 +16,7 @@ while read -r row; do
 done <<< "$(echo "$output" | awk '{print $0}')"
 
 # Sort and uniq the list of secret combinations
-read -r -a sorted_secret_combinations <<< "$(printf "%s\n" "${secret_combinations[@]}" | sort -u)"
+sorted_secret_combinations=($(printf "%s\n" "${secret_combinations[@]}" | sort -u))
 
 echo "Patching unique secret combinations:"
 for combination in "${sorted_secret_combinations[@]}"; do
