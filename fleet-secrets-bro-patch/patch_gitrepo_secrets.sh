@@ -2,7 +2,7 @@
 
 DRYRUN=0
 
-while getopts "D:" opt; do
+while getopts "D" opt; do
   case $opt in
     D) DRYRUN=1;;
     \?) echo "Invalid option: -$OPTARG"; exit 1;;
