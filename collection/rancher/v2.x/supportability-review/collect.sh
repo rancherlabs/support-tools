@@ -17,7 +17,6 @@ Environment variables:
   RANCHER_URL: Specify Rancher Server URL (Ex: https://rancher.example.com)
   RANCHER_TOKEN: Specify Rancher Token to connect to Rancher Server
   SR_IMAGE: Use this variable to point to custom container image of Supportability Review
-
 "
 }
 

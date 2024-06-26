@@ -211,6 +211,8 @@ collect_upstream_cluster_info() {
   kubectl get settings.management.cattle.io install-uuid -o json > install-uuid.json
   kubectl get nodes.management.cattle.io -A -o json > nodes-cattle.json
   kubectl get --no-headers tokens.management.cattle.io | wc -l > token-count.txt
+  kubectl get roletemplates -o json > roletemplates.json
+  kubectl get clusterrole -o json > clusterrole.json
 }
 
 collect_app_info() {
@@ -260,6 +262,14 @@ delete_sensitive_info() {
   rm services.json
 }
 
+move_ip_map() {
+  if "${OBFUSCATE}" == "true"; then
+    echo "moving map"
+    mv ip_map.json ${SONOBUOY_RESULTS_DIR}/
+  else
+    echo "nothing to move"
+  fi
+}
 
 main() {
   echo "start"
@@ -273,7 +283,26 @@ main() {
   cd "${OUTPUT_DIR}"
 
   collect_cluster_info
+
+  #Handle Obfuscate case
+  if "${OBFUSCATE}" == "true"; then
+    echo "obfuscation enabled"
+    echo "true" > "${OUTPUT_DIR}/obfuscate_data"
+
+    json_list=("nodes.json" "cattle-system-deploy.json" "nodes-cattle.json" "services-default.json" "crds.json" "pods.json")
+
+    for file in ${json_list[@]}; do
+      prefix='obf_'
+      newfile="${prefix}${file}"
+      obfuscate_json.py $file $newfile
+      echo "moving ${newfile} to ${file}"
+      rm $file
+      mv $newfile $file
+    done
+  fi
+
   delete_sensitive_info
+  move_ip_map
 
   if [ "${DEBUG}" != "true" ]; then
     tar czvf "${TAR_OUTPUT_FILE}" -C "${OUTPUT_DIR}" .

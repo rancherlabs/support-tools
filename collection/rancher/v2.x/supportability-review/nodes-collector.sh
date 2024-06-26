@@ -322,6 +322,15 @@ delete_sensitive_info() {
   rm -f networking/cni/*kubeconfig
 }
 
+move_ip_map() {
+  if "${OBFUSCATE}" == "true"; then
+    echo "moving map"
+    mv ip_map.json ${SONOBUOY_RESULTS_DIR}/
+  else
+    echo "nothing to move"
+  fi
+}
+
 main() {
   echo "start"
   date "+%Y-%m-%d %H:%M:%S"
@@ -334,7 +343,35 @@ main() {
   cd "${OUTPUT_DIR}"
 
   collect_node_info
+
+  #Handle Obfuscate env var
+  if "${OBFUSCATE}" == "true"; then
+    echo "obfuscation enabled"
+    echo "true" > "obfuscate_data"
+
+    json_list=("docker/docker_info.json")
+    text_list=("systeminfo/ps" "networking/ipaddrshow" "networking/iproute" "networking/ipneighbour" "networking/ssanp" "networking/ssitan" "networking/ssuapn" "networking/ss4apn" "networking/sstunlp4" "networking/nft_ruleset" "networking/dns-external" "networking/dns-internal" "networking/dns-internal-all-endpoints" "networking/ss6apn"
+)
+
+    for file in ${json_list[@]}; do
+      newfile=$(sed 's/\//\/obf_/' <<< $file)
+      obfuscate_json.py $file $newfile
+      rm $file
+      echo "moving $newfile to $file"
+      mv $newfile $file
+    done
+
+    for file in ${text_list[@]}; do
+      newfile=$(sed 's/\//\/obf_/' <<< $file)
+      obfuscate_text.py $file $newfile
+      rm $file
+      echo "moving ${newfile} to ${file}"
+      mv $newfile $file
+    done
+  fi
+
   delete_sensitive_info
+  move_ip_map
 
   if [ "${DEBUG}" != "true" ]; then
     tar czvf "${TAR_OUTPUT_FILE}" -C "${OUTPUT_DIR}" .
