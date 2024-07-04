@@ -209,7 +209,7 @@ system-all() {
   fi
   if $(command -v iostat >/dev/null 2>&1); then
     iostat -h -x 2 5 > $TMPDIR/systeminfo/iostathx 2>&1
-  fi  
+  fi
   if $(command -v pidstat >/dev/null 2>&1); then
     pidstat -drshut -p ALL 2 5 > $TMPDIR/systeminfo/pidstatx 2>&1
   fi
@@ -620,7 +620,7 @@ rke2-k8s() {
 }
 
 kubeadm-k8s() {
-  
+
   KUBEADM_DIR="/etc/kubernetes/"
   KUBEADM_STATIC_DIR="/etc/kubernetes/manifests/"
   if ! $(command -v kubeadm >/dev/null 2>&1); then
@@ -943,7 +943,7 @@ kubeadm-etcd() {
 
   KUBEADM_ETCD_DIR="/var/lib/etcd/"
   KUBEADM_ETCD_CERTS="/etc/kubernetes/pki/etcd/"
-  
+
   if ! $(command -v etcdctl >/dev/null 2>&1); then
     echo "error: etcdctl command not found"
     exit 1
@@ -988,6 +988,18 @@ archive() {
 
 }
 
+obfuscate() {
+  if [[ $OBFUSCATE == "true" ]];
+    then
+      techo "obfuscating -----"
+      DIR_NAME=$(dirname ${TMPDIR_BASE})
+      techo "$DIR_NAME"
+      ./obf.py $DIR_NAME
+    else
+      techo "moving along"
+  fi
+}
+
 cleanup() {
 
   techo "Removing ${TMPDIR_BASE}"
@@ -1010,7 +1022,8 @@ help() {
   -E    End date of journald and docker log collection. (ex: -E 2022-12-07)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2|kubeadm)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
-  -f    Force log collection if the minimum space isn't available"
+  -f    Force log collection if the minimum space isn't available
+  -o    Obfuscate IP addresses"
 
 }
 
@@ -1033,7 +1046,7 @@ if [[ $EUID -ne 0 ]] && [[ "${DEV}" == "" ]]
     exit 1
 fi
 
-while getopts "c:d:s:e:S:E:r:fph" opt; do
+while getopts "c:d:s:e:S:E:r:fpoh" opt; do
   case $opt in
     c)
       FLAG_DATA_DIR="${OPTARG}"
@@ -1069,6 +1082,9 @@ while getopts "c:d:s:e:S:E:r:fph" opt; do
       ;;
     p)
       PRIORITY_DEFAULT=1
+      ;;
+    o)
+      OBFUSCATE=true
       ;;
     h)
       help && exit 0
@@ -1146,5 +1162,6 @@ if [ "${INIT}" = "systemd" ]
   then
     journald-log
 fi
+obfuscate
 archive
 cleanup
