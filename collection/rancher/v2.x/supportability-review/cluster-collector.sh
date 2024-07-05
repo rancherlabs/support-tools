@@ -148,12 +148,17 @@ collect_rke_info() {
   kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.services.kubeApi' > ${OUTPUT_DIR}/rke/kubeApi.json
   kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.services.kubeController' > ${OUTPUT_DIR}/rke/kubeController.json
   kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.dns' > ${OUTPUT_DIR}/rke/dns.json
+
+  kubectl get ds -n ingress-nginx -o json > ${OUTPUT_DIR}/rke/ingress-nginx-daemonsets.json
 }
 
 collect_rke2_info() {
   mkdir -p "${OUTPUT_DIR}/rke2"
 
+  jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-apiserver") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-apiserver-args.json
   jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-controller-manager") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-controller-manager-args.json
+  jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-proxy") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-proxy-args.json
+  jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-scheduler") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-scheduler-args.json
 
   #Get RKE2 Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" ]; then
@@ -203,10 +208,13 @@ collect_upstream_cluster_info() {
   kubectl get bundles.fleet.cattle.io -n fleet-local  -o json > fleet-local-bundle.json
   kubectl get apps.catalog.cattle.io -n cattle-resources-system -o json > cattle-resources-system-apps.json
   kubectl get backup.resources.cattle.io -o json > backup.json
-  jq '[.items[] | select(.metadata.namespace == "cattle-system" and .metadata.labels.app == "rancher") | .spec.nodeName] | unique | length' pods.json > unique-rancher-pod-count-by-node
-  number_of_rancher_pods=$(jq -cr '[.items[] | select(.metadata.namespace == "cattle-system" and .metadata.labels.app == "rancher") | .metadata.name] | length' pods.json)
+
+  rancher_version=$(kubectl get settings.management.cattle.io server-version -o json | jq -cr '.value | sub("^v"; "")')
+  rancher_deployment_name=$(kubectl -n cattle-system get deployments.apps -o json | jq -cr ".items[] | select(.metadata.labels.chart == \"rancher-$rancher_version\") | .metadata.name")
+  jq "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\") | .spec.nodeName] | unique | length" pods.json > unique-rancher-pod-count-by-node
+  number_of_rancher_pods=$(jq -cr "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\") | .metadata.name] | length" pods.json)
   if [ $number_of_rancher_pods ]; then
-    jq -cr '[.items[] | select(.metadata.namespace == "cattle-system" and .metadata.labels.app == "rancher")] | .[0] | .status.containerStatuses[0].imageID | split("@") | .[1] | split(":") | .[1]' pods.json > rancher-imageid.txt
+    jq -cr "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\")] | .[0] | .status.containerStatuses[0].imageID | split(\"@\") | .[1] | split(\":\") | .[1]" pods.json > rancher-imageid.txt
   fi
 
   kubectl get settings.management.cattle.io install-uuid -o json > install-uuid.json
