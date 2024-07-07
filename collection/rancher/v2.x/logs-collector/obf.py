@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import sys
-import re
 import json
 import petname
 import os
+import re
+import socket
+import sys
 
 def load_mapping(mapping_file):
     if os.path.exists(mapping_file):
@@ -47,6 +48,7 @@ def obfuscate_ip_address(ip_address, ip_mapping):
 def obfuscate_text(text, hostname_mapping, ip_mapping):
     hostnames = extract_hostnames(text)
     ip_addresses = extract_ip_addresses(text)
+    short_hostname = socket.gethostname()
 
     for hostname in hostnames:
         if hostname not in hostname_mapping:
@@ -62,11 +64,20 @@ def obfuscate_text(text, hostname_mapping, ip_mapping):
             obfuscated_ip = ip_mapping[ip_address]
         text = text.replace(ip_address, obfuscated_ip)
 
+    #search for hostname not fqdn
+    for hostname in hostnames:
+        if short_hostname not in hostname_mapping:
+            obfuscated_name = obfuscate_hostname(hostname, hostname_mapping)
+        else:
+            obfuscated_name = hostname_mapping[short_hostname]
+        text = text.replace(short_hostname, obfuscated_name)
+
     return text
 
 def process_file(input_file, output_file, hostname_mapping_file='hostname_mapping.json', ip_mapping_file='ip_mapping.json'):
     hostname_mapping = load_mapping(hostname_mapping_file)
     ip_mapping = load_mapping(ip_mapping_file)
+    short_hostname = socket.gethostname()
 
     try:
         with open(input_file, 'r') as file:
@@ -87,8 +98,8 @@ if __name__ == "__main__":
   #output_file = sys.argv[2]
   directory = sys.argv[1]
 
-  #process_list = ["ipaddrshow","ipneighbour","iproute","ipv6addrshow","ipv6neighbour","ipv6route","nft_ruleset","ss4apn","ss6apn","ssanp","ssitan","sstunlp4","sstunlp6","ssuapn","sswapn","ssxapn","systemd-resolved","hostnamefqdn","iostathx","lsof","uname","hostname","pidstatx","ssitan","syslog","dockerinfo","docker","containerd","cloud-init","sar"]
-  process_list = ["ipaddrshow","ipneighbour","iproute","ipv6addrshow","ipv6neighbour","ipv6route","nft_ruleset","ss4apn","ss6apn","ssanp","ssitan","sstunlp4","sstunlp6","ssuapn","sswapn","ssxapn","systemd-resolved","hostnamefqdn","iostathx","uname","hostname","pidstatx","ssitan"]
+  process_list = ["ipaddrshow","ipneighbour","iproute","ipv6addrshow","ipv6neighbour","ipv6route","nft_ruleset","ss4apn","ss6apn","ssanp","ssitan","sstunlp4","sstunlp6","ssuapn","sswapn","ssxapn","systemd-resolved","hostnamefqdn","iostathx","lsof","uname","hostname","pidstatx","ssitan","syslog","dockerinfo","docker","containerd","cloud-init","sar"]
+  #process_list = ["ipaddrshow","ipneighbour","iproute","ipv6addrshow","ipv6neighbour","ipv6route","nft_ruleset","ss4apn","ss6apn","ssanp","ssitan","sstunlp4","sstunlp6","ssuapn","sswapn","ssxapn","systemd-resolved","hostnamefqdn","iostathx","uname","hostname","pidstatx","ssitan"]
 
 
   map_file = "ip_map.json"
