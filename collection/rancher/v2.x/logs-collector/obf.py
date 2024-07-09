@@ -5,6 +5,7 @@ import os
 import re
 import socket
 import sys
+#TODO implement logging
 
 def load_mapping(mapping_file):
     if os.path.exists(mapping_file):
@@ -28,13 +29,24 @@ def extract_ip_addresses(text):
 
 def obfuscate_subdomain(subdomain, mapping):
     if subdomain not in mapping:
-        mapping[subdomain] = petname.Generate(1)
-    return mapping[subdomain]
+        #print('subdomain passed in: ' + subdomain)
+        # TODO check for collisions
+        return petname.Generate(1)
+    else:
+        #print('subdomain found: ' + str(subdomain))
+        return mapping[subdomain]
 
 def obfuscate_hostname(hostname, mapping):
     subdomains = hostname.split('.')
+    #print('subdomains: ' + str(subdomains))
     obfuscated_subdomains = [obfuscate_subdomain(sub, mapping) for sub in subdomains]
     obfuscated_hostname = '.'.join(obfuscated_subdomains)
+    mapping[hostname] = obfuscated_hostname
+    return obfuscated_hostname
+
+def obfuscate_host(hostname, mapping):
+    obfuscated_hostname = obfuscate_subdomain(hostname, mapping)
+    #print('debug obf hostname:' + obfuscated_hostname)
     mapping[hostname] = obfuscated_hostname
     return obfuscated_hostname
 
@@ -51,10 +63,14 @@ def obfuscate_text(text, hostname_mapping, ip_mapping):
     short_hostname = socket.gethostname()
 
     for hostname in hostnames:
+        #print("processing hostname:" + hostname)
         if hostname not in hostname_mapping:
+            #print('hostname not in map. hostname: ' + hostname)
             obfuscated_name = obfuscate_hostname(hostname, hostname_mapping)
+            #print('new obfuscated name: ' + obfuscated_name)
         else:
             obfuscated_name = hostname_mapping[hostname]
+            #print("found obfuscated name:" + obfuscated_name)
         text = text.replace(hostname, obfuscated_name)
 
     for ip_address in ip_addresses:
@@ -65,12 +81,13 @@ def obfuscate_text(text, hostname_mapping, ip_mapping):
         text = text.replace(ip_address, obfuscated_ip)
 
     #search for hostname not fqdn
-    for hostname in hostnames:
-        if short_hostname not in hostname_mapping:
-            obfuscated_name = obfuscate_hostname(hostname, hostname_mapping)
-        else:
-            obfuscated_name = hostname_mapping[short_hostname]
-        text = text.replace(short_hostname, obfuscated_name)
+    if short_hostname not in hostname_mapping:
+        #print("short_hostname not found. short hostname:" + short_hostname)
+        obfuscated_name = obfuscate_host(short_hostname, hostname_mapping)
+    else:
+        #print("short hostname found")
+        obfuscated_name = hostname_mapping[short_hostname]
+    text = text.replace(short_hostname, obfuscated_name)
 
     return text
 
@@ -101,6 +118,8 @@ if __name__ == "__main__":
   process_list = ["ipaddrshow","ipneighbour","iproute","ipv6addrshow","ipv6neighbour","ipv6route","nft_ruleset","ss4apn","ss6apn","ssanp","ssitan","sstunlp4","sstunlp6","ssuapn","sswapn","ssxapn","systemd-resolved","hostnamefqdn","iostathx","lsof","uname","hostname","pidstatx","ssitan","syslog","dockerinfo","docker","containerd","cloud-init","sar"]
   #process_list = ["ipaddrshow","ipneighbour","iproute","ipv6addrshow","ipv6neighbour","ipv6route","nft_ruleset","ss4apn","ss6apn","ssanp","ssitan","sstunlp4","sstunlp6","ssuapn","sswapn","ssxapn","systemd-resolved","hostnamefqdn","iostathx","uname","hostname","pidstatx","ssitan"]
 
+  input_file = []
+  output_file = []
 
   map_file = "ip_map.json"
   # iterate over files in directory passed in
