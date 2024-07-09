@@ -771,8 +771,8 @@ k3s-certs() {
       techo "Collecting k3s directory state"
       mkdir -p $TMPDIR/${DISTRO}/directories
       ls -lah /var/lib/rancher/${DISTRO}/agent > $TMPDIR/${DISTRO}/directories/k3sagent 2>&1
-      ls -lah /var/lib/rancher/${DISTRO}/server/manifests > $TMPDIR/${DISTRO}/directories/k3sservermanifests 2>&1
-      ls -lah /var/lib/rancher/${DISTRO}/server/tls > $TMPDIR/${DISTRO}/directories/k3sservertls 2>&1
+      ls -lahR /var/lib/rancher/${DISTRO}/server/manifests > $TMPDIR/${DISTRO}/directories/k3sservermanifests 2>&1
+      ls -lahR /var/lib/rancher/${DISTRO}/server/tls > $TMPDIR/${DISTRO}/directories/k3sservertls 2>&1
       techo "Collecting k3s certificates"
       mkdir -p $TMPDIR/${DISTRO}/certs/{agent,server}
       AGENT_CERTS=$(find /var/lib/rancher/${DISTRO}/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
@@ -830,8 +830,8 @@ rke2-certs() {
       techo "Collecting rke2 directory state"
       mkdir -p $TMPDIR/${DISTRO}/directories
       ls -lah ${RKE2_DIR}/agent > $TMPDIR/${DISTRO}/directories/rke2agent 2>&1
-      ls -lah ${RKE2_DIR}/server/manifests > $TMPDIR/${DISTRO}/directories/rke2servermanifests 2>&1
-      ls -lah ${RKE2_DIR}/server/tls > $TMPDIR/${DISTRO}/directories/rke2servertls 2>&1
+      ls -lahR ${RKE2_DIR}/server/manifests > $TMPDIR/${DISTRO}/directories/rke2servermanifests 2>&1
+      ls -lahR ${RKE2_DIR}/server/tls > $TMPDIR/${DISTRO}/directories/rke2servertls 2>&1
       techo "Collecting rke2 certificates"
       mkdir -p $TMPDIR/${DISTRO}/certs/{agent,server}
       AGENT_CERTS=$(find ${RKE2_DIR}/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
