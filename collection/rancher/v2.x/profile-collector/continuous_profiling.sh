@@ -112,6 +112,9 @@ collect() {
 			echo
 		done
 
+		echo "Getting leases"
+		kubectl get leases -n kube-system >${TMPDIR}/leases.txt
+
 		echo "Getting pod details"
 		kubectl get pods -A -o wide >${TMPDIR}/get_pods_A_wide.log
 
