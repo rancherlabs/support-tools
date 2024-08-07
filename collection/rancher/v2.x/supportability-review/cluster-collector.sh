@@ -143,11 +143,20 @@ collect_common_cluster_info() {
 collect_rke_info() {
   mkdir -p "${OUTPUT_DIR}/rke"
 
-  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.network.plugin' > ${OUTPUT_DIR}/rke/cni
-  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.services.etcd | del(.backupConfig.s3BackupConfig)' > ${OUTPUT_DIR}/rke/etcd.json
-  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.services.kubeApi' > ${OUTPUT_DIR}/rke/kubeApi.json
-  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.services.kubeController' > ${OUTPUT_DIR}/rke/kubeController.json
-  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.dns' > ${OUTPUT_DIR}/rke/dns.json
+  kubectl -n kube-system get secret | grep full-cluster-state
+  if [ $? -eq 0 ]; then
+    kubectl -n kube-system get secret full-cluster-state -o jsonpath='{.data.full-cluster-state}' | base64 -d > ${OUTPUT_DIR}/rke/full-cluster-state.json
+    echo "true" > ${OUTPUT_DIR}/rke/CVE-2023-32191.txt
+  else
+    kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' > ${OUTPUT_DIR}/rke/full-cluster-state.json
+    echo "false" > ${OUTPUT_DIR}/rke/CVE-2023-32191.txt
+  fi
+  jq -cr '.currentState.rkeConfig.network.plugin' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/cni
+  jq -cr '.currentState.rkeConfig.services.etcd | del(.backupConfig.s3BackupConfig)' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/etcd.json
+  jq -cr '.currentState.rkeConfig.services.kubeApi' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/kubeApi.json
+  jq -cr '.currentState.rkeConfig.services.kubeController' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/kubeController.json
+  jq -cr '.currentState.rkeConfig.dns' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/dns.json
+  rm ${OUTPUT_DIR}/rke/full-cluster-state.json
 
   kubectl get ds -n ingress-nginx -o json > ${OUTPUT_DIR}/rke/ingress-nginx-daemonsets.json
 }
