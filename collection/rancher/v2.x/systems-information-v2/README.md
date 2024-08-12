@@ -56,7 +56,7 @@ Rancher id: b82b0b06-6f0b-4052-9f17-3602499f07dc
 
 Cluster Id     Name             K8s Version           Provider   Created                Nodes
 c-m-mfc8m8z5   a1-ops-prd       v1.30.2+rke2r1        imported   2024-01-27T20:16:15Z   <none>
-c-m-tncnvhrs   a1-dell-r720     v1.27.13+rke2r1       rke2       2023-12-11T00:52:36Z   <none>
+c-m-tncnvhrs   a1-harvester-prd v1.27.13+rke2r1       rke2       2023-12-11T00:52:36Z   <none>
 local          a1-rancher-prd   v1.30.2+rke2r1        rke2       2023-08-13T08:46:40Z   <none>
 
 --------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ machine-z674w   172.28.2.221,a1-ops-prd-small-8918c748-tlzvx    <none>   4     8
 Node count: 14
 
 --------------------------------------------------------------------------------
-Cluster: a1-dell-r720 (c-m-tncnvhrs)
+Cluster: a1-harvester-prd (c-m-tncnvhrs)
 Node Id         Address                   Role     CPU   RAM           OS       Docker Version   Created
 machine-4rbqg   172.28.2.22,a1hrr720p02   <none>   24    396150564Ki   <none>   <none>           2023-12-11T01:32:03Z
 machine-f864m   172.28.2.24,a1hrr720p04   <none>   24    264029632Ki   <none>   <none>           2024-02-10T00:54:14Z
