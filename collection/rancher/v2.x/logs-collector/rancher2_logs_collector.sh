@@ -852,8 +852,8 @@ rke2-certs() {
       techo "Collecting rke2 directory state"
       mkdir -p $TMPDIR/${DISTRO}/directories
       ls -lah ${RKE2_DATA_DIR}/agent > $TMPDIR/${DISTRO}/directories/rke2agent 2>&1
-      ls -lah ${RKE2_DATA_DIR}/server/manifests > $TMPDIR/${DISTRO}/directories/rke2servermanifests 2>&1
-      ls -lah ${RKE2_DATA_DIR}/server/tls > $TMPDIR/${DISTRO}/directories/rke2servertls 2>&1
+      ls -lahR ${RKE2_DATA_DIR}/server/manifests > $TMPDIR/${DISTRO}/directories/rke2servermanifests 2>&1
+      ls -lahR ${RKE2_DATA_DIR}/server/tls > $TMPDIR/${DISTRO}/directories/rke2servertls 2>&1
       techo "Collecting rke2 certificates"
       mkdir -p $TMPDIR/${DISTRO}/certs/{agent,server}
       AGENT_CERTS=$(find ${RKE2_DATA_DIR}/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
