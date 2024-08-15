@@ -1125,7 +1125,6 @@ if __name__ == "__main__":
   directory = sys.argv[1]
 
   process_list = ["ipaddrshow","ipneighbour","iproute","ipv6addrshow","ipv6neighbour","ipv6route","nft_ruleset","ss4apn","ss6apn","ssanp","ssitan","sstunlp4","sstunlp6","ssuapn","sswapn","ssxapn","systemd-resolved","hostnamefqdn","iostathx","lsof","uname","hostname","pidstatx","ssitan","syslog","dockerinfo","docker","containerd","cloud-init","sar"]
-  #process_list = ["ipaddrshow","ipneighbour","iproute","ipv6addrshow","ipv6neighbour","ipv6route","nft_ruleset","ss4apn","ss6apn","ssanp","ssitan","sstunlp4","sstunlp6","ssuapn","sswapn","ssxapn","systemd-resolved","hostnamefqdn","iostathx","uname","hostname","pidstatx","ssitan"]
 
   input_file = []
   output_file = []
