@@ -56,25 +56,25 @@ sherlock() {
 
   if [ -z ${PRIORITY_DEFAULT} ]
     then
-      echo -n "$(timestamp): Detecting available commands... "
+      echo -n "$(timestamp): Detecting available commands... " | tee -a $TMPDIR/collector-output.log
       if $(command -v renice >/dev/null 2>&1); then
         renice -n ${PRIORITY_NICE} "$$" >/dev/null 2>&1
-        echo -n "renice "
+        echo -n "renice " | tee -a $TMPDIR/collector-output.log
       fi
       if $(command -v ionice >/dev/null 2>&1); then
         ionice -c ${PRIORITY_IONICE} -p "$$" >/dev/null 2>&1
-        echo "ionoice"
+        echo "ionoice" | tee -a $TMPDIR/collector-output.log
       fi
   fi
 
-  echo -n "$(timestamp): Detecting OS... "
+  echo -n "$(timestamp): Detecting OS... " | tee -a $TMPDIR/collector-output.log
   if [ -f /etc/os-release ]
     then
       OSRELEASE=$(grep -w ^ID /etc/os-release | cut -d= -f2 | sed 's/"//g')
       OSVERSION=$(grep -w ^VERSION_ID /etc/os-release | cut -d= -f2 | sed 's/"//g')
-      echo "${OSRELEASE} ${OSVERSION}"
+      echo "${OSRELEASE} ${OSVERSION}" | tee -a $TMPDIR/collector-output.log
     else
-      echo -e "\n$(timestamp): couldn't detect OS"
+      echo -e "\n$(timestamp): couldn't detect OS" | tee -a $TMPDIR/collector-output.log
   fi
   if [ -n "${DISTRO_FLAG}" ]
     then
@@ -84,16 +84,16 @@ sherlock() {
         then
           rke2-setup
       fi
-      echo "$(timestamp): Using RKE2 binary... ${RKE2_BIN}"
-      echo "$(timestamp): Using RKE2 data-dir... ${RKE2_DATA_DIR}"
+      techo "Using RKE2 binary... ${RKE2_BIN}"
+      techo "Using RKE2 data-dir... ${RKE2_DATA_DIR}"
     else
-      echo -n "$(timestamp): Detecting k8s distribution... "
+      echo -n "$(timestamp): Detecting k8s distribution... " | tee -a $TMPDIR/collector-output.log
       if $(command -v k3s >/dev/null 2>&1)
         then
           if $(k3s crictl ps >/dev/null 2>&1)
             then
               DISTRO=k3s
-              echo "k3s"
+              echo "k3s" | tee -a $TMPDIR/collector-output.log
             else
               FOUND+="k3s "
           fi
@@ -104,12 +104,12 @@ sherlock() {
           if $(${RKE2_DATA_DIR}/bin/crictl ps >/dev/null 2>&1)
             then
               DISTRO=rke2
-              echo "rke2"
+              echo "rke2" | tee -a $TMPDIR/collector-output.log
             else
               FOUND+="rke2 "
           fi
-          echo "$(timestamp): Using RKE2 binary... ${RKE2_BIN}"
-          echo "$(timestamp): Using RKE2 data-dir... ${RKE2_DATA_DIR}"
+          techo "Using RKE2 binary... ${RKE2_BIN}"
+          techo "Using RKE2 data-dir... ${RKE2_DATA_DIR}"
       fi
       if $(command -v docker >/dev/null 2>&1)
         then
@@ -118,7 +118,7 @@ sherlock() {
               if [ -z "${DISTRO}" ]
                 then
                   DISTRO=rke
-                  echo "rke"
+                  echo "rke" | tee -a $TMPDIR/collector-output.log
                 else
                   techo "Found rke, but another distribution ("${DISTRO}") was also found, using "${DISTRO}"..."
               fi
@@ -128,7 +128,7 @@ sherlock() {
       fi
       if [ -z ${DISTRO} ]
         then
-          echo -e "\n$(timestamp): couldn't detect k8s distro"
+          echo -e "\n$(timestamp): couldn't detect k8s distro" | tee -a $TMPDIR/collector-output.log
           if [ -n "${FOUND}" ]
             then
               techo "Found ${FOUND} but could not execute commands successfully"
@@ -136,14 +136,14 @@ sherlock() {
       fi
   fi
 
-  echo -n "$(timestamp): Detecting init type... "
+  echo -n "$(timestamp): Detecting init type... " | tee -a $TMPDIR/collector-output.log
   if $(command -v systemctl >/dev/null 2>&1)
     then
       INIT="systemd"
-      echo "systemd"
+      echo "systemd" | tee -a $TMPDIR/collector-output.log
     else
       INIT="other"
-      echo "other"
+      echo "other" | tee -a $TMPDIR/collector-output.log
   fi
 
 }
@@ -184,14 +184,9 @@ rke2-setup() {
         else
           RKE2_DATA_DIR="/var/lib/rancher/rke2"
       fi
-
-      if [[ -n "${RKE2_DATA_DIR}" ]]
-        then
-          export CRI_CONFIG_FILE="${RKE2_DATA_DIR}/agent/etc/crictl.yaml"
-        else
-          techo "Couldn't detect the rke2 data directory (data-dir), please use the -c flag to set the directory for the kubectl and crictl binaries provided with rke2"
-      fi
   fi
+
+  export CRI_CONFIG_FILE="${RKE2_DATA_DIR}/agent/etc/crictl.yaml"
 
 }
 
@@ -651,12 +646,12 @@ kubeadm-k8s() {
   KUBEADM_DIR="/etc/kubernetes/"
   KUBEADM_STATIC_DIR="/etc/kubernetes/manifests/"
   if ! $(command -v kubeadm >/dev/null 2>&1); then
-    echo "error: kubeadm command not found"
+    techo "error: kubeadm command not found"
     exit 1
   fi
 
   if ! $(command -v kubectl >/dev/null 2>&1); then
-    echo "error: kubectl command not found"
+    techo "error: kubectl command not found"
     exit 1
   fi
 
@@ -822,7 +817,7 @@ k3s-certs() {
 kubeadm-certs() {
 
   if ! $(command -v openssl >/dev/null 2>&1); then
-    echo "error: openssl command not found"
+    techo "error: openssl command not found"
     exit 1
   fi
 
@@ -914,18 +909,18 @@ rke-etcd() {
 
 rke2-etcd() {
 
-  RKE2_ETCD=$(${RKE2_DIR}/bin/crictl ps --quiet --label io.kubernetes.container.name=etcd --state running)
+  RKE2_ETCD=$(${RKE2_DATA_DIR}/bin/crictl ps --quiet --label io.kubernetes.container.name=etcd --state running)
   if [ ! -z ${RKE2_ETCD} ]; then
     techo "Collecting rke2 etcd info"
     mkdir -p $TMPDIR/etcd
-    ETCD_CERT=${RKE2_DIR}/server/tls/etcd/server-client.crt
-    ETCD_KEY=${RKE2_DIR}/server/tls/etcd/server-client.key
-    ETCD_CACERT=${RKE2_DIR}/server/tls/etcd/server-ca.crt
-    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} member list" > $TMPDIR/etcd/memberlist 2>&1
+    ETCD_CERT=${RKE2_DATA_DIR}/server/tls/etcd/server-client.crt
+    ETCD_KEY=${RKE2_DATA_DIR}/server/tls/etcd/server-client.key
+    ETCD_CACERT=${RKE2_DATA_DIR}/server/tls/etcd/server-ca.crt
+    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} member list" > $TMPDIR/etcd/memberlist 2>&1
     ETCDCTL_ENDPOINTS=$(cut -d, -f5 $TMPDIR/etcd/memberlist | sed -e 's/ //g' | paste -sd ',')
-    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --write-out table endpoint status" > $TMPDIR/etcd/endpointstatus 2>&1
-    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} endpoint health" > $TMPDIR/etcd/endpointhealth 2>&1
-    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} alarm list" > $TMPDIR/etcd/alarmlist 2>&1
+    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --write-out table endpoint status" > $TMPDIR/etcd/endpointstatus 2>&1
+    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} endpoint health" > $TMPDIR/etcd/endpointhealth 2>&1
+    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} alarm list" > $TMPDIR/etcd/alarmlist 2>&1
 
     techo "Collecting rke2 etcd metrics"
     ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}:2379\b' $TMPDIR/etcd/memberlist | uniq)
@@ -935,11 +930,11 @@ rke2-etcd() {
     done
   fi
 
-  if [ -d "${RKE2_DIR}/server/db/etcd" ]; then
-    find "${RKE2_DIR}/server/db/etcd" -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbetcd 2>&1
+  if [ -d "${RKE2_DATA_DIR}/server/db/etcd" ]; then
+    find "${RKE2_DATA_DIR}/server/db/etcd" -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbetcd 2>&1
   fi
-  if [ -d "${RKE2_DIR}/server/db/snapshots" ]; then
-    find "${RKE2_DIR}/server/db/snapshots" -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbsnapshots 2>&1
+  if [ -d "${RKE2_DATA_DIR}/server/db/snapshots" ]; then
+    find "${RKE2_DATA_DIR}/server/db/snapshots" -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbsnapshots 2>&1
   fi
 
 }
@@ -972,7 +967,7 @@ kubeadm-etcd() {
   KUBEADM_ETCD_CERTS="/etc/kubernetes/pki/etcd/"
   
   if ! $(command -v etcdctl >/dev/null 2>&1); then
-    echo "error: etcdctl command not found"
+    techo "error: etcdctl command not found"
     exit 1
   fi
 
@@ -997,7 +992,7 @@ timeout_cmd() {
   WPID=$!
   sleep $TIMEOUT && if kill -0 $WPID > /dev/null 2>&1
     then
-      echo "$1 command timed out, killing process to prevent hanging."; kill $WPID &> /dev/null;
+      techo "$1 command timed out, killing process to prevent hanging."; kill $WPID &> /dev/null;
   fi & KPID=$!; wait $WPID
 
 }
@@ -1049,7 +1044,7 @@ timestamp() {
 
 techo() {
 
-  echo "$(timestamp): $*"
+  echo "$(timestamp): $*" | tee -a $TMPDIR/collector-output.log
 
 }
 
