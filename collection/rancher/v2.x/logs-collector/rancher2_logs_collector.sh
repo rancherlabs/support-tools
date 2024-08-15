@@ -684,6 +684,11 @@ kubeadm-k8s() {
 
 var-log() {
 
+  if [ "${OBFUSCATE}" ]
+    then
+      EXCLUDE_FILES="! ( -name "*.gz" -o -name "*.bz2" -o -name "*.xz" )"
+  fi
+
   if [ -n "${START_DAY}" ]
     then
       VAR_LOG_DAYS=${START_DAY}
@@ -697,7 +702,7 @@ var-log() {
       ls /var/log/${LOG_FILE}* > /dev/null 2>&1
       if [ $? -eq 0 ]
         then
-          find /var/log/${LOG_FILE}* -mtime -${VAR_LOG_DAYS} -type f -exec cp -p {} $TMPDIR/systemlogs/ \;
+          find /var/log/${LOG_FILE}* -mtime -${VAR_LOG_DAYS} -type f ${EXCLUDE_FILES} -exec cp -p {} $TMPDIR/systemlogs/ \;
       fi
   done
 
@@ -706,7 +711,7 @@ var-log() {
       if [ -d /var/log/${STAT_PACKAGE} ]
         then
           mkdir -p $TMPDIR/systemlogs/${STAT_PACKAGE}-data
-          find /var/log/${STAT_PACKAGE} -mtime -${VAR_LOG_DAYS} -type f -exec cp -p {} $TMPDIR/systemlogs/${STAT_PACKAGE}-data \;
+          find /var/log/${STAT_PACKAGE} -mtime -${VAR_LOG_DAYS} -type f ${EXCLUDE_FILES} -exec cp -p {} $TMPDIR/systemlogs/${STAT_PACKAGE}-data \;
       fi
   done
 
@@ -1000,6 +1005,7 @@ obfuscate() {
           run-obf-python
         else
           techo "Could not import petname python module, please install this first, skipping obfuscation..."
+      fi
     else
       techo "Could not find python3, skipping obfuscation..."
   fi
@@ -1120,26 +1126,22 @@ def process_file(input_file, output_file, hostname_mapping_file='hostname_mappin
         pass
 
 if __name__ == "__main__":
-  #input_file = sys.argv[1]
-  #output_file = sys.argv[2]
   directory = sys.argv[1]
-
-  process_list = ["ipaddrshow","ipneighbour","iproute","ipv6addrshow","ipv6neighbour","ipv6route","nft_ruleset","ss4apn","ss6apn","ssanp","ssitan","sstunlp4","sstunlp6","ssuapn","sswapn","ssxapn","systemd-resolved","hostnamefqdn","iostathx","lsof","uname","hostname","pidstatx","ssitan","syslog","dockerinfo","docker","containerd","cloud-init","sar"]
 
   input_file = []
   output_file = []
 
   map_file = "ip_map.json"
-  # iterate over files in directory passed in
-  # that are in the process_list. we need a manual override list
+  # iterate over files in directories
   for root, dirs, files in os.walk(directory):
     for filename in files:
       input_file = os.path.join(root, filename)
       tmp_output_file = 'obf_' + filename
       output_file = os.path.join(root, tmp_output_file)
-      if filename in process_list:
-        print("processing file: " + str(filename))
-        process_file(input_file, output_file)
+      # if filename in process_list:
+      print("processing file: " + str(filename))
+      process_file(input_file, output_file)
+      if os.path.isfile(output_file):
         os.remove(input_file)
         os.rename(output_file, input_file)
 
@@ -1315,3 +1317,4 @@ if [ $OBFUSCATE ]
 fi
 archive
 cleanup
+techo "Finished"
