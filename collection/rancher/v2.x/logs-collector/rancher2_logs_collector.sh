@@ -231,7 +231,7 @@ system-all() {
   fi
   if $(command -v iostat >/dev/null 2>&1); then
     iostat -h -x 2 5 > $TMPDIR/systeminfo/iostathx 2>&1
-  fi  
+  fi
   if $(command -v pidstat >/dev/null 2>&1); then
     pidstat -drshut -p ALL 2 5 > $TMPDIR/systeminfo/pidstatx 2>&1
   fi
@@ -642,7 +642,7 @@ rke2-k8s() {
 }
 
 kubeadm-k8s() {
-  
+
   KUBEADM_DIR="/etc/kubernetes/"
   KUBEADM_STATIC_DIR="/etc/kubernetes/manifests/"
   if ! $(command -v kubeadm >/dev/null 2>&1); then
@@ -706,6 +706,11 @@ kubeadm-k8s() {
 
 var-log() {
 
+  if [ "${OBFUSCATE}" ]
+    then
+      EXCLUDE_FILES="! ( -name "*.gz" -o -name "*.bz2" -o -name "*.xz" )"
+  fi
+
   if [ -n "${START_DAY}" ]
     then
       VAR_LOG_DAYS=${START_DAY}
@@ -719,7 +724,7 @@ var-log() {
       ls /var/log/${LOG_FILE}* > /dev/null 2>&1
       if [ $? -eq 0 ]
         then
-          find /var/log/${LOG_FILE}* -mtime -${VAR_LOG_DAYS} -type f -exec cp -p {} $TMPDIR/systemlogs/ \;
+          find /var/log/${LOG_FILE}* -mtime -${VAR_LOG_DAYS} -type f ${EXCLUDE_FILES} -exec cp -p {} $TMPDIR/systemlogs/ \;
       fi
   done
 
@@ -728,7 +733,7 @@ var-log() {
       if [ -d /var/log/${STAT_PACKAGE} ]
         then
           mkdir -p $TMPDIR/systemlogs/${STAT_PACKAGE}-data
-          find /var/log/${STAT_PACKAGE} -mtime -${VAR_LOG_DAYS} -type f -exec cp -p {} $TMPDIR/systemlogs/${STAT_PACKAGE}-data \;
+          find /var/log/${STAT_PACKAGE} -mtime -${VAR_LOG_DAYS} -type f ${EXCLUDE_FILES} -exec cp -p {} $TMPDIR/systemlogs/${STAT_PACKAGE}-data \;
       fi
   done
 
@@ -793,8 +798,8 @@ k3s-certs() {
       techo "Collecting k3s directory state"
       mkdir -p $TMPDIR/${DISTRO}/directories
       ls -lah /var/lib/rancher/${DISTRO}/agent > $TMPDIR/${DISTRO}/directories/k3sagent 2>&1
-      ls -lah /var/lib/rancher/${DISTRO}/server/manifests > $TMPDIR/${DISTRO}/directories/k3sservermanifests 2>&1
-      ls -lah /var/lib/rancher/${DISTRO}/server/tls > $TMPDIR/${DISTRO}/directories/k3sservertls 2>&1
+      ls -lahR /var/lib/rancher/${DISTRO}/server/manifests > $TMPDIR/${DISTRO}/directories/k3sservermanifests 2>&1
+      ls -lahR /var/lib/rancher/${DISTRO}/server/tls > $TMPDIR/${DISTRO}/directories/k3sservertls 2>&1
       techo "Collecting k3s certificates"
       mkdir -p $TMPDIR/${DISTRO}/certs/{agent,server}
       AGENT_CERTS=$(find /var/lib/rancher/${DISTRO}/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
@@ -965,7 +970,7 @@ kubeadm-etcd() {
 
   KUBEADM_ETCD_DIR="/var/lib/etcd/"
   KUBEADM_ETCD_CERTS="/etc/kubernetes/pki/etcd/"
-  
+
   if ! $(command -v etcdctl >/dev/null 2>&1); then
     techo "error: etcdctl command not found"
     exit 1
@@ -1010,10 +1015,166 @@ archive() {
 
 }
 
+obfuscate() {
+
+  which python3 > /dev/null 2>&1
+  if [ $? -eq 0 ]
+    then
+      python3 -c "import petname" > /dev/null 2>&1
+      if [ $? -eq 0 ]
+        then
+          techo "Obfuscating ${TMPDIR_BASE}"
+          run-obf-python
+        else
+          techo "Could not import petname python module, please install this first, skipping obfuscation..."
+      fi
+    else
+      techo "Could not find python3, skipping obfuscation..."
+  fi
+}
+
+run-obf-python() {
+
+python3 - "${TMPDIR_BASE}" << EOF
+import json
+import petname
+import os
+import re
+import socket
+import sys
+#TODO implement logging
+
+def load_mapping(mapping_file):
+    if os.path.exists(mapping_file):
+        with open(mapping_file, 'r') as file:
+            return json.load(file)
+    return {}
+
+def save_mapping(mapping, mapping_file):
+    with open(mapping_file, 'w') as file:
+        json.dump(mapping, file, indent=2)
+
+def extract_hostnames(text):
+    # Regular expression to match fqdn hostnames
+    hostname_regex = re.compile(r'\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b')
+    return set(hostname_regex.findall(text))
+
+def extract_ip_addresses(text):
+    # Regular expression to match IP addresses
+    ip_regex = re.compile(r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b')
+    return set(ip_regex.findall(text))
+
+def obfuscate_subdomain(subdomain, mapping):
+    if subdomain not in mapping:
+        #print('subdomain passed in: ' + subdomain)
+        # TODO check for collisions
+        return petname.Generate(1)
+    else:
+        #print('subdomain found: ' + str(subdomain))
+        return mapping[subdomain]
+
+def obfuscate_hostname(hostname, mapping):
+    subdomains = hostname.split('.')
+    #print('subdomains: ' + str(subdomains))
+    obfuscated_subdomains = [obfuscate_subdomain(sub, mapping) for sub in subdomains]
+    obfuscated_hostname = '.'.join(obfuscated_subdomains)
+    mapping[hostname] = obfuscated_hostname
+    return obfuscated_hostname
+
+def obfuscate_host(hostname, mapping):
+    obfuscated_hostname = obfuscate_subdomain(hostname, mapping)
+    #print('debug obf hostname:' + obfuscated_hostname)
+    mapping[hostname] = obfuscated_hostname
+    return obfuscated_hostname
+
+def obfuscate_ip_address(ip_address, ip_mapping):
+    octets = ip_address.split('.')
+    if ip_address not in ip_mapping:
+        obfuscated_octets = [octets[0]] + [petname.Generate(1) for _ in octets[1:]]
+        ip_mapping[ip_address] = '.'.join(obfuscated_octets)
+    return ip_mapping[ip_address]
+
+def obfuscate_text(text, hostname_mapping, ip_mapping):
+    hostnames = extract_hostnames(text)
+    ip_addresses = extract_ip_addresses(text)
+    short_hostname = socket.gethostname()
+
+    for hostname in hostnames:
+        #print("processing hostname:" + hostname)
+        if hostname not in hostname_mapping:
+            #print('hostname not in map. hostname: ' + hostname)
+            obfuscated_name = obfuscate_hostname(hostname, hostname_mapping)
+            #print('new obfuscated name: ' + obfuscated_name)
+        else:
+            obfuscated_name = hostname_mapping[hostname]
+            #print("found obfuscated name:" + obfuscated_name)
+        text = text.replace(hostname, obfuscated_name)
+
+    for ip_address in ip_addresses:
+        if ip_address not in ip_mapping:
+            obfuscated_ip = obfuscate_ip_address(ip_address, ip_mapping)
+        else:
+            obfuscated_ip = ip_mapping[ip_address]
+        text = text.replace(ip_address, obfuscated_ip)
+
+    #search for hostname not fqdn
+    if short_hostname not in hostname_mapping:
+        #print("short_hostname not found. short hostname:" + short_hostname)
+        obfuscated_name = obfuscate_host(short_hostname, hostname_mapping)
+    else:
+        #print("short hostname found")
+        obfuscated_name = hostname_mapping[short_hostname]
+    text = text.replace(short_hostname, obfuscated_name)
+
+    return text
+
+def process_file(input_file, output_file, hostname_mapping_file='hostname_mapping.json', ip_mapping_file='ip_mapping.json'):
+    hostname_mapping = load_mapping(hostname_mapping_file)
+    ip_mapping = load_mapping(ip_mapping_file)
+    short_hostname = socket.gethostname()
+
+    try:
+        with open(input_file, 'r') as file:
+            text = file.read()
+
+        obfuscated_text = obfuscate_text(text, hostname_mapping, ip_mapping)
+
+        with open(output_file, 'w') as file:
+            file.write(obfuscated_text)
+
+        save_mapping(hostname_mapping, hostname_mapping_file)
+        save_mapping(ip_mapping, ip_mapping_file)
+    except UnicodeDecodeError:
+        pass
+
+if __name__ == "__main__":
+  directory = sys.argv[1]
+
+  input_file = []
+  output_file = []
+
+  map_file = "ip_map.json"
+  # iterate over files in directories
+  for root, dirs, files in os.walk(directory):
+    for filename in files:
+      input_file = os.path.join(root, filename)
+      tmp_output_file = 'obf_' + filename
+      output_file = os.path.join(root, tmp_output_file)
+      # if filename in process_list:
+      print("processing file: " + str(filename))
+      process_file(input_file, output_file)
+      if os.path.isfile(output_file):
+        os.remove(input_file)
+        os.rename(output_file, input_file)
+
+EOF
+
+}
+
 cleanup() {
 
   techo "Removing ${TMPDIR_BASE}"
-  rm -r -f "${TMPDIR_BASE}" >/dev/null 2>&1
+  rm -r -f "${TMPDIR_BASE}" > /dev/null 2>&1
 
 }
 
@@ -1032,7 +1193,8 @@ help() {
   -E    End date of journald and docker log collection. (ex: -E 2022-12-07)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2|kubeadm)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
-  -f    Force log collection if the minimum space isn't available"
+  -f    Force log collection if the minimum space isn't available
+  -o    Obfuscate IP addresses"
 
 }
 
@@ -1055,7 +1217,7 @@ if [[ $EUID -ne 0 ]] && [[ "${DEV}" == "" ]]
     exit 1
 fi
 
-while getopts "c:d:s:e:S:E:r:fph" opt; do
+while getopts "c:d:s:e:S:E:r:fpoh" opt; do
   case $opt in
     c)
       FLAG_DATA_DIR="${OPTARG}"
@@ -1091,6 +1253,9 @@ while getopts "c:d:s:e:S:E:r:fph" opt; do
       ;;
     p)
       PRIORITY_DEFAULT=1
+      ;;
+    o)
+      OBFUSCATE=true
       ;;
     h)
       help && exit 0
@@ -1167,5 +1332,10 @@ if [ "${INIT}" = "systemd" ]
   then
     journald-log
 fi
+if [ $OBFUSCATE ]
+  then
+    obfuscate
+fi
 archive
 cleanup
+techo "Finished"
