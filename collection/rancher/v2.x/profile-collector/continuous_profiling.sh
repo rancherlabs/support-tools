@@ -84,11 +84,10 @@ collect() {
       for profile in ${PROFILES[@]}; do
         techo Getting $profile profile for $pod
         if [ "$profile" == "profile" ]; then
-          kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile}?seconds=${DURATION} -o ${profile}
+          kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile}?seconds=${DURATION} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
         else
-          kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile} -o ${profile}
+          kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
         fi
-        kubectl cp -n $NAMESPACE -c ${CONTAINER} ${pod}:${profile} ${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
       done
 
       techo Getting logs for $pod
