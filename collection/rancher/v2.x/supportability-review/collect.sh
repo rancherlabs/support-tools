@@ -17,11 +17,10 @@ Environment variables:
   RANCHER_URL: Specify Rancher Server URL (Ex: https://rancher.example.com)
   RANCHER_TOKEN: Specify Rancher Token to connect to Rancher Server
   SR_IMAGE: Use this variable to point to custom container image of Supportability Review
-
 "
 }
 
-SR_IMAGE=${SR_IMAGE:-"ghcr.io/rancherlabs/supportability-review:latest"}
+SR_IMAGE=${SR_IMAGE:-"ghcr.io/rancher/supportability-review:latest"}
 
 if [ "${CONTAINER_RUNTIME}" == "" ]; then
   if command -v docker &> /dev/null; then
@@ -56,6 +55,18 @@ if [[ "$SR_IMAGE" != *":dev" ]]; then
   $CONTAINER_RUNTIME pull "${SR_IMAGE}"
 fi
 
+CONTAINER_RUNTIME_ARGS=""
+COLLECT_INFO_FROM_RANCHER_SETUP_ARGS=""
+
+if [ "${SONOBUOY_TOLARATION_FILE}" != "" ]; then
+  if [ ! -f "${SONOBUOY_TOLARATION_FILE}" ]; then
+    echo "error: SONOBUOY_TOLARATION_FILE=${SONOBUOY_TOLARATION_FILE} specified, but cannot access that file"
+    exit 1
+  fi
+  CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -v ${SONOBUOY_TOLARATION_FILE}:/tmp/sonobuoy_toleration.yml"
+  COLLECT_INFO_FROM_RANCHER_SETUP_ARGS="$COLLECT_INFO_FROM_RANCHER_SETUP_ARGS --sonobuoy-toleration-file /tmp/sonobuoy_toleration.yml"
+fi
+
 if [ "${KUBECONFIG}" == "" ]; then
   if [ "${RANCHER_URL}" == "" ]; then
     echo "error: RANCHER_URL is not set"
@@ -71,16 +82,9 @@ if [ "${KUBECONFIG}" == "" ]; then
     HELP_MENU
   fi
 
-  $CONTAINER_RUNTIME run --rm \
-  -it \
-  --network host \
-  -v `pwd`:/data \
-  -e RANCHER_URL="${RANCHER_URL}" \
-  -e RANCHER_TOKEN="${RANCHER_TOKEN}" \
-  -e RANCHER_VERIFY_SSL_CERTS="${RANCHER_VERIFY_SSL_CERTS}" \
-  "${SR_IMAGE}" \
-  collect_info_from_rancher_setup.py "$@"
-
+  CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -e RANCHER_URL="${RANCHER_URL}""
+  CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -e RANCHER_TOKEN="${RANCHER_TOKEN}""
+  CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -e RANCHER_VERIFY_SSL_CERTS="${RANCHER_VERIFY_SSL_CERTS}""
 else
   # TODO: Check if it's absolute path
   # TODO: Check if the file exists and it's readable
@@ -91,11 +95,23 @@ else
     exit 1
   fi
 
-  $CONTAINER_RUNTIME run --rm \
-    -it \
-    --network host \
-    -v `pwd`:/data \
-    -v ${KUBECONFIG}:/tmp/kubeconfig.yml \
-    "${SR_IMAGE}" \
-    collect_info_from_rancher_setup.py --kubeconfig /tmp/kubeconfig.yml "$@"
+  CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -v ${KUBECONFIG}:/tmp/kubeconfig.yml"
+  COLLECT_INFO_FROM_RANCHER_SETUP_ARGS="$COLLECT_INFO_FROM_RANCHER_SETUP_ARGS --kubeconfig /tmp/kubeconfig.yml"
 fi
+
+CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -e S3_ENDPOINT_URL="${S3_ENDPOINT_URL}""
+CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -e S3_ACCESS_KEY_ID="${S3_ACCESS_KEY_ID}""
+CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -e S3_SECRET_ACCESS_KEY="${S3_SECRET_ACCESS_KEY}""
+CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -e S3_REGION_NAME="${S3_REGION_NAME}""
+CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -e S3_SSL_VERIFY="${S3_SSL_VERIFY}""
+CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -e S3_BUCKET_NAME="${S3_BUCKET_NAME}""
+CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -e S3_FOLDER_NAME="${S3_FOLDER_NAME}""
+
+CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS ${SR_IMAGE}"
+
+$CONTAINER_RUNTIME run --rm \
+  -it \
+  --network host \
+  -v `pwd`:/data \
+  $CONTAINER_RUNTIME_ARGS \
+  collect_info_from_rancher_setup.py $COLLECT_INFO_FROM_RANCHER_SETUP_ARGS "$@"

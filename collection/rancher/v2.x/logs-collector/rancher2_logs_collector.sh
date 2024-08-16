@@ -37,6 +37,7 @@ setup() {
   LOGNAME="$(hostname)-$(date +'%Y-%m-%d_%H_%M_%S')"
   mkdir -p "${TMPDIR_BASE}/${LOGNAME}"
   TMPDIR="${TMPDIR_BASE}/${LOGNAME}"
+  export PATH=$PATH:/usr/local/bin:/opt/rke2/bin:/opt/bin
 
 }
 
@@ -55,25 +56,25 @@ sherlock() {
 
   if [ -z ${PRIORITY_DEFAULT} ]
     then
-      echo -n "$(timestamp): Detecting available commands... "
+      echo -n "$(timestamp): Detecting available commands... " | tee -a $TMPDIR/collector-output.log
       if $(command -v renice >/dev/null 2>&1); then
         renice -n ${PRIORITY_NICE} "$$" >/dev/null 2>&1
-        echo -n "renice "
+        echo -n "renice " | tee -a $TMPDIR/collector-output.log
       fi
       if $(command -v ionice >/dev/null 2>&1); then
         ionice -c ${PRIORITY_IONICE} -p "$$" >/dev/null 2>&1
-        echo "ionoice"
+        echo "ionoice" | tee -a $TMPDIR/collector-output.log
       fi
   fi
 
-  echo -n "$(timestamp): Detecting OS... "
+  echo -n "$(timestamp): Detecting OS... " | tee -a $TMPDIR/collector-output.log
   if [ -f /etc/os-release ]
     then
       OSRELEASE=$(grep -w ^ID /etc/os-release | cut -d= -f2 | sed 's/"//g')
       OSVERSION=$(grep -w ^VERSION_ID /etc/os-release | cut -d= -f2 | sed 's/"//g')
-      echo "${OSRELEASE} ${OSVERSION}"
+      echo "${OSRELEASE} ${OSVERSION}" | tee -a $TMPDIR/collector-output.log
     else
-      echo -e "\n$(timestamp): couldn't detect OS"
+      echo -e "\n$(timestamp): couldn't detect OS" | tee -a $TMPDIR/collector-output.log
   fi
   if [ -n "${DISTRO_FLAG}" ]
     then
@@ -81,32 +82,34 @@ sherlock() {
       DISTRO="${DISTRO_FLAG}"
       if [ "${DISTRO_FLAG}" = "rke2" ]
         then
-          sherlock-data-dir
+          rke2-setup
       fi
+      techo "Using RKE2 binary... ${RKE2_BIN}"
+      techo "Using RKE2 data-dir... ${RKE2_DATA_DIR}"
     else
-      echo -n "$(timestamp): Detecting k8s distribution... "
-      if $(command -v k3s >/dev/null 2>&1) || $(command -v /opt/bin/k3s >/dev/null 2>&1)
+      echo -n "$(timestamp): Detecting k8s distribution... " | tee -a $TMPDIR/collector-output.log
+      if $(command -v k3s >/dev/null 2>&1)
         then
           if $(k3s crictl ps >/dev/null 2>&1)
             then
               DISTRO=k3s
-              echo "k3s"
+              echo "k3s" | tee -a $TMPDIR/collector-output.log
             else
-              FOUND+="k3s"
+              FOUND+="k3s "
           fi
       fi
-      if $(command -v rke2 >/dev/null 2>&1) || $(command -v /opt/rke2/bin/rke2 >/dev/null 2>&1)
+      if $(command -v rke2 >/dev/null 2>&1)
         then
-          sherlock-data-dir
-          if $(${RKE2_DIR}/bin/crictl ps >/dev/null 2>&1)
+          rke2-setup
+          if $(${RKE2_DATA_DIR}/bin/crictl ps >/dev/null 2>&1)
             then
               DISTRO=rke2
-              echo "rke2"
+              echo "rke2" | tee -a $TMPDIR/collector-output.log
             else
-              FOUND+="rke2"
+              FOUND+="rke2 "
           fi
-          echo "$(timestamp): Using RKE2 binaries in... ${RKE2_BIN}"
-          echo "$(timestamp): Using data-dir... ${RKE2_DIR}"
+          techo "Using RKE2 binary... ${RKE2_BIN}"
+          techo "Using RKE2 data-dir... ${RKE2_DATA_DIR}"
       fi
       if $(command -v docker >/dev/null 2>&1)
         then
@@ -115,17 +118,17 @@ sherlock() {
               if [ -z "${DISTRO}" ]
                 then
                   DISTRO=rke
-                  echo "rke"
+                  echo "rke" | tee -a $TMPDIR/collector-output.log
                 else
                   techo "Found rke, but another distribution ("${DISTRO}") was also found, using "${DISTRO}"..."
               fi
             else
-              FOUND="rke"
+              FOUND+="rke "
           fi
       fi
       if [ -z ${DISTRO} ]
         then
-          echo -e "\n$(timestamp): couldn't detect k8s distro"
+          echo -e "\n$(timestamp): couldn't detect k8s distro" | tee -a $TMPDIR/collector-output.log
           if [ -n "${FOUND}" ]
             then
               techo "Found ${FOUND} but could not execute commands successfully"
@@ -133,40 +136,57 @@ sherlock() {
       fi
   fi
 
-  echo -n "$(timestamp): Detecting init type... "
+  echo -n "$(timestamp): Detecting init type... " | tee -a $TMPDIR/collector-output.log
   if $(command -v systemctl >/dev/null 2>&1)
     then
       INIT="systemd"
-      echo "systemd"
+      echo "systemd" | tee -a $TMPDIR/collector-output.log
     else
       INIT="other"
-      echo "other"
+      echo "other" | tee -a $TMPDIR/collector-output.log
   fi
 
 }
 
-sherlock-data-dir() {
+rke2-setup() {
 
   which rke2 > /dev/null 2>&1
   if [ $? -eq 0 ]
     then
-      RKE2_BIN=$(dirname $(which rke2))
-  elif [ -f /opt/rke2/bin/rke2 ]
-    then
-      RKE2_BIN=$(dirname /opt/rke2/bin/rke2)
+      RKE2_BIN=$(which rke2)
+    else
+      techo "rke2 commands run, but the binary can't be found"
   fi
 
-  if [ -f /etc/rancher/${DISTRO}/config.yaml ]
+  if [ -n "${FLAG_DATA_DIR}" ]
     then
-      CUSTOM_DIR=$(awk '$1 ~ /data-dir:/ {print $2}' /etc/rancher/${DISTRO}/config.yaml)
+      if [ -d "${FLAG_DATA_DIR}" ]
+        then
+          RKE2_DATA_DIR="${FLAG_DATA_DIR}"
+        else
+          techo "A custom data-dir was provided, but the directory doesn't exist"
+      fi
   fi
-  if [[ -z "${CUSTOM_DIR}" ]]
+
+  if [ -z "${RKE2_DATA_DIR}" ]
     then
-      RKE2_DIR="${DATA_DIR}"
-    else
-      RKE2_DIR="${CUSTOM_DIR}"
+      if [ -f /etc/rancher/rke2/config.yaml ]
+        then
+          CUSTOM_DATA_DIR=$(awk '$1 ~ /data-dir:/ {print $2}' /etc/rancher/rke2/config.yaml)
+      fi
+      if [ -f /etc/rancher/rke2/config.d/50-rancher.yaml ]
+        then
+          CUSTOM_DATA_DIR=$(awk '$1 ~ /data-dir:/ {print $2}' /etc/rancher/rke2/config.d/50-rancher.yaml)
+      fi
+      if [[ -n "${CUSTOM_DATA_DIR}" ]]
+        then
+          RKE2_DATA_DIR="${CUSTOM_DATA_DIR}"
+        else
+          RKE2_DATA_DIR="/var/lib/rancher/rke2"
+      fi
   fi
-  export CRI_CONFIG_FILE="${RKE2_DIR}/agent/etc/crictl.yaml"
+
+  export CRI_CONFIG_FILE="${RKE2_DATA_DIR}/agent/etc/crictl.yaml"
 
 }
 
@@ -211,7 +231,7 @@ system-all() {
   fi
   if $(command -v iostat >/dev/null 2>&1); then
     iostat -h -x 2 5 > $TMPDIR/systeminfo/iostathx 2>&1
-  fi  
+  fi
   if $(command -v pidstat >/dev/null 2>&1); then
     pidstat -drshut -p ALL 2 5 > $TMPDIR/systeminfo/pidstatx 2>&1
   fi
@@ -343,15 +363,15 @@ provisioning-crds() {
       KUBECONFIG=/etc/kubernetes/ssl/kubecfg-kube-controller-manager.yaml
       ctlcmd="docker exec kubelet kubectl --kubeconfig=${KUBECONFIG}"
       CONTROL_PLANE=1
-  elif [[ "${DISTRO}" = "k3s" &&  -d /var/lib/rancher/${DISTRO}/server ]]
+  elif [[ "${DISTRO}" = "k3s" && -d /var/lib/rancher/${DISTRO}/server ]]
     then
       KUBECONFIG=/etc/rancher/${DISTRO}/k3s.yaml
       ctlcmd="k3s kubectl --kubeconfig=${KUBECONFIG}"
       CONTROL_PLANE=1
-  elif [[ "${DISTRO}" = "rke2" &&  -f /etc/rancher/${DISTRO}/rke2.yaml ]]
+  elif [[ "${DISTRO}" = "rke2" && -f /etc/rancher/${DISTRO}/rke2.yaml ]]
     then
       KUBECONFIG=/etc/rancher/${DISTRO}/rke2.yaml
-      ctlcmd="${RKE2_DIR}/bin/kubectl --kubeconfig=${KUBECONFIG}"
+      ctlcmd="${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=${KUBECONFIG}"
       CONTROL_PLANE=1
   fi
 
@@ -428,18 +448,18 @@ rke2-logs() {
 
   techo "Collecting rke2 info"
   mkdir -p $TMPDIR/${DISTRO}/crictl
-  ${RKE2_BIN}/rke2 --version > $TMPDIR/${DISTRO}/version 2>&1
-  ${RKE2_DIR}/bin/crictl --version > $TMPDIR/${DISTRO}/crictl/crictl-version 2>&1
-  ${RKE2_DIR}/bin/containerd --version > $TMPDIR/${DISTRO}/crictl/containerd-version 2>&1
-  ${RKE2_DIR}/bin/runc --version > $TMPDIR/${DISTRO}/crictl/runc-version 2>&1
-  ${RKE2_DIR}/bin/crictl ps -a > $TMPDIR/${DISTRO}/crictl/psa 2>&1
-  ${RKE2_DIR}/bin/crictl pods > $TMPDIR/${DISTRO}/crictl/pods 2>&1
-  ${RKE2_DIR}/bin/crictl info > $TMPDIR/${DISTRO}/crictl/info 2>&1
-  ${RKE2_DIR}/bin/crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
-  ${RKE2_DIR}/bin/crictl version > $TMPDIR/${DISTRO}/crictl/version 2>&1
-  ${RKE2_DIR}/bin/crictl images > $TMPDIR/${DISTRO}/crictl/images 2>&1
-  ${RKE2_DIR}/bin/crictl imagefsinfo > $TMPDIR/${DISTRO}/crictl/imagefsinfo 2>&1
-  ${RKE2_DIR}/bin/crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
+  ${RKE2_BIN} --version > $TMPDIR/${DISTRO}/version 2>&1
+  ${RKE2_DATA_DIR}/bin/crictl --version > $TMPDIR/${DISTRO}/crictl/crictl-version 2>&1
+  ${RKE2_DATA_DIR}/bin/containerd --version > $TMPDIR/${DISTRO}/crictl/containerd-version 2>&1
+  ${RKE2_DATA_DIR}/bin/runc --version > $TMPDIR/${DISTRO}/crictl/runc-version 2>&1
+  ${RKE2_DATA_DIR}/bin/crictl ps -a > $TMPDIR/${DISTRO}/crictl/psa 2>&1
+  ${RKE2_DATA_DIR}/bin/crictl pods > $TMPDIR/${DISTRO}/crictl/pods 2>&1
+  ${RKE2_DATA_DIR}/bin/crictl info > $TMPDIR/${DISTRO}/crictl/info 2>&1
+  ${RKE2_DATA_DIR}/bin/crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
+  ${RKE2_DATA_DIR}/bin/crictl version > $TMPDIR/${DISTRO}/crictl/version 2>&1
+  ${RKE2_DATA_DIR}/bin/crictl images > $TMPDIR/${DISTRO}/crictl/images 2>&1
+  ${RKE2_DATA_DIR}/bin/crictl imagefsinfo > $TMPDIR/${DISTRO}/crictl/imagefsinfo 2>&1
+  ${RKE2_DATA_DIR}/bin/crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
   if [ -f /usr/local/lib/systemd/system/rke2-agent.service ]
     then
       cp -p /usr/local/lib/systemd/system/${DISTRO}*.service $TMPDIR/${DISTRO}/
@@ -564,26 +584,26 @@ k3s-k8s() {
 rke2-k8s() {
 
   techo "Collecting rke2 cluster logs"
-  if [ -f ${RKE2_DIR}/agent/kubelet.kubeconfig ]; then
+  if [ -f ${RKE2_DATA_DIR}/agent/kubelet.kubeconfig ]; then
     mkdir -p $TMPDIR/${DISTRO}/kubectl
-    KUBECONFIG=${RKE2_DIR}/agent/kubelet.kubeconfig
-    ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get nodes -o wide > $TMPDIR/${DISTRO}/kubectl/nodes 2>&1
-    ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG describe nodes > $TMPDIR/${DISTRO}/kubectl/nodesdescribe 2>&1
-    ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG version > $TMPDIR/${DISTRO}/kubectl/version 2>&1
-    ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get pods -o wide --all-namespaces > $TMPDIR/${DISTRO}/kubectl/pods 2>&1
-    ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get svc -o wide --all-namespaces > $TMPDIR/${DISTRO}/kubectl/services 2>&1
+    KUBECONFIG=${RKE2_DATA_DIR}/agent/kubelet.kubeconfig
+    ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get nodes -o wide > $TMPDIR/${DISTRO}/kubectl/nodes 2>&1
+    ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG describe nodes > $TMPDIR/${DISTRO}/kubectl/nodesdescribe 2>&1
+    ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG version > $TMPDIR/${DISTRO}/kubectl/version 2>&1
+    ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get pods -o wide --all-namespaces > $TMPDIR/${DISTRO}/kubectl/pods 2>&1
+    ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get svc -o wide --all-namespaces > $TMPDIR/${DISTRO}/kubectl/services 2>&1
   fi
 
   if [ -f /etc/rancher/${DISTRO}/rke2.yaml ]; then
     KUBECONFIG=/etc/rancher/${DISTRO}/rke2.yaml
-    ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG api-resources > $TMPDIR/${DISTRO}/kubectl/api-resources 2>&1
+    ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG api-resources > $TMPDIR/${DISTRO}/kubectl/api-resources 2>&1
     RKE2_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations)
     RKE2_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases networkpolicies pods pvc replicasets roles rolebindings statefulsets)
     for OBJECT in "${RKE2_OBJECTS[@]}"; do
-      ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get ${OBJECT} -o wide > $TMPDIR/${DISTRO}/kubectl/${OBJECT} 2>&1
+      ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get ${OBJECT} -o wide > $TMPDIR/${DISTRO}/kubectl/${OBJECT} 2>&1
     done
     for OBJECT in "${RKE2_OBJECTS_NAMESPACED[@]}"; do
-      ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get ${OBJECT} --all-namespaces -o wide > $TMPDIR/${DISTRO}/kubectl/${OBJECT} 2>&1
+      ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get ${OBJECT} --all-namespaces -o wide > $TMPDIR/${DISTRO}/kubectl/${OBJECT} 2>&1
     done
   fi
 
@@ -592,12 +612,12 @@ rke2-k8s() {
   if [ -f /etc/rancher/${DISTRO}/rke2.yaml ]; then
     KUBECONFIG=/etc/rancher/${DISTRO}/rke2.yaml
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-      for SYSTEM_POD in $(${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
-        ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs --all-containers $SYSTEM_POD > $TMPDIR/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
-        ${RKE2_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs -p --all-containers $SYSTEM_POD > $TMPDIR/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous 2>&1
+      for SYSTEM_POD in $(${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
+        ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs --all-containers $SYSTEM_POD > $TMPDIR/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
+        ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs -p --all-containers $SYSTEM_POD > $TMPDIR/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous 2>&1
       done
     done
-  elif [ -f ${RKE2_DIR}/agent/kubelet.kubeconfig ]; then
+  elif [ -f ${RKE2_DATA_DIR}/agent/kubelet.kubeconfig ]; then
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       if ls -d /var/log/pods/$SYSTEM_NAMESPACE* > /dev/null 2>&1; then
         cp -r -p /var/log/pods/$SYSTEM_NAMESPACE* $TMPDIR/${DISTRO}/podlogs/
@@ -605,33 +625,33 @@ rke2-k8s() {
     done
   fi
 
-  if [ -d ${RKE2_DIR}/agent/pod-manifests ]; then
+  if [ -d ${RKE2_DATA_DIR}/agent/pod-manifests ]; then
     techo "Collecting rke2 static pod manifests"
     mkdir -p $TMPDIR/${DISTRO}/pod-manifests
-    cp -p ${RKE2_DIR}/agent/pod-manifests/* $TMPDIR/${DISTRO}/pod-manifests
+    cp -p ${RKE2_DATA_DIR}/agent/pod-manifests/* $TMPDIR/${DISTRO}/pod-manifests
   fi
 
   techo "Collecting rke2 agent/server logs"
   for RKE2_LOG_DIR in agent server
     do
-      if [ -d ${RKE2_DIR}/${RKE2_LOG_DIR}/logs/ ]; then
-        cp -rp ${RKE2_DIR}/${RKE2_LOG_DIR}/logs/ $TMPDIR/${DISTRO}/${RKE2_LOG_DIR}-logs
+      if [ -d ${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs/ ]; then
+        cp -rp ${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs/ $TMPDIR/${DISTRO}/${RKE2_LOG_DIR}-logs
       fi
   done
 
 }
 
 kubeadm-k8s() {
-  
+
   KUBEADM_DIR="/etc/kubernetes/"
   KUBEADM_STATIC_DIR="/etc/kubernetes/manifests/"
   if ! $(command -v kubeadm >/dev/null 2>&1); then
-    echo "error: kubeadm command not found"
+    techo "error: kubeadm command not found"
     exit 1
   fi
 
   if ! $(command -v kubectl >/dev/null 2>&1); then
-    echo "error: kubectl command not found"
+    techo "error: kubectl command not found"
     exit 1
   fi
 
@@ -686,6 +706,11 @@ kubeadm-k8s() {
 
 var-log() {
 
+  if [ "${OBFUSCATE}" ]
+    then
+      EXCLUDE_FILES="! ( -name "*.gz" -o -name "*.bz2" -o -name "*.xz" )"
+  fi
+
   if [ -n "${START_DAY}" ]
     then
       VAR_LOG_DAYS=${START_DAY}
@@ -699,7 +724,7 @@ var-log() {
       ls /var/log/${LOG_FILE}* > /dev/null 2>&1
       if [ $? -eq 0 ]
         then
-          find /var/log/${LOG_FILE}* -mtime -${VAR_LOG_DAYS} -type f -exec cp -p {} $TMPDIR/systemlogs/ \;
+          find /var/log/${LOG_FILE}* -mtime -${VAR_LOG_DAYS} -type f ${EXCLUDE_FILES} -exec cp -p {} $TMPDIR/systemlogs/ \;
       fi
   done
 
@@ -708,7 +733,7 @@ var-log() {
       if [ -d /var/log/${STAT_PACKAGE} ]
         then
           mkdir -p $TMPDIR/systemlogs/${STAT_PACKAGE}-data
-          find /var/log/${STAT_PACKAGE} -mtime -${VAR_LOG_DAYS} -type f -exec cp -p {} $TMPDIR/systemlogs/${STAT_PACKAGE}-data \;
+          find /var/log/${STAT_PACKAGE} -mtime -${VAR_LOG_DAYS} -type f ${EXCLUDE_FILES} -exec cp -p {} $TMPDIR/systemlogs/${STAT_PACKAGE}-data \;
       fi
   done
 
@@ -773,8 +798,8 @@ k3s-certs() {
       techo "Collecting k3s directory state"
       mkdir -p $TMPDIR/${DISTRO}/directories
       ls -lah /var/lib/rancher/${DISTRO}/agent > $TMPDIR/${DISTRO}/directories/k3sagent 2>&1
-      ls -lah /var/lib/rancher/${DISTRO}/server/manifests > $TMPDIR/${DISTRO}/directories/k3sservermanifests 2>&1
-      ls -lah /var/lib/rancher/${DISTRO}/server/tls > $TMPDIR/${DISTRO}/directories/k3sservertls 2>&1
+      ls -lahR /var/lib/rancher/${DISTRO}/server/manifests > $TMPDIR/${DISTRO}/directories/k3sservermanifests 2>&1
+      ls -lahR /var/lib/rancher/${DISTRO}/server/tls > $TMPDIR/${DISTRO}/directories/k3sservertls 2>&1
       techo "Collecting k3s certificates"
       mkdir -p $TMPDIR/${DISTRO}/certs/{agent,server}
       AGENT_CERTS=$(find /var/lib/rancher/${DISTRO}/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
@@ -797,7 +822,7 @@ k3s-certs() {
 kubeadm-certs() {
 
   if ! $(command -v openssl >/dev/null 2>&1); then
-    echo "error: openssl command not found"
+    techo "error: openssl command not found"
     exit 1
   fi
 
@@ -827,23 +852,23 @@ kubeadm-certs() {
 
 rke2-certs() {
 
-  if [ -d ${RKE2_DIR} ]
+  if [ -d ${RKE2_DATA_DIR} ]
     then
       techo "Collecting rke2 directory state"
       mkdir -p $TMPDIR/${DISTRO}/directories
-      ls -lah ${RKE2_DIR}/agent > $TMPDIR/${DISTRO}/directories/rke2agent 2>&1
-      ls -lah ${RKE2_DIR}/server/manifests > $TMPDIR/${DISTRO}/directories/rke2servermanifests 2>&1
-      ls -lah ${RKE2_DIR}/server/tls > $TMPDIR/${DISTRO}/directories/rke2servertls 2>&1
+      ls -lah ${RKE2_DATA_DIR}/agent > $TMPDIR/${DISTRO}/directories/rke2agent 2>&1
+      ls -lahR ${RKE2_DATA_DIR}/server/manifests > $TMPDIR/${DISTRO}/directories/rke2servermanifests 2>&1
+      ls -lahR ${RKE2_DATA_DIR}/server/tls > $TMPDIR/${DISTRO}/directories/rke2servertls 2>&1
       techo "Collecting rke2 certificates"
       mkdir -p $TMPDIR/${DISTRO}/certs/{agent,server}
-      AGENT_CERTS=$(find ${RKE2_DIR}/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+      AGENT_CERTS=$(find ${RKE2_DATA_DIR}/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
       for CERT in $AGENT_CERTS
         do
           openssl x509 -in $CERT -text -noout > $TMPDIR/${DISTRO}/certs/agent/$(basename $CERT) 2>&1
       done
-      if [ -d ${RKE2_DIR}/server/tls ]; then
+      if [ -d ${RKE2_DATA_DIR}/server/tls ]; then
         techo "Collecting rke2 server certificates"
-        SERVER_CERTS=$(find ${RKE2_DIR}/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+        SERVER_CERTS=$(find ${RKE2_DATA_DIR}/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
         for CERT in $SERVER_CERTS
           do
             openssl x509 -in $CERT -text -noout > $TMPDIR/${DISTRO}/certs/server/$(basename $CERT) 2>&1
@@ -889,18 +914,18 @@ rke-etcd() {
 
 rke2-etcd() {
 
-  RKE2_ETCD=$(${RKE2_DIR}/bin/crictl ps --quiet --label io.kubernetes.container.name=etcd --state running)
+  RKE2_ETCD=$(${RKE2_DATA_DIR}/bin/crictl ps --quiet --label io.kubernetes.container.name=etcd --state running)
   if [ ! -z ${RKE2_ETCD} ]; then
     techo "Collecting rke2 etcd info"
     mkdir -p $TMPDIR/etcd
-    ETCD_CERT=${RKE2_DIR}/server/tls/etcd/server-client.crt
-    ETCD_KEY=${RKE2_DIR}/server/tls/etcd/server-client.key
-    ETCD_CACERT=${RKE2_DIR}/server/tls/etcd/server-ca.crt
-    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} member list" > $TMPDIR/etcd/memberlist 2>&1
+    ETCD_CERT=${RKE2_DATA_DIR}/server/tls/etcd/server-client.crt
+    ETCD_KEY=${RKE2_DATA_DIR}/server/tls/etcd/server-client.key
+    ETCD_CACERT=${RKE2_DATA_DIR}/server/tls/etcd/server-ca.crt
+    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} member list" > $TMPDIR/etcd/memberlist 2>&1
     ETCDCTL_ENDPOINTS=$(cut -d, -f5 $TMPDIR/etcd/memberlist | sed -e 's/ //g' | paste -sd ',')
-    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --write-out table endpoint status" > $TMPDIR/etcd/endpointstatus 2>&1
-    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} endpoint health" > $TMPDIR/etcd/endpointhealth 2>&1
-    ${RKE2_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} alarm list" > $TMPDIR/etcd/alarmlist 2>&1
+    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --write-out table endpoint status" > $TMPDIR/etcd/endpointstatus 2>&1
+    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} endpoint health" > $TMPDIR/etcd/endpointhealth 2>&1
+    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} /bin/sh -c "ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} alarm list" > $TMPDIR/etcd/alarmlist 2>&1
 
     techo "Collecting rke2 etcd metrics"
     ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}:2379\b' $TMPDIR/etcd/memberlist | uniq)
@@ -910,11 +935,11 @@ rke2-etcd() {
     done
   fi
 
-  if [ -d "${RKE2_DIR}/server/db/etcd" ]; then
-    find "${RKE2_DIR}/server/db/etcd" -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbetcd 2>&1
+  if [ -d "${RKE2_DATA_DIR}/server/db/etcd" ]; then
+    find "${RKE2_DATA_DIR}/server/db/etcd" -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbetcd 2>&1
   fi
-  if [ -d "${RKE2_DIR}/server/db/snapshots" ]; then
-    find "${RKE2_DIR}/server/db/snapshots" -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbsnapshots 2>&1
+  if [ -d "${RKE2_DATA_DIR}/server/db/snapshots" ]; then
+    find "${RKE2_DATA_DIR}/server/db/snapshots" -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbsnapshots 2>&1
   fi
 
 }
@@ -945,9 +970,9 @@ kubeadm-etcd() {
 
   KUBEADM_ETCD_DIR="/var/lib/etcd/"
   KUBEADM_ETCD_CERTS="/etc/kubernetes/pki/etcd/"
-  
+
   if ! $(command -v etcdctl >/dev/null 2>&1); then
-    echo "error: etcdctl command not found"
+    techo "error: etcdctl command not found"
     exit 1
   fi
 
@@ -972,7 +997,7 @@ timeout_cmd() {
   WPID=$!
   sleep $TIMEOUT && if kill -0 $WPID > /dev/null 2>&1
     then
-      echo "$1 command timed out, killing process to prevent hanging."; kill $WPID &> /dev/null;
+      techo "$1 command timed out, killing process to prevent hanging."; kill $WPID &> /dev/null;
   fi & KPID=$!; wait $WPID
 
 }
@@ -990,10 +1015,166 @@ archive() {
 
 }
 
+obfuscate() {
+
+  which python3 > /dev/null 2>&1
+  if [ $? -eq 0 ]
+    then
+      python3 -c "import petname" > /dev/null 2>&1
+      if [ $? -eq 0 ]
+        then
+          techo "Obfuscating ${TMPDIR_BASE}"
+          run-obf-python
+        else
+          techo "Could not import petname python module, please install this first, skipping obfuscation..."
+      fi
+    else
+      techo "Could not find python3, skipping obfuscation..."
+  fi
+}
+
+run-obf-python() {
+
+python3 - "${TMPDIR_BASE}" << EOF
+import json
+import petname
+import os
+import re
+import socket
+import sys
+#TODO implement logging
+
+def load_mapping(mapping_file):
+    if os.path.exists(mapping_file):
+        with open(mapping_file, 'r') as file:
+            return json.load(file)
+    return {}
+
+def save_mapping(mapping, mapping_file):
+    with open(mapping_file, 'w') as file:
+        json.dump(mapping, file, indent=2)
+
+def extract_hostnames(text):
+    # Regular expression to match fqdn hostnames
+    hostname_regex = re.compile(r'\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b')
+    return set(hostname_regex.findall(text))
+
+def extract_ip_addresses(text):
+    # Regular expression to match IP addresses
+    ip_regex = re.compile(r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b')
+    return set(ip_regex.findall(text))
+
+def obfuscate_subdomain(subdomain, mapping):
+    if subdomain not in mapping:
+        #print('subdomain passed in: ' + subdomain)
+        # TODO check for collisions
+        return petname.Generate(1)
+    else:
+        #print('subdomain found: ' + str(subdomain))
+        return mapping[subdomain]
+
+def obfuscate_hostname(hostname, mapping):
+    subdomains = hostname.split('.')
+    #print('subdomains: ' + str(subdomains))
+    obfuscated_subdomains = [obfuscate_subdomain(sub, mapping) for sub in subdomains]
+    obfuscated_hostname = '.'.join(obfuscated_subdomains)
+    mapping[hostname] = obfuscated_hostname
+    return obfuscated_hostname
+
+def obfuscate_host(hostname, mapping):
+    obfuscated_hostname = obfuscate_subdomain(hostname, mapping)
+    #print('debug obf hostname:' + obfuscated_hostname)
+    mapping[hostname] = obfuscated_hostname
+    return obfuscated_hostname
+
+def obfuscate_ip_address(ip_address, ip_mapping):
+    octets = ip_address.split('.')
+    if ip_address not in ip_mapping:
+        obfuscated_octets = [octets[0]] + [petname.Generate(1) for _ in octets[1:]]
+        ip_mapping[ip_address] = '.'.join(obfuscated_octets)
+    return ip_mapping[ip_address]
+
+def obfuscate_text(text, hostname_mapping, ip_mapping):
+    hostnames = extract_hostnames(text)
+    ip_addresses = extract_ip_addresses(text)
+    short_hostname = socket.gethostname()
+
+    for hostname in hostnames:
+        #print("processing hostname:" + hostname)
+        if hostname not in hostname_mapping:
+            #print('hostname not in map. hostname: ' + hostname)
+            obfuscated_name = obfuscate_hostname(hostname, hostname_mapping)
+            #print('new obfuscated name: ' + obfuscated_name)
+        else:
+            obfuscated_name = hostname_mapping[hostname]
+            #print("found obfuscated name:" + obfuscated_name)
+        text = text.replace(hostname, obfuscated_name)
+
+    for ip_address in ip_addresses:
+        if ip_address not in ip_mapping:
+            obfuscated_ip = obfuscate_ip_address(ip_address, ip_mapping)
+        else:
+            obfuscated_ip = ip_mapping[ip_address]
+        text = text.replace(ip_address, obfuscated_ip)
+
+    #search for hostname not fqdn
+    if short_hostname not in hostname_mapping:
+        #print("short_hostname not found. short hostname:" + short_hostname)
+        obfuscated_name = obfuscate_host(short_hostname, hostname_mapping)
+    else:
+        #print("short hostname found")
+        obfuscated_name = hostname_mapping[short_hostname]
+    text = text.replace(short_hostname, obfuscated_name)
+
+    return text
+
+def process_file(input_file, output_file, hostname_mapping_file='hostname_mapping.json', ip_mapping_file='ip_mapping.json'):
+    hostname_mapping = load_mapping(hostname_mapping_file)
+    ip_mapping = load_mapping(ip_mapping_file)
+    short_hostname = socket.gethostname()
+
+    try:
+        with open(input_file, 'r') as file:
+            text = file.read()
+
+        obfuscated_text = obfuscate_text(text, hostname_mapping, ip_mapping)
+
+        with open(output_file, 'w') as file:
+            file.write(obfuscated_text)
+
+        save_mapping(hostname_mapping, hostname_mapping_file)
+        save_mapping(ip_mapping, ip_mapping_file)
+    except UnicodeDecodeError:
+        pass
+
+if __name__ == "__main__":
+  directory = sys.argv[1]
+
+  input_file = []
+  output_file = []
+
+  map_file = "ip_map.json"
+  # iterate over files in directories
+  for root, dirs, files in os.walk(directory):
+    for filename in files:
+      input_file = os.path.join(root, filename)
+      tmp_output_file = 'obf_' + filename
+      output_file = os.path.join(root, tmp_output_file)
+      # if filename in process_list:
+      print("processing file: " + str(filename))
+      process_file(input_file, output_file)
+      if os.path.isfile(output_file):
+        os.remove(input_file)
+        os.rename(output_file, input_file)
+
+EOF
+
+}
+
 cleanup() {
 
   techo "Removing ${TMPDIR_BASE}"
-  rm -r -f "${TMPDIR_BASE}" >/dev/null 2>&1
+  rm -r -f "${TMPDIR_BASE}" > /dev/null 2>&1
 
 }
 
@@ -1012,7 +1193,8 @@ help() {
   -E    End date of journald and docker log collection. (ex: -E 2022-12-07)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2|kubeadm)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
-  -f    Force log collection if the minimum space isn't available"
+  -f    Force log collection if the minimum space isn't available
+  -o    Obfuscate IP addresses"
 
 }
 
@@ -1024,7 +1206,7 @@ timestamp() {
 
 techo() {
 
-  echo "$(timestamp): $*"
+  echo "$(timestamp): $*" | tee -a $TMPDIR/collector-output.log
 
 }
 
@@ -1035,7 +1217,7 @@ if [[ $EUID -ne 0 ]] && [[ "${DEV}" == "" ]]
     exit 1
 fi
 
-while getopts "c:d:s:e:S:E:r:fph" opt; do
+while getopts "c:d:s:e:S:E:r:fpoh" opt; do
   case $opt in
     c)
       FLAG_DATA_DIR="${OPTARG}"
@@ -1072,6 +1254,9 @@ while getopts "c:d:s:e:S:E:r:fph" opt; do
     p)
       PRIORITY_DEFAULT=1
       ;;
+    o)
+      OBFUSCATE=true
+      ;;
     h)
       help && exit 0
       ;;
@@ -1090,7 +1275,6 @@ if [ -n "${START_DAY}" ] && [ -n "${END_DAY}" ] && [ ${END_DAY} -ge ${START_DAY}
     exit 1
 fi
 
-DATA_DIR="${FLAG_DATA_DIR:-/var/lib/rancher/rke2}"
 setup
 disk-space
 if [ -n "${DISK_FULL}" ]
@@ -1148,5 +1332,10 @@ if [ "${INIT}" = "systemd" ]
   then
     journald-log
 fi
+if [ $OBFUSCATE ]
+  then
+    obfuscate
+fi
 archive
 cleanup
+techo "Finished"

@@ -70,8 +70,8 @@ collect() {
 
 		echo "Start: $(date -Iseconds)" >>${TMPDIR}/timestamps.txt
 
-		kubectl top pods -A >>${TMPDIR}/toppods.log
-		kubectl top nodes >>${TMPDIR}/topnodes.log
+		kubectl top pods -A >>${TMPDIR}/top-pods.txt
+		kubectl top nodes >>${TMPDIR}/top-nodes.txt
 
 		CONTAINER=rancher
 		if [ "$APP" == "cattle-cluster-agent" ]; then
@@ -103,17 +103,20 @@ collect() {
 				echo
 			fi
 
-			techo Getting rancher-event-logs for $pod
-			kubectl get event --namespace cattle-system --field-selector involvedObject.name=${pod} >${TMPDIR}/${pod}-events.log
+			echo Getting rancher-event-logs for $pod
+			kubectl get event --namespace cattle-system --field-selector involvedObject.name=${pod} >${TMPDIR}/${pod}-events.txt
 			echo
 
-			techo Getting describe for $pod
-			kubectl describe pod $pod -n cattle-system >${TMPDIR}/${pod}-describe.log
+			echo Getting describe for $pod
+			kubectl describe pod $pod -n cattle-system >${TMPDIR}/${pod}-describe.txt
 			echo
 		done
 
-		techo "Getting pod details"
-		kubectl get pods -A -o wide >${TMPDIR}/get_pods_A_wide.log
+		echo "Getting leases"
+		kubectl get leases -n kube-system >${TMPDIR}/leases.txt
+
+		echo "Getting pod details"
+		kubectl get pods -A -o wide >${TMPDIR}/pods-wide.txt
 
 		techo "End:   $(date -Iseconds)" >>${TMPDIR}/timestamps.txt
 

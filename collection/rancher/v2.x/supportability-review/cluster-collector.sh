@@ -108,6 +108,7 @@ collect_common_cluster_info() {
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' services.json > terminating-services
   kubectl get deploy -n cattle-system -o json | jq '.items[] | select(.metadata.name=="cattle-cluster-agent") | .status.conditions[] | select(.type=="Available") | .status == "True"' > cattle-cluster-agent-is-running
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
+  kubectl get deploy -n cattle-neuvector-system -o json > cattle-neuvector-system-deploy.json
   kubectl get settings.management.cattle.io server-version -o json > server-version.json
   kubectl get clusters.management.cattle.io -o json > clusters.management.cattle.io.json
   kubectl get storageclasses.storage.k8s.io -A -o json > storageclasses.storage.k8s.io.json
@@ -120,6 +121,18 @@ collect_common_cluster_info() {
     rm cattle-monitoring-system-apps.json
   fi
 
+  # Collect API version info
+  mkdir -p "${OUTPUT_DIR}/api_version"
+  kubectl get CronJob -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/CronJob.json
+  kubectl get CSIStorageCapacity -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/CSIStorageCapacity.json
+  kubectl get EndpointSlice -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/EndpointSlice.json
+  kubectl get Event -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/Event.json
+  kubectl get FlowSchema -A -o json | jq '{"items": [.items[] | select(.metadata.annotations."apf.kubernetes.io/autoupdate-spec" == "false" or .metadata.generation != 1) | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/FlowSchema.json
+  kubectl get HorizontalPodAutoscaler -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/HorizontalPodAutoscaler.json
+  kubectl get PodDisruptionBudget -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/PodDisruptionBudget.json
+  kubectl get PodSecurityPolicy -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/PodSecurityPolicy.json
+  kubectl get RuntimeClass -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/RuntimeClass.json
+
   # Make collection optional
   if [ ! -z "${SR_COLLECT_CLUSTER_INFO_DUMP}" ]; then
     echo "SR_COLLECT_CLUSTER_INFO_DUMP is set, hence collecting cluster-info dump"
@@ -129,16 +142,32 @@ collect_common_cluster_info() {
 
 collect_rke_info() {
   mkdir -p "${OUTPUT_DIR}/rke"
-  echo "rke: nothing to collect yet"
 
-  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.network.plugin' > ${OUTPUT_DIR}/rke/cni
-  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.kubernetesVersion' > ${OUTPUT_DIR}/rke/kubernetesVersion
-  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.services.etcd | del(.backupConfig.s3BackupConfig)' > ${OUTPUT_DIR}/rke/etcd.json
-  kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' | jq -cr '.currentState.rkeConfig.dns' > ${OUTPUT_DIR}/rke/dns.json
+  kubectl -n kube-system get secret | grep full-cluster-state
+  if [ $? -eq 0 ]; then
+    kubectl -n kube-system get secret full-cluster-state -o jsonpath='{.data.full-cluster-state}' | base64 -d > ${OUTPUT_DIR}/rke/full-cluster-state.json
+    echo "true" > ${OUTPUT_DIR}/rke/CVE-2023-32191.txt
+  else
+    kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' > ${OUTPUT_DIR}/rke/full-cluster-state.json
+    echo "false" > ${OUTPUT_DIR}/rke/CVE-2023-32191.txt
+  fi
+  jq -cr '.currentState.rkeConfig.network.plugin' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/cni
+  jq -cr '.currentState.rkeConfig.services.etcd | del(.backupConfig.s3BackupConfig)' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/etcd.json
+  jq -cr '.currentState.rkeConfig.services.kubeApi' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/kubeApi.json
+  jq -cr '.currentState.rkeConfig.services.kubeController' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/kubeController.json
+  jq -cr '.currentState.rkeConfig.dns' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/dns.json
+  rm ${OUTPUT_DIR}/rke/full-cluster-state.json
+
+  kubectl get ds -n ingress-nginx -o json > ${OUTPUT_DIR}/rke/ingress-nginx-daemonsets.json
 }
 
 collect_rke2_info() {
   mkdir -p "${OUTPUT_DIR}/rke2"
+
+  jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-apiserver") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-apiserver-args.json
+  jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-controller-manager") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-controller-manager-args.json
+  jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-proxy") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-proxy-args.json
+  jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-scheduler") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-scheduler-args.json
 
   #Get RKE2 Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" ]; then
@@ -172,6 +201,14 @@ collect_k3s_info() {
   fi
 }
 
+
+collect_harvester_info() {
+  mkdir -p "${OUTPUT_DIR}/harvester"
+
+  kubectl get deploy -n harvester-system -o json > harvester/harvester-system-deploy.json
+}
+
+
 collect_upstream_cluster_info() {
   kubectl get features.management.cattle.io -o json > features-management.json
   kubectl get bundledeployments.fleet.cattle.io -A -o json > bundledeployment.json
@@ -180,15 +217,20 @@ collect_upstream_cluster_info() {
   kubectl get bundles.fleet.cattle.io -n fleet-local  -o json > fleet-local-bundle.json
   kubectl get apps.catalog.cattle.io -n cattle-resources-system -o json > cattle-resources-system-apps.json
   kubectl get backup.resources.cattle.io -o json > backup.json
-  jq '[.items[] | select(.metadata.namespace == "cattle-system" and .metadata.labels.app == "rancher") | .spec.nodeName] | unique | length' pods.json > unique-rancher-pod-count-by-node
-  number_of_rancher_pods=$(jq -cr '[.items[] | select(.metadata.namespace == "cattle-system" and .metadata.labels.app == "rancher") | .metadata.name] | length' pods.json)
+
+  rancher_version=$(kubectl get settings.management.cattle.io server-version -o json | jq -cr '.value | sub("^v"; "")')
+  rancher_deployment_name=$(kubectl -n cattle-system get deployments.apps -o json | jq -cr ".items[] | select(.metadata.labels.chart == \"rancher-$rancher_version\") | .metadata.name")
+  jq "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\") | .spec.nodeName] | unique | length" pods.json > unique-rancher-pod-count-by-node
+  number_of_rancher_pods=$(jq -cr "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\") | .metadata.name] | length" pods.json)
   if [ $number_of_rancher_pods ]; then
-    jq -cr '[.items[] | select(.metadata.namespace == "cattle-system" and .metadata.labels.app == "rancher")] | .[0] | .status.containerStatuses[0].imageID | split("@") | .[1] | split(":") | .[1]' pods.json > rancher-imageid.txt
+    jq -cr "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\")] | .[0] | .status.containerStatuses[0].imageID | split(\"@\") | .[1] | split(\":\") | .[1]" pods.json > rancher-imageid.txt
   fi
 
   kubectl get settings.management.cattle.io install-uuid -o json > install-uuid.json
   kubectl get nodes.management.cattle.io -A -o json > nodes-cattle.json
   kubectl get --no-headers tokens.management.cattle.io | wc -l > token-count.txt
+  kubectl get roletemplates -o json > roletemplates.json
+  kubectl get clusterrole -o json > clusterrole.json
 }
 
 collect_app_info() {
@@ -222,6 +264,9 @@ collect_cluster_info() {
     "k3s")
       collect_k3s_info
     ;;
+    "harvester")
+      collect_harvester_info
+    ;;
     *)
       echo "error: CLUSTER_PROVIDER is not set"
     ;;
@@ -235,6 +280,14 @@ delete_sensitive_info() {
   rm services.json
 }
 
+move_ip_map() {
+  if "${OBFUSCATE}" == "true"; then
+    echo "moving map"
+    mv ip_map.json ${SONOBUOY_RESULTS_DIR}/
+  else
+    echo "nothing to move"
+  fi
+}
 
 main() {
   echo "start"
@@ -248,7 +301,26 @@ main() {
   cd "${OUTPUT_DIR}"
 
   collect_cluster_info
+
+  #Handle Obfuscate case
+  if "${OBFUSCATE}" == "true"; then
+    echo "obfuscation enabled"
+    echo "true" > "${OUTPUT_DIR}/obfuscate_data"
+
+    json_list=("nodes.json" "cattle-system-deploy.json" "nodes-cattle.json" "services-default.json" "crds.json" "pods.json")
+
+    for file in ${json_list[@]}; do
+      prefix='obf_'
+      newfile="${prefix}${file}"
+      obfuscate_json.py $file $newfile
+      echo "moving ${newfile} to ${file}"
+      rm $file
+      mv $newfile $file
+    done
+  fi
+
   delete_sensitive_info
+  move_ip_map
 
   if [ "${DEBUG}" != "true" ]; then
     tar czvf "${TAR_OUTPUT_FILE}" -C "${OUTPUT_DIR}" .

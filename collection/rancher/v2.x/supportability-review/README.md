@@ -37,7 +37,7 @@ Please review the below files for details:
 
 ## How to use
 
-**1. Download the `collect.sh` script on a Linux node and make it executable**
+**1. Download the `collect.sh` script on a Linux environment and make it executable**
 
    - **Using wget**
 
@@ -60,6 +60,28 @@ Please review the below files for details:
   export RANCHER_TOKEN="token-a1b2c:hp7nxfs25w5g7rlc6gkasddhzpphfjbgmcqg6g2kpv52gxg7tl2fgpq2q"
   ```
 
+  #### Additional tolerations
+
+  Some Kubernetes nodes could have it's own taints. If you want to run collector on the nodes, please prepare `yaml` file contains `tolerations` like trailing. To ignore all the taints, just use `operator: Exists`.
+
+  ```yaml
+  tolerations:
+  - operator: Exists
+  - effect: NoSchedule
+    operator: Exists
+  - key: "key1"
+    operator: "Equal"
+    value: "value1"
+    effect: "NoSchedule"
+  - key: "key1"
+    operator: "Exists"
+    effect: "NoSchedule"
+  ```
+
+  And specifiy its absolute path with `SONOBUOY_TOLARATION_FILE` environment variable.
+  ```shell
+  export SONOBUOY_TOLARATION_FILE=<absolute path to the file>
+  ```
 
 **3. Run the collection script**
 
@@ -75,17 +97,17 @@ The script needs to be run on a linux machine running docker with access to your
 
   To be able to run this tool in an airgap environment, two images need to be mirrored in the private registry.
 
-  - Supportability Review Image (SR Image): `ghcr.io/rancherlabs/supportability-review:latest`
-  - Sonobuoy Image: `rancher/mirrored-sonobuoy-sonobuoy:v0.57.0`
+  - Supportability Review Image (SR Image): `ghcr.io/rancher/supportability-review:latest`
+  - Sonobuoy Image: `ghcr.io/rancher/mirrored-sonobuoy-sonobuoy:v0.57.1-rancher2`
 
   ```
-  export SRC_SR_IMAGE="ghcr.io/rancherlabs/supportability-review:latest"
+  export SRC_SR_IMAGE="ghcr.io/rancher/supportability-review:latest"
   export DST_SR_IMAGE="registry.example.com/supportability-review:latest"
   docker tag $SRC_SR_IMAGE $DST_SR_IMAGE
   docker push $DST_SR_IMAGE
 
-  export SRC_SONOBUOY_IMAGE="rancher/mirrored-sonobuoy-sonobuoy:v0.57.0"
-  export DST_SONOBUOY_IMAGE="registry.example.com/sonobuoy:v0.57.0"
+  export SRC_SONOBUOY_IMAGE="ghcr.io/rancher/mirrored-sonobuoy-sonobuoy:v0.57.1-rancher2"
+  export DST_SONOBUOY_IMAGE="registry.example.com/sonobuoy:v0.57.1-rancher2"
   docker tag $SRC_SONOBUOY_IMAGE $DST_SONOBUOY_IMAGE
   docker push $DST_SONOBUOY_IMAGE
   ```
@@ -103,6 +125,20 @@ The script needs to be run on a linux machine running docker with access to your
 
  ```shell
  export CONTAINERD_ADDRESS=<your containerd socket used by nerdctl>
+ ```
+
+ #### Upload bundle file to S3 compatible storage
+
+ To upload bundle file to S3 compatible storage, configure it by trailing variables. If you are using AWS S3, please leave S3_ENDPOINT_URL empty.
+
+ ```shell
+ export S3_ENDPOINT_URL="https://<hostname>:<port no>"
+ export S3_BUCKET_NAME="bucket_name"
+ export S3_FOLDER_NAME="folder_name"
+ export S3_REGION_NAME="region_name_like_ap-northeast-1"
+ export S3_ACCESS_KEY_ID="XXX"
+ export S3_SECRET_ACCESS_KEY="YYY"
+ export S3_SSL_VERIFY=False (Default: False)
  ```
 
 **4. Share the generated support bundle with SUSE Rancher Support Team.**

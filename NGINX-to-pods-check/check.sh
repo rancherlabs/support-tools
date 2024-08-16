@@ -45,9 +45,9 @@ kubectl get namespace -o custom-columns=NAMESPACE:.metadata.name --no-headers | 
 do
 	kubectl get ingress -n "$namespace" -o custom-columns=ingress:.metadata.name --no-headers | while read ingress
 	do
-		kubectl get ingress $ingress -n $namespace -o yaml | grep 'serviceName: ' | awk '{print $2}' | sort | uniq | while read servicename
+		kubectl get ingress $ingress -n $namespace -o yaml | grep 'service:' -A1 | awk '{print $2}' | sort | uniq | awk 'NF {p=1} p' | while read servicename
 		do
-			PORT="$(kubectl get endpoints "$servicename" -n "$namespace" -o yaml | grep 'port:' | awk '{print $2}')"
+			PORT="$(kubectl get endpoints "$servicename" -n "$namespace" -o yaml | grep 'port:' | awk '{print $2}'| head -n 1)"
 			if [[ "$PORT" == 'port:' ]]
 			then
 				PORT="80"

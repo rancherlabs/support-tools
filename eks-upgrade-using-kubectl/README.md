@@ -20,7 +20,9 @@ This script requires the following:
 export RANCHER_KUBE="<PATH TO YOUR RANCHER KUBECONFIG>"
 ```
 
-3. Get a list of your EKS clusters using this command
+### Upgrading EKS Clusters
+
+1. Get a list of your EKS clusters using this command
 
 ```bash
 # For v2 
@@ -29,13 +31,20 @@ export RANCHER_KUBE="<PATH TO YOUR RANCHER KUBECONFIG>"
 ./eks-support.sh list -k $RANCHER_KUBE --kev1
 ```
 
-4. For each EKS cluster you want to upgrade run the following command:
+2. For each EKS cluster you want to upgrade run the following command:
 
 ```bash
 # For v2 
-./eks-support.sh upgrade -k $RANCHER_KUBE --from 1.22 --to 1.23 --name richtest1
+./eks-support.sh upgrade -k $RANCHER_KUBE --from 1.22 --to 1.23 --nname <EKS_CLUSTER_NAME>
 # For v1
-./eks-support.sh upgrade -k $RANCHER_KUBE --from 1.22 --to 1.23 --name richtest1 --kev1
+./eks-support.sh upgrade -k $RANCHER_KUBE --from 1.22 --to 1.23 --name <EKS_CLUSTER_NAME> --kev1
 ```
 
 > Replace the values of --from, --to and --name with your values.
+
+### Unsetting Node Groups as managed fields for imported EKS Clusters (only for KEv2)
+
+```bash
+# For v2
+./eks-support.sh unset_nodegroups -k $RANCHER_KUBE --name <EKS_CLUSTER_NAME>
+```
