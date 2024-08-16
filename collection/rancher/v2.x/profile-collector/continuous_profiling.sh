@@ -54,6 +54,16 @@ help() {
 
 }
 
+timestamp() {
+  date "+%Y-%m-%d %H:%M:%S"
+
+}
+
+techo() {
+  echo "$(timestamp): $*"
+
+}
+
 collect() {
 
   while true; do
@@ -69,11 +79,6 @@ collect() {
 
     kubectl top pods -A >>${TMPDIR}/top-pods.txt
     kubectl top nodes >>${TMPDIR}/top-nodes.txt
-
-    CONTAINER=rancher
-    if [ "$APP" == "cattle-cluster-agent" ]; then
-      CONTAINER=cluster-register
-    fi
 
     for pod in $(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name); do
       for profile in ${PROFILES[@]}; do
@@ -193,19 +198,15 @@ loglevel() {
 
 }
 
-timestamp() {
-  date "+%Y-%m-%d %H:%M:%S"
-
-}
-
-techo() {
-  echo "$(timestamp): $*"
-
-}
-
-# APP=rancher only: set logging to debug
-if [ "$APP" == "rancher" ]; then
+# set the container for the app being profiled
+case $APP in
+rancher)
+  CONTAINER=rancher
   loglevel debug
-fi
+  ;;
+"cattle-cluster-agent")
+  CONTAINER=cluster-agent
+  ;;
+esac
 
 collect
