@@ -1,5 +1,5 @@
 #!/bin/bash
-# Which app to profile? Supported choices: rancher, cattle-cluster-agent
+# Which app to profile? Supported choices: rancher, cattle-cluster-agent, fleet-controller, fleet-agent
 APP=rancher
 
 # Namespace  of the app, optional
@@ -46,7 +46,7 @@ help() {
 
   All flags are optional
 
-  -a    Application, either rancher or cattle-cluster-agent
+  -a    Application: rancher, cattle-cluster-agent, fleet-controller, or fleet-agent
   -p    Profiles to be collected (comma separated): goroutine,heap,threadcreate,block,mutex,profile
   -s    Sleep time between loops in seconds
   -t    Time of CPU profile collections
@@ -148,7 +148,7 @@ while getopts "a:p:d:s:t:h" opt; do
   case $opt in
   a)
     APP="${OPTARG}"
-    if [ "${APP}" != "rancher" ] && [ "${APP}" != "cattle-cluster-agent" ]; then
+    if [ "${APP}" != "rancher" ] && [ "${APP}" != "cattle-cluster-agent" ] && [ "${APP}" != "fleet-controller" ] && [ "${APP}" != "fleet-agent" ]; then
       help
     fi
     ;;
@@ -205,7 +205,15 @@ rancher)
   loglevel debug
   ;;
 "cattle-cluster-agent")
-  CONTAINER=cluster-agent
+  CONTAINER=cluster-register
+  ;;
+"fleet-controller")
+  CONTAINER=$APP
+  NAMESPACE=cattle-fleet-system
+  ;;
+"fleet-agent")
+  CONTAINER=$APP
+  NAMESPACE=cattle-fleet-local-system
   ;;
 esac
 
