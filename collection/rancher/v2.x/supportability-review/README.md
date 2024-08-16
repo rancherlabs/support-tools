@@ -127,6 +127,20 @@ The script needs to be run on a linux machine running docker with access to your
  export CONTAINERD_ADDRESS=<your containerd socket used by nerdctl>
  ```
 
+ #### Upload bundle file to S3 compatible storage
+
+ To upload bundle file to S3 compatible storage, configure it by trailing variables. If you are using AWS S3, please leave S3_ENDPOINT_URL empty.
+
+ ```shell
+ export S3_ENDPOINT_URL="https://<hostname>:<port no>"
+ export S3_BUCKET_NAME="bucket_name"
+ export S3_FOLDER_NAME="folder_name"
+ export S3_REGION_NAME="region_name_like_ap-northeast-1"
+ export S3_ACCESS_KEY_ID="XXX"
+ export S3_SECRET_ACCESS_KEY="YYY"
+ export S3_SSL_VERIFY=False (Default: False)
+ ```
+
 **4. Share the generated support bundle with SUSE Rancher Support Team.**
 
 Output will be written as a tar.gz archive in the same path where the script is run.
