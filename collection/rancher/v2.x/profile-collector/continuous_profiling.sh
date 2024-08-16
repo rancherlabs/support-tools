@@ -30,10 +30,9 @@ BLOB_TOKEN=
 
 cleanup() {
   # APP=rancher only: set logging back to normal
-  kubectl -n $NAMESPACE get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
-    techo Setting $rancherpod back to normal logging
-    kubectl -n $NAMESPACE exec $rancherpod -c rancher -- loglevel --set error
-  done
+  if [ "$APP" == "rancher" ]; then
+    loglevel info
+  fi
   exit 0
 }
 
@@ -58,11 +57,6 @@ help() {
 collect() {
 
   while true; do
-    # APP=rancher only: set logging to debug level
-    kubectl -n $NAMESPACE get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
-      techo Setting $rancherpod debug logging
-      kubectl -n $NAMESPACE exec $rancherpod -c rancher -- loglevel --set debug
-    done
 
     TMPDIR=$(mktemp -d $MKTEMP_BASEDIR) || {
       techo 'Creating temporary directory failed, please check options'
@@ -191,6 +185,14 @@ while getopts "a:p:d:s:t:h" opt; do
   esac
 done
 
+loglevel() {
+  kubectl -n $NAMESPACE get pods -l app=$APP --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
+    techo Setting $rancherpod $1 logging
+    kubectl -n $NAMESPACE exec $rancherpod -c rancher -- loglevel --set $1
+  done
+
+}
+
 timestamp() {
   date "+%Y-%m-%d %H:%M:%S"
 
@@ -200,5 +202,10 @@ techo() {
   echo "$(timestamp): $*"
 
 }
+
+# APP=rancher only: set logging to debug
+if [ "$APP" == "rancher" ]; then
+  loglevel debug
+fi
 
 collect
