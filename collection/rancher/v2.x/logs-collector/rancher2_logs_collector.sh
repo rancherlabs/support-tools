@@ -1338,4 +1338,4 @@ if [ $OBFUSCATE ]
 fi
 archive
 cleanup
-techo "Finished"
+echo "$(timestamp): Finished"
