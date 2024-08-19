@@ -189,10 +189,10 @@ while getopts "a:p:d:s:t:h" opt; do
   esac
 done
 
-loglevel() {
-  kubectl -n $NAMESPACE get pods -l app=$APP --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
+set_rancher_log_level() {
+  kubectl --namespace cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
     techo Setting $rancherpod $1 logging
-    kubectl -n $NAMESPACE exec $rancherpod -c rancher -- loglevel --set $1
+    kubectl --namespace cattle-system exec $rancherpod -c rancher -- loglevel --set $1
   done
 
 }
