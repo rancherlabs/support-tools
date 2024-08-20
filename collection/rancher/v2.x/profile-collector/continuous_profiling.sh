@@ -59,6 +59,30 @@ techo() {
 
 collect() {
 
+  case $APP in
+  rancher)
+    CONTAINER=rancher
+    NAMESPACE=cattle-system
+    set_rancher_log_level debug
+    ;;
+  cattle-cluster-agent)
+    CONTAINER=cluster-register
+    NAMESPACE=cattle-system
+    ;;
+  fleet-controller)
+    CONTAINER=fleet-controller
+    NAMESPACE=cattle-fleet-system
+    ;;
+  fleet-agent)
+    CONTAINER=fleet-agent
+    if kubectl get namespace cattle-fleet-local-system >/dev/null; then
+      NAMESPACE=cattle-fleet-local-system
+    else
+      NAMESPACE=cattle-fleet-system
+    fi
+    ;;
+  esac
+
   while true; do
 
     TMPDIR=$(mktemp -d $MKTEMP_BASEDIR) || {
