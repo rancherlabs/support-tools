@@ -248,6 +248,9 @@ system-all() {
   if $(command -v service >/dev/null 2>&1); then
     service --status-all > $TMPDIR/systeminfo/service-statusall 2>&1
   fi
+  if $(command -v conntrack >/dev/null 2>&1); then
+    conntrack -S > $TMPDIR/systeminfo/conntrack
+  fi
 
 }
 
