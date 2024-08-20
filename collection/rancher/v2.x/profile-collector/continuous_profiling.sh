@@ -1,9 +1,7 @@
 #!/bin/bash
+set x
 # Which app to profile? Supported choices: rancher, cattle-cluster-agent, fleet-controller, fleet-agent
 APP=rancher
-
-# Namespace  of the app, optional
-NAMESPACE=cattle-system
 
 # Which profiles to collect? Supported choices: goroutine, heap, threadcreate, block, mutex, profile
 # Default profiles
@@ -31,7 +29,7 @@ BLOB_TOKEN=
 cleanup() {
   # APP=rancher only: set logging back to normal
   if [ "$APP" == "rancher" ]; then
-    loglevel info
+    set_rancher_log_level info
   fi
   exit 0
 }
@@ -54,13 +52,8 @@ help() {
 
 }
 
-timestamp() {
-  date "+%Y-%m-%d %H:%M:%S"
-
-}
-
 techo() {
-  echo "$(timestamp): $*"
+  echo "$(date "+%Y-%m-%d %H:%M:%S"): $*"
 
 }
 
@@ -196,24 +189,5 @@ set_rancher_log_level() {
   done
 
 }
-
-# set the container for the app being profiled
-case $APP in
-rancher)
-  CONTAINER=rancher
-  loglevel debug
-  ;;
-"cattle-cluster-agent")
-  CONTAINER=cluster-register
-  ;;
-"fleet-controller")
-  CONTAINER=$APP
-  NAMESPACE=cattle-fleet-system
-  ;;
-"fleet-agent")
-  CONTAINER=$APP
-  NAMESPACE=cattle-fleet-local-system
-  ;;
-esac
 
 collect
