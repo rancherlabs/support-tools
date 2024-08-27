@@ -1,5 +1,5 @@
 #!/bin/bash
-# Which app to profile? Supported choices: rancher, cattle-cluster-agent
+# Which app to profile? Supported choices: rancher, cattle-cluster-agent, fleet-controller, fleet-agent
 APP=rancher
 
 # Which profiles to collect? Supported choices: goroutine, heap, threadcreate, block, mutex, profile
@@ -27,10 +27,9 @@ BLOB_TOKEN=
 
 cleanup() {
   # APP=rancher only: set logging back to normal
-  kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
-    techo Setting $rancherpod back to normal logging
-    kubectl -n cattle-system exec $rancherpod -c rancher -- loglevel --set error
-  done
+  if [ "$APP" == "rancher" ]; then
+    set_rancher_log_level info
+  fi
   exit 0
 }
 
@@ -44,7 +43,7 @@ help() {
 
   All flags are optional
 
-  -a    Application, either rancher or cattle-cluster-agent
+  -a    Application: rancher, cattle-cluster-agent, fleet-controller, or fleet-agent
   -p    Profiles to be collected (comma separated): goroutine,heap,threadcreate,block,mutex,profile
   -s    Sleep time between loops in seconds
   -t    Time of CPU profile collections
@@ -52,14 +51,38 @@ help() {
 
 }
 
+techo() {
+  echo "$(date "+%Y-%m-%d %H:%M:%S"): $*"
+
+}
+
 collect() {
 
+  case $APP in
+  rancher)
+    CONTAINER=rancher
+    NAMESPACE=cattle-system
+    set_rancher_log_level debug
+    ;;
+  cattle-cluster-agent)
+    CONTAINER=cluster-register
+    NAMESPACE=cattle-system
+    ;;
+  fleet-controller)
+    CONTAINER=fleet-controller
+    NAMESPACE=cattle-fleet-system
+    ;;
+  fleet-agent)
+    CONTAINER=fleet-agent
+    if kubectl get namespace cattle-fleet-local-system >/dev/null; then
+      NAMESPACE=cattle-fleet-local-system
+    else
+      NAMESPACE=cattle-fleet-system
+    fi
+    ;;
+  esac
+
   while true; do
-    # APP=rancher only: set logging to debug level
-    kubectl -n cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
-      techo Setting $rancherpod debug logging
-      kubectl -n cattle-system exec $rancherpod -c rancher -- loglevel --set debug
-    done
 
     TMPDIR=$(mktemp -d $MKTEMP_BASEDIR) || {
       techo 'Creating temporary directory failed, please check options'
@@ -73,42 +96,36 @@ collect() {
     kubectl top pods -A >>${TMPDIR}/top-pods.txt
     kubectl top nodes >>${TMPDIR}/top-nodes.txt
 
-    CONTAINER=rancher
-    if [ "$APP" == "cattle-cluster-agent" ]; then
-      CONTAINER=cluster-register
-    fi
-
-    for pod in $(kubectl -n cattle-system get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name); do
+    for pod in $(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name); do
       for profile in ${PROFILES[@]}; do
         techo Getting $profile profile for $pod
         if [ "$profile" == "profile" ]; then
-          kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile}?seconds=${DURATION} -o ${profile}
+          kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile}?seconds=${DURATION} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
         else
-          kubectl exec -n cattle-system $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile} -o ${profile}
+          kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
         fi
-        kubectl cp -n cattle-system -c ${CONTAINER} ${pod}:${profile} ${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
       done
 
       techo Getting logs for $pod
-      kubectl logs --since 5m -n cattle-system $pod -c ${CONTAINER} >${TMPDIR}/${pod}.log
+      kubectl logs --since 5m -n $NAMESPACE $pod -c ${CONTAINER} >${TMPDIR}/${pod}.log
       echo
 
       techo Getting previous logs for $pod
-      kubectl logs -n cattle-system $pod -c ${CONTAINER} --previous=true >${TMPDIR}/${pod}-previous.log
+      kubectl logs -n $NAMESPACE $pod -c ${CONTAINER} --previous=true >${TMPDIR}/${pod}-previous.log
       echo
 
       if [ "$APP" == "rancher" ]; then
         techo Getting rancher-audit-logs for $pod
-        kubectl logs --since 5m -n cattle-system $pod -c rancher-audit-log >${TMPDIR}/${pod}-audit.log
+        kubectl logs --since 5m -n $NAMESPACE $pod -c rancher-audit-log >${TMPDIR}/${pod}-audit.log
         echo
       fi
 
       techo Getting rancher-event-logs for $pod
-      kubectl get event --namespace cattle-system --field-selector involvedObject.name=${pod} >${TMPDIR}/${pod}-events.txt
+      kubectl get event --namespace $NAMESPACE --field-selector involvedObject.name=${pod} >${TMPDIR}/${pod}-events.txt
       echo
 
       techo Getting describe for $pod
-      kubectl describe pod $pod -n cattle-system >${TMPDIR}/${pod}-describe.txt
+      kubectl describe pod $pod -n $NAMESPACE >${TMPDIR}/${pod}-describe.txt
       echo
     done
 
@@ -146,7 +163,7 @@ while getopts "a:p:d:s:t:h" opt; do
   case $opt in
   a)
     APP="${OPTARG}"
-    if [ "${APP}" != "rancher" ] && [ "${APP}" != "cattle-cluster-agent" ]; then
+    if [ "${APP}" != "rancher" ] && [ "${APP}" != "cattle-cluster-agent" ] && [ "${APP}" != "fleet-controller" ] && [ "${APP}" != "fleet-agent" ]; then
       help
     fi
     ;;
@@ -188,13 +205,11 @@ while getopts "a:p:d:s:t:h" opt; do
   esac
 done
 
-timestamp() {
-  date "+%Y-%m-%d %H:%M:%S"
-
-}
-
-techo() {
-  echo "$(timestamp): $*"
+set_rancher_log_level() {
+  kubectl --namespace cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
+    techo Setting $rancherpod $1 logging
+    kubectl --namespace cattle-system exec $rancherpod -c rancher -- loglevel --set $1
+  done
 
 }
 

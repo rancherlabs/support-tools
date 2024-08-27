@@ -3,14 +3,11 @@
 ## Notes
 
 This script is intended to collect:
-- [Golang profiles](https://github.com/pkg/profile) for [Rancher Manager](https://github.com/rancher/rancher/), and Rancher Cluster Agent
-- Rancher debug logs
+- [Golang profiles](https://github.com/pkg/profile) for [Rancher Manager](https://github.com/rancher/rancher/), Rancher Cluster Agent, Fleet Controller and Fleet Agent
+- Rancher debug logs when collecting Rancher profiles
 - Rancher audit logs when available
 - Events from the cattle-system namespace
 - metrics with kubectl top from pods and nodes
-
-
-Output will be written to `/tmp` as a tar.gz archive named `<pod-name>-<date>.tar.gz`
 
 ## Usage
 
@@ -43,7 +40,7 @@ Rancher 2.x profile-collector
 
   All flags are optional
 
-  -a    Application, either rancher or cattle-cluster-agent
+  -a    Application, rancher, cattle-cluster-agent, fleet-controller, fleet-agent
   -p    Profiles to be collected (comma separated): goroutine,heap,threadcreate,block,mutex,profile
   -s    Sleep time between loops in seconds
   -t    Time of CPU profile collections
