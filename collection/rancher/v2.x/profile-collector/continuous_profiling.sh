@@ -1,5 +1,4 @@
 #!/bin/bash
-set x
 # Which app to profile? Supported choices: rancher, cattle-cluster-agent, fleet-controller, fleet-agent
 APP=rancher
 
