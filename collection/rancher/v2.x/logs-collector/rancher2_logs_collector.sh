@@ -1216,6 +1216,7 @@ techo() {
 # Check if we're running as root.
 if [[ $EUID -ne 0 ]] && [[ "${DEV}" == "" ]]
   then
+    help
     techo "This script must be run as root"
     exit 1
 fi
