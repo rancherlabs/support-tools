@@ -21,7 +21,13 @@ This option requires `kubectl` and `jq` to be installed on the server.
 docker cp kubelet:/usr/local/bin/kubectl /usr/local/bin/
 ```
 
-- Get kubeconfig
+- Get kubeconfig (Rancher 2.7.14+/Rancher 2.8.5+, RKE 1.4.19+/RKE 1.5.10+)
+
+```bash
+kubectl --kubeconfig $(docker inspect kubelet --format '{{ range .Mounts }}{{ if eq .Destination "/etc/kubernetes" }}{{ .Source }}{{ end }}{{ end }}')/ssl/kubecfg-kube-node.yaml get secrets -n kube-system full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | base64 -d | jq -r .currentState.certificatesBundle.\"kube-admin\".config | sed -e "/^[[:space:]]*server:/ s_:.*_: \"https://127.0.0.1:6443\"_" > kubeconfig_admin.yaml
+```
+
+- Get kubeconfig (Earlier versions of Rancher and RKE)
 
 ```bash
 kubectl --kubeconfig $(docker inspect kubelet --format '{{ range .Mounts }}{{ if eq .Destination "/etc/kubernetes" }}{{ .Source }}{{ end }}{{ end }}')/ssl/kubecfg-kube-node.yaml get configmap -n kube-system full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | jq -r .currentState.certificatesBundle.\"kube-admin\".config | sed -e "/^[[:space:]]*server:/ s_:.*_: \"https://127.0.0.1:6443\"_" > kubeconfig_admin.yaml
@@ -36,14 +42,20 @@ kubectl --kubeconfig kubeconfig_admin.yaml get nodes
 
 This option does not require `kubectl` or `jq` on the server because this uses the `rancher/rancher-agent` image to retrieve the kubeconfig.
 
-- Get kubeconfig
+- Get kubeconfig (Rancher 2.7.14+/Rancher 2.8.5+, RKE 1.4.19+/RKE 1.5.10+)
+```bash
+docker run --rm --net=host -v $(docker inspect kubelet --format '{{ range .Mounts }}{{ if eq .Destination "/etc/kubernetes" }}{{ .Source }}{{ end }}{{ end }}')/ssl:/etc/kubernetes/ssl:ro --entrypoint bash $(docker inspect $(docker images -q --filter=label=org.opencontainers.image.source=https://github.com/rancher/hyperkube) --format='{{index .RepoTags 0}}' | tail -1) -c 'kubectl --kubeconfig /etc/kubernetes/ssl/kubecfg-kube-node.yaml get secret -n kube-system full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | base64 -d | jq -r .currentState.certificatesBundle.\"kube-admin\".config | sed -e "/^[[:space:]]*server:/ s_:.*_: \"https://127.0.0.1:6443\"_"' > kubeconfig_admin.yaml
+```
+
+- Get kubeconfig (Earlier versions of Rancher and RKE)
+
 ```bash
 docker run --rm --net=host -v $(docker inspect kubelet --format '{{ range .Mounts }}{{ if eq .Destination "/etc/kubernetes" }}{{ .Source }}{{ end }}{{ end }}')/ssl:/etc/kubernetes/ssl:ro --entrypoint bash $(docker inspect $(docker images -q --filter=label=org.opencontainers.image.source=https://github.com/rancher/hyperkube.git) --format='{{index .RepoTags 0}}' | tail -1) -c 'kubectl --kubeconfig /etc/kubernetes/ssl/kubecfg-kube-node.yaml get configmap -n kube-system full-cluster-state -o json | jq -r .data.\"full-cluster-state\" | jq -r .currentState.certificatesBundle.\"kube-admin\".config | sed -e "/^[[:space:]]*server:/ s_:.*_: \"https://127.0.0.1:6443\"_"' > kubeconfig_admin.yaml
 ```
 
 - Run `kubectl get nodes`
 ```bash
-docker run --rm --net=host -v $PWD/kubeconfig_admin.yaml:/root/.kube/config:z --entrypoint bash $(docker inspect $(docker images -q --filter=label=org.opencontainers.image.source=https://github.com/rancher/hyperkube.git) --format='{{index .RepoTags 0}}' | tail -1) -c 'kubectl get nodes''
+docker run --rm --net=host -v $PWD/kubeconfig_admin.yaml:/root/.kube/config:z --entrypoint bash $(docker inspect $(docker images -q --filter=label=org.opencontainers.image.source=https://github.com/rancher/hyperkube) --format='{{index .RepoTags 0}}' | tail -1) -c 'kubectl get nodes'
 ```
 
 ## Script
