@@ -926,9 +926,9 @@ rke2-etcd() {
     ETCD_CACERT=${RKE2_DATA_DIR}/server/tls/etcd/server-ca.crt
     ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} member list > $TMPDIR/etcd/memberlist 2>&1
     ETCDCTL_ENDPOINTS=$(cut -d, -f5 $TMPDIR/etcd/memberlist | sed -e 's/ //g' | paste -sd ',')
-    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD}  etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --endpoints=$ETCDCTL_ENDPOINTS --write-out table endpoint status > $TMPDIR/etcd/endpointstatus 2>&1
-    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD}  etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --endpoints=$ETCDCTL_ENDPOINTS endpoint health > $TMPDIR/etcd/endpointhealth 2>&1
-    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD}  etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --endpoints=$ETCDCTL_ENDPOINTS alarm list > $TMPDIR/etcd/alarmlist 2>&1
+    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --endpoints=$ETCDCTL_ENDPOINTS --write-out table endpoint status > $TMPDIR/etcd/endpointstatus 2>&1
+    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --endpoints=$ETCDCTL_ENDPOINTS endpoint health > $TMPDIR/etcd/endpointhealth 2>&1
+    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --endpoints=$ETCDCTL_ENDPOINTS alarm list > $TMPDIR/etcd/alarmlist 2>&1
 
     techo "Collecting rke2 etcd metrics"
     ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}:2379\b' $TMPDIR/etcd/memberlist | uniq)
