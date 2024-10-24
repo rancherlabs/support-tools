@@ -75,7 +75,9 @@ collect_systeminfo() {
   df ${HOST_FS_PREFIX}/var > systeminfo/dfvar 2>&1
 
   # TODO: Check if the sysctl settings are same on the host/inside the container
-  sysctl -a > systeminfo/sysctla 2>/dev/null
+  if $(command -v sysctl >/dev/null 2>&1); then
+    sysctl -a > systeminfo/sysctla 2>/dev/null
+  fi
 
   kubectl version -o json > systeminfo/kubectl-version.json 2>/dev/null
   kubectl get settings.management.cattle.io server-version -o json > systeminfo/server-version.json 2>/dev/null
