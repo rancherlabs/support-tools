@@ -78,9 +78,9 @@ Please review the below files for details:
     effect: "NoSchedule"
   ```
 
-  And specifiy its absolute path with `SONOBUOY_TOLARATION_FILE` environment variable.
+  And specifiy its absolute path with `SONOBUOY_TOLERATION_FILE` environment variable.
   ```shell
-  export SONOBUOY_TOLARATION_FILE=<absolute path to the file>
+  export SONOBUOY_TOLERATION_FILE=<absolute path to the file>
   ```
 
 **3. Run the collection script**
