@@ -58,12 +58,12 @@ fi
 CONTAINER_RUNTIME_ARGS=""
 COLLECT_INFO_FROM_RANCHER_SETUP_ARGS=""
 
-if [ "${SONOBUOY_TOLARATION_FILE}" != "" ]; then
-  if [ ! -f "${SONOBUOY_TOLARATION_FILE}" ]; then
-    echo "error: SONOBUOY_TOLARATION_FILE=${SONOBUOY_TOLARATION_FILE} specified, but cannot access that file"
+if [ "${SONOBUOY_TOLERATION_FILE}" != "" ]; then
+  if [ ! -f "${SONOBUOY_TOLERATION_FILE}" ]; then
+    echo "error: SONOBUOY_TOLERATION_FILE=${SONOBUOY_TOLERATION_FILE} specified, but cannot access that file"
     exit 1
   fi
-  CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -v ${SONOBUOY_TOLARATION_FILE}:/tmp/sonobuoy_toleration.yml"
+  CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS -v ${SONOBUOY_TOLERATION_FILE}:/tmp/sonobuoy_toleration.yml"
   COLLECT_INFO_FROM_RANCHER_SETUP_ARGS="$COLLECT_INFO_FROM_RANCHER_SETUP_ARGS --sonobuoy-toleration-file /tmp/sonobuoy_toleration.yml"
 fi
 
