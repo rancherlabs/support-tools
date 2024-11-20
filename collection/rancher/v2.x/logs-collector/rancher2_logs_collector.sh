@@ -640,18 +640,18 @@ rke2-k8s() {
   techo "Collecting rke2 system pod logs"
   if [[ ${RKE2_SERVER} && ! ${API_SERVER_OFFLINE} ]]; then
     KUBECONFIG=/etc/rancher/${DISTRO}/rke2.yaml
-        for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-          for SYSTEM_POD in $(${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
-            ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs --all-containers $SYSTEM_POD > $TMPDIR/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
-            ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs -p --all-containers $SYSTEM_POD > $TMPDIR/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous 2>&1
-          done
-        done
-    elif [[ ${RKE2_AGENT} || ${API_SERVER_OFFLINE} ]]; then
-      for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-        if ls -d /var/log/pods/$SYSTEM_NAMESPACE* > /dev/null 2>&1; then
-          cp -r -p /var/log/pods/$SYSTEM_NAMESPACE* $TMPDIR/${DISTRO}/podlogs/
-        fi
+    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
+      for SYSTEM_POD in $(${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
+        ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs --all-containers $SYSTEM_POD > $TMPDIR/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
+        ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG -n $SYSTEM_NAMESPACE logs -p --all-containers $SYSTEM_POD > $TMPDIR/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous 2>&1
       done
+    done
+  elif [[ ${RKE2_AGENT} || ${API_SERVER_OFFLINE} ]]; then
+    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
+      if ls -d /var/log/pods/$SYSTEM_NAMESPACE* > /dev/null 2>&1; then
+        cp -r -p /var/log/pods/$SYSTEM_NAMESPACE* $TMPDIR/${DISTRO}/podlogs/
+      fi
+    done
   fi
 
   if [ -d ${RKE2_DATA_DIR}/agent/pod-manifests ]; then
