@@ -541,15 +541,21 @@ rke-k8s() {
 
 k3s-k8s() {
 
-  k3s kubectl --kubeconfig=$KUBECONFIG get --raw='/healthz' > /dev/null 2>&1
-  if [ $? -ne 0 ]
-    then
-      API_SERVER_OFFLINE=true
-      techo "kube-apiserver is offline, collecting local pod logs only"
+  if [ -f /var/lib/rancher/${DISTRO}/agent ]; then
+    K3S_AGENT=true
+  fi
+  if [ -f /var/lib/rancher/${DISTRO}/server ]; then
+    K3S_SERVER=true
+    k3s kubectl get --raw='/healthz' > /dev/null 2>&1
+    if [ $? -ne 0 ]
+      then
+        API_SERVER_OFFLINE=true
+        techo "kube-apiserver is offline, collecting local pod logs only"
+    fi
   fi
 
   techo "Collecting k3s cluster logs"
-  if [[ -d /var/lib/rancher/${DISTRO}/agent && ! ${API_SERVER_OFFLINE} ]]; then
+  if [[ ${K3S_AGENT} && ! ${API_SERVER_OFFLINE} ]]; then
     mkdir -p $TMPDIR/${DISTRO}/kubectl
     KUBECONFIG=/var/lib/rancher/${DISTRO}/agent/kubelet.kubeconfig
     k3s kubectl --kubeconfig=$KUBECONFIG get nodes -o wide > $TMPDIR/${DISTRO}/kubectl/nodes 2>&1
@@ -559,7 +565,7 @@ k3s-k8s() {
     k3s kubectl --kubeconfig=$KUBECONFIG get svc -o wide --all-namespaces > $TMPDIR/${DISTRO}/kubectl/services 2>&1
   fi
 
-  if [[ -d /var/lib/rancher/${DISTRO}/server && ! ${API_SERVER_OFFLINE} ]]; then
+  if [[ ${K3S_SERVER} && ! ${API_SERVER_OFFLINE} ]]; then
     unset KUBECONFIG
     k3s kubectl api-resources > $TMPDIR/${DISTRO}/kubectl/api-resources 2>&1
     K3S_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations)
@@ -574,14 +580,14 @@ k3s-k8s() {
 
   mkdir -p $TMPDIR/${DISTRO}/podlogs
   techo "Collecting system pod logs"
-  if [[ -d /var/lib/rancher/${DISTRO}/server && ! ${API_SERVER_OFFLINE} ]]; then
+  if [[ ${K3S_SERVER} && ! ${API_SERVER_OFFLINE} ]]; then
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       for SYSTEM_POD in $(k3s kubectl -n $SYSTEM_NAMESPACE get pods --no-headers -o custom-columns=NAME:.metadata.name); do
         k3s kubectl -n $SYSTEM_NAMESPACE logs --all-containers $SYSTEM_POD > $TMPDIR/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD 2>&1
         k3s kubectl -n $SYSTEM_NAMESPACE logs -p --all-containers $SYSTEM_POD > $TMPDIR/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous 2>&1
       done
     done
-  elif [ -d /var/lib/rancher/${DISTRO}/agent ]; then
+  elif [[ ${K3S_AGENT} || ${API_SERVER_OFFLINE} ]]; then
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       if ls -d /var/log/pods/$SYSTEM_NAMESPACE* > /dev/null 2>&1; then
         cp -r -p /var/log/pods/$SYSTEM_NAMESPACE* $TMPDIR/${DISTRO}/podlogs/
