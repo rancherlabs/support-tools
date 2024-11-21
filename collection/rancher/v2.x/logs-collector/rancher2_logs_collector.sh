@@ -83,25 +83,15 @@ sherlock() {
       if [ "${DISTRO_FLAG}" = "rke2" ]
         then
           rke2-setup
+          techo "Using RKE2 binary... ${RKE2_BIN}"
+          techo "Using RKE2 data-dir... ${RKE2_DATA_DIR}"
       fi
-      techo "Using RKE2 binary... ${RKE2_BIN}"
-      techo "Using RKE2 data-dir... ${RKE2_DATA_DIR}"
     else
       echo -n "$(timestamp): Detecting k8s distribution... " | tee -a $TMPDIR/collector-output.log
-      if $(command -v k3s >/dev/null 2>&1)
-        then
-          if $(k3s crictl ps >/dev/null 2>&1)
-            then
-              DISTRO=k3s
-              echo "k3s" | tee -a $TMPDIR/collector-output.log
-            else
-              FOUND+="k3s "
-          fi
-      fi
       if $(command -v rke2 >/dev/null 2>&1)
         then
           rke2-setup
-          if $(${RKE2_DATA_DIR}/bin/crictl ps >/dev/null 2>&1)
+          if $(${RKE2_BIN} >/dev/null 2>&1)
             then
               DISTRO=rke2
               echo "rke2" | tee -a $TMPDIR/collector-output.log
@@ -110,8 +100,16 @@ sherlock() {
           fi
           techo "Using RKE2 binary... ${RKE2_BIN}"
           techo "Using RKE2 data-dir... ${RKE2_DATA_DIR}"
-      fi
-      if $(command -v docker >/dev/null 2>&1)
+      elif $(command -v k3s >/dev/null 2>&1)
+        then
+          if $(k3s >/dev/null 2>&1)
+            then
+              DISTRO=k3s
+              echo "k3s" | tee -a $TMPDIR/collector-output.log
+            else
+              FOUND+="k3s "
+          fi
+      elif $(command -v docker >/dev/null 2>&1)
         then
           if $(docker ps >/dev/null 2>&1)
             then
