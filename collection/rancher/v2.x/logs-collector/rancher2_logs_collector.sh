@@ -543,10 +543,17 @@ k3s-k8s() {
 
   if [ -d /var/lib/rancher/${DISTRO}/agent ]; then
     K3S_AGENT=true
+    KUBECONFIG=/var/lib/rancher/${DISTRO}/agent/kubelet.kubeconfig
+    k3s kubectl --kubeconfig=$KUBECONFIG get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1
+    if [ $? -ne 0 ]
+      then
+        API_SERVER_OFFLINE=true
+        techo "kube-apiserver is offline, collecting local pod logs only"
+    fi
   fi
   if [ -d /var/lib/rancher/${DISTRO}/server ]; then
     K3S_SERVER=true
-    k3s kubectl get --raw='/healthz' > /dev/null 2>&1
+    k3s kubectl get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1
     if [ $? -ne 0 ]
       then
         API_SERVER_OFFLINE=true
@@ -602,10 +609,18 @@ rke2-k8s() {
 
   if [ -f ${RKE2_DATA_DIR}/agent/kubelet.kubeconfig ]; then
     RKE2_AGENT=true
+    KUBECONFIG=${RKE2_DATA_DIR}/agent/kubelet.kubeconfig
+    ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1
+    if [ $? -ne 0 ]
+      then
+        API_SERVER_OFFLINE=true
+        techo "kube-apiserver is offline, collecting local pod logs only"
+    fi
   fi
   if [ -f /etc/rancher/${DISTRO}/rke2.yaml ]; then
     RKE2_SERVER=true
-    ${RKE2_DATA_DIR}/bin/kubectl get --raw='/healthz' > /dev/null 2>&1
+    KUBECONFIG=/etc/rancher/${DISTRO}/rke2.yaml
+    ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1
     if [ $? -ne 0 ]
       then
         API_SERVER_OFFLINE=true
