@@ -998,6 +998,7 @@ rke2-etcd() {
   fi
 
   if [ -d "${RKE2_DATA_DIR}/server/db/etcd" ]; then
+    mkdir -p $TMPDIR/etcd
     find "${RKE2_DATA_DIR}/server/db/etcd" -type f -exec ls -la {} \; > $TMPDIR/etcd/findserverdbetcd 2>&1
   fi
   if [ -d "${RKE2_DATA_DIR}/server/db/snapshots" ]; then
@@ -1354,7 +1355,6 @@ fi
 sherlock
 system-all
 networking
-provisioning-crds
 if [[ "${OSRELEASE}" = "rhel" || "${OSRELEASE}" = "centos" ]]
   then
     system-rhel
@@ -1398,6 +1398,12 @@ fi
 if [ $OBFUSCATE ]
   then
     obfuscate
+fi
+if [ ! ${API_SERVER_OFFLINE} ]
+  then
+    provisioning-crds
+  else
+    techo "[!] Kube-apiserver is offline, skipping provisioning CRDs"
 fi
 archive
 cleanup
