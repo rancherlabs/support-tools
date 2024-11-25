@@ -416,14 +416,19 @@ k3s-logs() {
   techo "Collecting k3s info"
   mkdir -p $TMPDIR/${DISTRO}/crictl
   k3s check-config > $TMPDIR/${DISTRO}/check-config 2>&1
-  k3s crictl ps -a > $TMPDIR/${DISTRO}/crictl/psa 2>&1
-  k3s crictl pods > $TMPDIR/${DISTRO}/crictl/pods 2>&1
-  k3s crictl info > $TMPDIR/${DISTRO}/crictl/info 2>&1
-  k3s crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
-  k3s crictl version > $TMPDIR/${DISTRO}/crictl/version 2>&1
-  k3s crictl images > $TMPDIR/${DISTRO}/crictl/images 2>&1
-  k3s crictl imagefsinfo > $TMPDIR/${DISTRO}/crictl/imagefsinfo 2>&1
-  k3s crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
+
+  if ! k3s crictl ps > /dev/null 2>&1; then
+      techo "[!] Containerd is offline, skipping crictl collection"
+    else
+      k3s crictl ps -a > $TMPDIR/${DISTRO}/crictl/psa 2>&1
+      k3s crictl pods > $TMPDIR/${DISTRO}/crictl/pods 2>&1
+      k3s crictl info > $TMPDIR/${DISTRO}/crictl/info 2>&1
+      k3s crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
+      k3s crictl version > $TMPDIR/${DISTRO}/crictl/version 2>&1
+      k3s crictl images > $TMPDIR/${DISTRO}/crictl/images 2>&1
+      k3s crictl imagefsinfo > $TMPDIR/${DISTRO}/crictl/imagefsinfo 2>&1
+      k3s crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
+  fi
   if [ -f /etc/systemd/system/${DISTRO}.service ]
     then
       sed -e '/--token/{n;s/.*/\t<token redacted>/}' \
@@ -453,14 +458,20 @@ rke2-logs() {
   ${RKE2_DATA_DIR}/bin/crictl --version > $TMPDIR/${DISTRO}/crictl/crictl-version 2>&1
   ${RKE2_DATA_DIR}/bin/containerd --version > $TMPDIR/${DISTRO}/crictl/containerd-version 2>&1
   ${RKE2_DATA_DIR}/bin/runc --version > $TMPDIR/${DISTRO}/crictl/runc-version 2>&1
-  ${RKE2_DATA_DIR}/bin/crictl ps -a > $TMPDIR/${DISTRO}/crictl/psa 2>&1
-  ${RKE2_DATA_DIR}/bin/crictl pods > $TMPDIR/${DISTRO}/crictl/pods 2>&1
-  ${RKE2_DATA_DIR}/bin/crictl info > $TMPDIR/${DISTRO}/crictl/info 2>&1
-  ${RKE2_DATA_DIR}/bin/crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
-  ${RKE2_DATA_DIR}/bin/crictl version > $TMPDIR/${DISTRO}/crictl/version 2>&1
-  ${RKE2_DATA_DIR}/bin/crictl images > $TMPDIR/${DISTRO}/crictl/images 2>&1
-  ${RKE2_DATA_DIR}/bin/crictl imagefsinfo > $TMPDIR/${DISTRO}/crictl/imagefsinfo 2>&1
-  ${RKE2_DATA_DIR}/bin/crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
+
+  if ! ${RKE2_DATA_DIR}/bin/crictl ps > /dev/null 2>&1; then
+      techo "[!] Containerd is offline, skipping crictl collection"
+      export CONTAINERD_OFFLINE=true
+    else
+      ${RKE2_DATA_DIR}/bin/crictl ps -a > $TMPDIR/${DISTRO}/crictl/psa 2>&1
+      ${RKE2_DATA_DIR}/bin/crictl pods > $TMPDIR/${DISTRO}/crictl/pods 2>&1
+      ${RKE2_DATA_DIR}/bin/crictl info > $TMPDIR/${DISTRO}/crictl/info 2>&1
+      ${RKE2_DATA_DIR}/bin/crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
+      ${RKE2_DATA_DIR}/bin/crictl version > $TMPDIR/${DISTRO}/crictl/version 2>&1
+      ${RKE2_DATA_DIR}/bin/crictl images > $TMPDIR/${DISTRO}/crictl/images 2>&1
+      ${RKE2_DATA_DIR}/bin/crictl imagefsinfo > $TMPDIR/${DISTRO}/crictl/imagefsinfo 2>&1
+      ${RKE2_DATA_DIR}/bin/crictl stats -a > $TMPDIR/${DISTRO}/crictl/statsa 2>&1
+  fi
   if [ -f /usr/local/lib/systemd/system/rke2-agent.service ]
     then
       cp -p /usr/local/lib/systemd/system/${DISTRO}*.service $TMPDIR/${DISTRO}/
@@ -546,7 +557,7 @@ k3s-k8s() {
     if [ $? -ne 0 ]
       then
         API_SERVER_OFFLINE=true
-        techo "kube-apiserver is offline, collecting local pod logs only"
+        techo "[!] Kube-apiserver is offline, collecting local pod logs only"
     fi
   fi
   if [ -d /var/lib/rancher/${DISTRO}/server ]; then
@@ -555,7 +566,7 @@ k3s-k8s() {
     if [ $? -ne 0 ]
       then
         API_SERVER_OFFLINE=true
-        techo "kube-apiserver is offline, collecting local pod logs only"
+        techo "[!] Kube-apiserver is offline, collecting local pod logs only"
     fi
   fi
 
@@ -612,17 +623,17 @@ rke2-k8s() {
     if [ $? -ne 0 ]
       then
         API_SERVER_OFFLINE=true
-        techo "kube-apiserver is offline, collecting local pod logs only"
+        techo "[!] Kube-apiserver is offline, collecting local pod logs only"
     fi
   fi
   if [ -f /etc/rancher/${DISTRO}/rke2.yaml ]; then
     RKE2_SERVER=true
     KUBECONFIG=/etc/rancher/${DISTRO}/rke2.yaml
     ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1
-    if [ $? -ne 0 ]
+    if [[ $? -ne 0 && ! ${API_SERVER_OFFLINE} ]]
       then
         API_SERVER_OFFLINE=true
-        techo "kube-apiserver is offline, collecting local pod logs only"
+        techo "[!] Kube-apiserver is offline, collecting local pod logs only"
     fi
   fi
 
@@ -669,10 +680,12 @@ rke2-k8s() {
     done
   fi
 
-  if [ -d ${RKE2_DATA_DIR}/agent/pod-manifests ]; then
-    techo "Collecting rke2 static pod manifests"
-    mkdir -p $TMPDIR/${DISTRO}/pod-manifests
-    cp -p ${RKE2_DATA_DIR}/agent/pod-manifests/* $TMPDIR/${DISTRO}/pod-manifests
+  if [ $(ls -A ${RKE2_DATA_DIR}/agent/pod-manifests) ]; then
+      techo "Collecting rke2 static pod manifests"
+      mkdir -p $TMPDIR/${DISTRO}/pod-manifests
+      cp -p ${RKE2_DATA_DIR}/agent/pod-manifests/* $TMPDIR/${DISTRO}/pod-manifests
+    else
+      techo "[!] Static pod manifest directory is empty, skipping"
   fi
 
   techo "Collecting rke2 agent/server logs"
@@ -937,7 +950,7 @@ rke-etcd() {
   fi
 
   if docker ps --format='{{.Names}}' | grep -q ^etcd$ >/dev/null 2>&1; then
-    techo "Collecting etcdctl output"
+    techo "Collecting etcdctl info"
     docker exec etcd etcdctl member list > $TMPDIR/etcd/memberlist 2>&1
     ETCDCTL_ENDPOINTS=$(cut -d, -f5 $TMPDIR/etcd/memberlist | sed -e 's/ //g' | paste -sd ',')
     docker exec -e ETCDCTL_ENDPOINTS=$ETCDCTL_ENDPOINTS etcd etcdctl endpoint status --write-out table > $TMPDIR/etcd/endpointstatus 2>&1
@@ -958,25 +971,30 @@ rke-etcd() {
 
 rke2-etcd() {
 
-  RKE2_ETCD=$(${RKE2_DATA_DIR}/bin/crictl ps --quiet --label io.kubernetes.container.name=etcd --state running)
-  if [ ! -z ${RKE2_ETCD} ]; then
-    techo "Collecting rke2 etcd info"
-    mkdir -p $TMPDIR/etcd
-    ETCD_CERT=${RKE2_DATA_DIR}/server/tls/etcd/server-client.crt
-    ETCD_KEY=${RKE2_DATA_DIR}/server/tls/etcd/server-client.key
-    ETCD_CACERT=${RKE2_DATA_DIR}/server/tls/etcd/server-ca.crt
-    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} member list > $TMPDIR/etcd/memberlist 2>&1
-    ETCDCTL_ENDPOINTS=$(cut -d, -f5 $TMPDIR/etcd/memberlist | sed -e 's/ //g' | paste -sd ',')
-    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --endpoints=$ETCDCTL_ENDPOINTS --write-out table endpoint status > $TMPDIR/etcd/endpointstatus 2>&1
-    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --endpoints=$ETCDCTL_ENDPOINTS endpoint health > $TMPDIR/etcd/endpointhealth 2>&1
-    ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --endpoints=$ETCDCTL_ENDPOINTS alarm list > $TMPDIR/etcd/alarmlist 2>&1
+  if [ ! ${CONTAINERD_OFFLINE} ]
+    then
+      RKE2_ETCD=$(${RKE2_DATA_DIR}/bin/crictl ps --quiet --label io.kubernetes.container.name=etcd --state running)
+      if [ ! -z ${RKE2_ETCD} ]; then
+        techo "Collecting rke2 etcd info"
+        mkdir -p $TMPDIR/etcd
+        ETCD_CERT=${RKE2_DATA_DIR}/server/tls/etcd/server-client.crt
+        ETCD_KEY=${RKE2_DATA_DIR}/server/tls/etcd/server-client.key
+        ETCD_CACERT=${RKE2_DATA_DIR}/server/tls/etcd/server-ca.crt
+        ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} member list > $TMPDIR/etcd/memberlist 2>&1
+        ETCDCTL_ENDPOINTS=$(cut -d, -f5 $TMPDIR/etcd/memberlist | sed -e 's/ //g' | paste -sd ',')
+        ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --endpoints=$ETCDCTL_ENDPOINTS --write-out table endpoint status > $TMPDIR/etcd/endpointstatus 2>&1
+        ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --endpoints=$ETCDCTL_ENDPOINTS endpoint health > $TMPDIR/etcd/endpointhealth 2>&1
+        ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --endpoints=$ETCDCTL_ENDPOINTS alarm list > $TMPDIR/etcd/alarmlist 2>&1
 
-    techo "Collecting rke2 etcd metrics"
-    ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}:2379\b' $TMPDIR/etcd/memberlist | uniq)
-    for ENDPOINT in ${ETCD_ENDPOINTS}
-      do
-        curl -sL --connect-timeout 5 --cacert ${ETCD_CACERT} --key ${ETCD_KEY} --cert ${ETCD_CERT} https://$ENDPOINT/metrics > $TMPDIR/etcd/etcd-metrics-$ENDPOINT.txt
-    done
+        techo "Collecting rke2 etcd metrics"
+        ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}:2379\b' $TMPDIR/etcd/memberlist | uniq)
+        for ENDPOINT in ${ETCD_ENDPOINTS}
+          do
+            curl -sL --connect-timeout 5 --cacert ${ETCD_CACERT} --key ${ETCD_KEY} --cert ${ETCD_CERT} https://$ENDPOINT/metrics > $TMPDIR/etcd/etcd-metrics-$ENDPOINT.txt
+        done
+      fi
+    else
+      techo "[!] Containerd is offline, skipping etcd collection"
   fi
 
   if [ -d "${RKE2_DATA_DIR}/server/db/etcd" ]; then
