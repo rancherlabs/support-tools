@@ -680,7 +680,7 @@ rke2-k8s() {
     done
   fi
 
-  if [ $(ls -A ${RKE2_DATA_DIR}/agent/pod-manifests) ]; then
+  if $(ls -A1q ${RKE2_DATA_DIR}/agent/pod-manifests | grep -q .); then
       techo "Collecting rke2 static pod manifests"
       mkdir -p $TMPDIR/${DISTRO}/pod-manifests
       cp -p ${RKE2_DATA_DIR}/agent/pod-manifests/* $TMPDIR/${DISTRO}/pod-manifests
