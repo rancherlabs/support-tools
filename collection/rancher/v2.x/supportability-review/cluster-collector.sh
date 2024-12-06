@@ -57,6 +57,9 @@ collect_common_cluster_info() {
 | {items: .}
 ' > pod-count-per-node.json
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' pods.json > terminating-pods
+  if [ ! -s terminating-pods ]; then
+    rm terminating-pods
+  fi
   jq -c '.items[]' pods.json | {
     while read -r item; do
       # Skip sonobuoy pods because they are in ContainerCreating state
@@ -106,19 +109,44 @@ collect_common_cluster_info() {
   }
   kubectl get services -A -o json > services.json
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' services.json > terminating-services
+  if [ ! -s terminating-services ]; then
+    rm terminating-services
+  fi
   kubectl get deploy -n cattle-system -o json | jq '.items[] | select(.metadata.name=="cattle-cluster-agent") | .status.conditions[] | select(.type=="Available") | .status == "True"' > cattle-cluster-agent-is-running
+  if [ ! -s cattle-cluster-agent-is-running ]; then
+    rm cattle-cluster-agent-is-running
+  fi
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
   kubectl get deploy -n cattle-neuvector-system -o json > cattle-neuvector-system-deploy.json
   kubectl get statefulsets -n cattle-fleet-system -o json > cattle-fleet-system-statefulsets.json
   kubectl get settings.management.cattle.io server-version -o json > server-version.json
+  if [ ! -s server-version.json ]; then
+    rm server-version.json
+  fi
   kubectl get clusters.management.cattle.io -o json > clusters.management.cattle.io.json
+  if [ ! -s clusters.management.cattle.io.json ]; then
+    rm clusters.management.cattle.io.json
+  fi
   kubectl get storageclasses.storage.k8s.io -A -o json > storageclasses.storage.k8s.io.json
   kubectl get persistentvolumeclaims -A -o json > persistentvolumeclaims.json
   kubectl get apps.catalog.cattle.io -n cattle-logging-system -o json > cattle-logging-system-apps.json
+  if [ ! -s cattle-logging-system-apps.json ]; then
+    rm cattle-logging-system-apps.json
+  fi
   kubectl get apps.catalog.cattle.io -n istio-system -o json > istio-system-apps.json
+  if [ ! -s istio-system-apps.json ]; then
+    rm istio-system-apps.json
+  fi
   kubectl get apps.catalog.cattle.io -n cis-operator-system -o json > cis-operator-system-apps.json
+  if [ ! -s cis-operator-system-apps.json ]; then
+    rm cis-operator-system-apps.json
+  fi
   kubectl get apps.catalog.cattle.io -n cattle-monitoring-system -o json > cattle-monitoring-system-apps.json
-  if [ $(jq '.items | length' cattle-monitoring-system-apps.json) -lt 1 ]; then
+  if [ -s cattle-monitoring-system-apps.json ]; then
+    if [ $(jq '.items | length' cattle-monitoring-system-apps.json) -lt 1 ]; then
+      rm cattle-monitoring-system-apps.json
+    fi
+  else
     rm cattle-monitoring-system-apps.json
   fi
 
@@ -169,6 +197,17 @@ collect_rke2_info() {
   jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-controller-manager") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-controller-manager-args.json
   jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-proxy") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-proxy-args.json
   jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-scheduler") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-scheduler-args.json
+
+  kubectl get configmap -n kube-system node-local-dns -o json > rke2/node-local-dns-configmap.json
+
+  kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium status -o json > rke2/cilium-status.json
+  if [ ! -s rke2/cilium-status.json ]; then
+    rm rke2/cilium-status.json
+  fi
+  kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg service list -o json > rke2/cilium-dbg-service-list.json
+  if [ ! -s rke2/cilium-dbg-service-list.json ]; then
+    rm rke2/cilium-dbg-service-list.json
+  fi
 
   #Get RKE2 Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" ]; then

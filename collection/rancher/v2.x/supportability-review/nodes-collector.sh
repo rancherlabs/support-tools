@@ -81,6 +81,9 @@ collect_systeminfo() {
 
   kubectl version -o json > systeminfo/kubectl-version.json 2>/dev/null
   kubectl get settings.management.cattle.io server-version -o json > systeminfo/server-version.json 2>/dev/null
+  if [ ! -s systeminfo/server-version.json ]; then
+    rm systeminfo/server-version.json
+  fi
 }
 
 collect_networking_info_ip4() {
