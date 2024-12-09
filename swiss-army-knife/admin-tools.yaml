@@ -1,4 +1,11 @@
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: swiss-army-knife
+  labels:
+    app: swiss-army-knife
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -6,22 +13,22 @@ metadata:
     app: swiss-army-knife
   name: swiss-army-knife
 rules:
-- apiGroups:
-  - '*'
-  resources:
-  - '*'
-  verbs:
-  - '*'
-- nonResourceURLs:
-  - '*'
-  verbs:
-  - '*'
+  - apiGroups:
+      - "*"
+    resources:
+      - "*"
+    verbs:
+      - "*"
+  - nonResourceURLs:
+      - "*"
+    verbs:
+      - "*"
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: swiss-army-knife
-  namespace: kube-system
+  namespace: swiss-army-knife
   labels:
     app: swiss-army-knife
 ---
@@ -36,77 +43,15 @@ roleRef:
   kind: ClusterRole
   name: swiss-army-knife
 subjects:
-- kind: ServiceAccount
-  name: swiss-army-knife
-  namespace: kube-system
----
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
-metadata:
-  name: swiss-army-knife
-  namespace: kube-system
-  labels:
-    app: swiss-army-knife
-spec:
-  allowPrivilegeEscalation: true
-  allowedCapabilities:
-  - '*'
-  fsGroup:
-    rule: RunAsAny
-  hostIPC: true
-  hostNetwork: true
-  hostPID: true
-  hostPorts:
-  - max: 65535
-    min: 0
-  privileged: true
-  runAsUser:
-    rule: RunAsAny
-  seLinux:
-    rule: RunAsAny
-  supplementalGroups:
-    rule: RunAsAny
-  volumes:
-  - '*'
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  labels:
-    app: swiss-army-knife
-  name: swiss-army-knife-psp
-  namespace: kube-system
-rules:
-- apiGroups:
-  - policy
-  resources:
-  - podsecuritypolicies
-  resourceNames:
-  - swiss-army-knife
-  verbs:
-  - use
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: swiss-army-knife-psp-binding
-  labels:
-    app: swiss-army-knife
-  namespace: kube-system
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: swiss-army-knife-psp
-subjects:
-- kind: ServiceAccount
-  name: swiss-army-knife
-  namespace: kube-system
+  - kind: ServiceAccount
+    name: swiss-army-knife
+    namespace: swiss-army-knife
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: swiss-army-knife
-  namespace: kube-system
+  namespace: swiss-army-knife
   labels:
     app: swiss-army-knife
 spec:
@@ -119,38 +64,54 @@ spec:
         name: swiss-army-knife
     spec:
       tolerations:
-      - operator: Exists
+        - operator: Exists
       containers:
-      - name: swiss-army-knife
-        image: supporttools/swiss-army-knife
-        imagePullPolicy: IfNotPresent
-        securityContext:
-          privileged: true        
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 1000Mi
-          requests:
-            cpu: 100m
-            memory: 100Mi
-        env:
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: POD_IP
-          valueFrom:
-            fieldRef:
-              fieldPath: status.podIP
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName            
-        volumeMounts:
-        - name: rootfs
-          mountPath: /rootfs
-      serviceAccountName: swiss-army-knife         
+        - name: swiss-army-knife
+          image: supporttools/swiss-army-knife
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1000Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: rootfs
+              mountPath: /rootfs
+      serviceAccountName: swiss-army-knife
       volumes:
-      - name: rootfs
-        hostPath:
-          path: /
+        - name: rootfs
+          hostPath:
+            path: /
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: swiss-army-knife
+  namespace: swiss-army-knife
+  labels:
+    app: swiss-army-knife
+spec:
+  selector:
+    name: swiss-army-knife
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
