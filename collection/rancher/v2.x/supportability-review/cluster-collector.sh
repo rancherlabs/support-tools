@@ -130,9 +130,6 @@ collect_common_cluster_info() {
   kubectl get storageclasses.storage.k8s.io -A -o json > storageclasses.storage.k8s.io.json
   kubectl get persistentvolumeclaims -A -o json > persistentvolumeclaims.json
   kubectl get apps.catalog.cattle.io -n cattle-logging-system -o json > cattle-logging-system-apps.json
-  if [ ! -s cattle-logging-system-apps.json ]; then
-    rm cattle-logging-system-apps.json
-  fi
   kubectl get apps.catalog.cattle.io -n istio-system -o json > istio-system-apps.json
   if [ ! -s istio-system-apps.json ]; then
     rm istio-system-apps.json
