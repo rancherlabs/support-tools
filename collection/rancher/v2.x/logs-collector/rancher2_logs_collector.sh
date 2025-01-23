@@ -987,9 +987,11 @@ rke2-etcd() {
         ${RKE2_DATA_DIR}/bin/crictl exec ${RKE2_ETCD} etcdctl --cert ${ETCD_CERT} --key ${ETCD_KEY} --cacert ${ETCD_CACERT} --endpoints=$ETCDCTL_ENDPOINTS alarm list > $TMPDIR/etcd/alarmlist 2>&1
 
         techo "Collecting rke2 etcd metrics"
-        ETCD_ENDPOINTS=$(cat /var/lib/rancher/rke2/server/db/etcd/config|grep listen-metrics-urls:|awk '{print $2}')
-        curl $ETCD_ENDPOINTS/metrics > $TMPDIR/etcd/etcd-metrics-$ENDPOINT.txt
-       
+        ETCD_ENDPOINTS=$(grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}:2381\b' /var/lib/rancher/rke2/server/db/etcd/config | uniq)
+        for ENDPOINT in ${ETCD_ENDPOINTS}
+          do
+            curl -s --connect-timeout 5 http://$ENDPOINT/metrics > $TMPDIR/etcd/etcd-metrics-$ENDPOINT.txt
+        done
       fi
     else
       techo "[!] Containerd is offline, skipping etcd collection"
