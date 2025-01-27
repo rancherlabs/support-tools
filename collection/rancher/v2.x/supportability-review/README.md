@@ -62,6 +62,9 @@ If your clusters use any of these security tools, review the required configurat
    - Please ensure that your downstream clusters are listed as Active in Rancher
    - Any cluster in updating or not active will NOT be collected for review
 
+4. **SELinux**
+   - Please use `export ENABLE_PRIVILEGED="true"`, if SELinux is enabled.
+
 # ✅ Post Assesment - Installation Steps ✅
 
 ### 1. Environment Preparation

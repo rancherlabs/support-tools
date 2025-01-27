@@ -58,6 +58,10 @@ fi
 CONTAINER_RUNTIME_ARGS=""
 COLLECT_INFO_FROM_RANCHER_SETUP_ARGS=""
 
+if [ "$ENABLE_PRIVILEGED" = "true" ]; then
+  CONTAINER_RUNTIME_ARGS="$CONTAINER_RUNTIME_ARGS --privileged"
+fi
+
 if [ "${SONOBUOY_TOLERATION_FILE}" != "" ]; then
   if [ ! -f "${SONOBUOY_TOLERATION_FILE}" ]; then
     echo "error: SONOBUOY_TOLERATION_FILE=${SONOBUOY_TOLERATION_FILE} specified, but cannot access that file"
