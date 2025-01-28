@@ -354,7 +354,7 @@ networking() {
     mkdir -p $TMPDIR/networking/cni
     for file in $(ls -p -R /etc/cni/net.d | grep -v /); do
       if grep -q "kubeconfig" <<< "$file"; then
-        print "skipping $file"
+        techo "skipping $file"
       else
         cp "/etc/cni/net.d/"$file $TMPDIR/networking/cni 2>&1
       fi
