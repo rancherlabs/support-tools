@@ -57,9 +57,6 @@ collect_common_cluster_info() {
 | {items: .}
 ' > pod-count-per-node.json
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' pods.json > terminating-pods
-  if [ ! -s terminating-pods ]; then
-    rm terminating-pods
-  fi
   jq -c '.items[]' pods.json | {
     while read -r item; do
       # Skip sonobuoy pods because they are in ContainerCreating state
@@ -109,9 +106,6 @@ collect_common_cluster_info() {
   }
   kubectl get services -A -o json > services.json
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' services.json > terminating-services
-  if [ ! -s terminating-services ]; then
-    rm terminating-services
-  fi
   kubectl get deploy -n cattle-system -o json | jq '.items[] | select(.metadata.name=="cattle-cluster-agent") | .status.conditions[] | select(.type=="Available") | .status == "True"' > cattle-cluster-agent-is-running
   if [ ! -s cattle-cluster-agent-is-running ]; then
     rm cattle-cluster-agent-is-running
@@ -259,11 +253,9 @@ collect_upstream_cluster_info() {
   rancher_deployment_name=$(kubectl -n cattle-system get deployments.apps -o json | jq -cr ".items[] | select(.metadata.labels.chart == \"rancher-$rancher_version\") | .metadata.name")
   jq "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\") | .spec.nodeName] | unique | length" pods.json > unique-rancher-pod-count-by-node
   number_of_rancher_pods=$(jq -cr "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\") | .metadata.name] | length" pods.json)
-  if [ $number_of_rancher_pods ]; then
-    jq -cr "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\")] | .[0] | .status.containerStatuses[0].imageID | split(\"@\") | .[1] | split(\":\") | .[1]" pods.json > rancher-imageid.txt
-  fi
 
-  kubectl get settings.management.cattle.io install-uuid -o json > install-uuid.json
+  kubectl get settings.management.cattle.io install-uuid -o json > settings-install-uuid.json
+  kubectl get settings.management.cattle.io ui-brand -o json > settings-ui-brand.json
   kubectl get nodes.management.cattle.io -A -o json > nodes-cattle.json
   kubectl get --no-headers tokens.management.cattle.io | wc -l > token-count.txt
   kubectl get roletemplates -o json > roletemplates.json
