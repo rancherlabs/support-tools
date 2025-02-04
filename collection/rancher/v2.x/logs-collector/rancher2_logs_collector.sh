@@ -1089,14 +1089,8 @@ obfuscate() {
   which python3 > /dev/null 2>&1
   if [ $? -eq 0 ]
     then
-      python3 -c "import petname" > /dev/null 2>&1
-      if [ $? -eq 0 ]
-        then
-          techo "Obfuscating ${TMPDIR_BASE}"
-          run-obf-python
-        else
-          techo "Could not import petname python module, please install this first, skipping obfuscation..."
-      fi
+      techo "Obfuscating ${TMPDIR_BASE}"
+      run-obf-python
     else
       techo "Could not find python3, skipping obfuscation..."
   fi
