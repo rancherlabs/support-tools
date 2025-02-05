@@ -1220,7 +1220,7 @@ def obfuscate_text(text, hostname_mapping, ip_mapping):
     for hostname in hostnames:
         # leverage skip list
 
-        if ((re.search("lib.*so", hostname) != None) | (re.search("io.*containerd", hostname) != None) | (re.search("systemd-*", hostname) != None)):
+        if ((re.search("lib.*so", hostname) != None) | (re.search("io.*containerd", hostname) != None) | (re.search("*k8s.io", hostname) != None) | (re.search("systemd-*", hostname) != None)):
             continue
 
         if hostname not in hostname_mapping:
