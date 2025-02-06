@@ -1215,12 +1215,17 @@ def obfuscate_text(text, hostname_mapping, ip_mapping):
     hostnames = extract_hostnames(text)
     ip_addresses = extract_ip_addresses(text)
     short_hostname = socket.gethostname()
-    skip_list = ["lib.*so", "io.*containerd", "systemd-*\."]
+    skip_list = ["lib.*so", "io.*containerd", "systemd-*", "net.ipv*", "kernel*", ".*cattle.io.*", ".*tar.gz", ".*service", ".*log", ".*k8s.io"]
 
     for hostname in hostnames:
         # leverage skip list
+        skip_check = ''
+        skip_regex_matches = list(map(lambda regex: re.search(regex, hostname), skip_list))
+        for match in skip_regex_matches:
+            if match is not None:
+                skip_check = 'found'
 
-        if ((re.search("lib.*so", hostname) != None) | (re.search("io.*containerd", hostname) != None) | (re.search("systemd-*", hostname) != None)):
+        if skip_check != "":
             continue
 
         if hostname not in hostname_mapping:
