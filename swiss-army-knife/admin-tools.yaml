@@ -57,11 +57,11 @@ metadata:
 spec:
   selector:
     matchLabels:
-      name: swiss-army-knife
+      app: swiss-army-knife
   template:
     metadata:
       labels:
-        name: swiss-army-knife
+        app: swiss-army-knife
     spec:
       tolerations:
         - operator: Exists

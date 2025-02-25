@@ -16,20 +16,25 @@ TLDR; This image has a lot of useful tools that can be used for scripting and tr
 ## Example deployments
 
 ### Overlay Test
-As part of Rancher's overlay test, which can be found [here](https://rancher.com/docs/rancher/v2.6/en/troubleshooting/networking/). You can be deployed to the Rancher environment by running the following command:
-```
+As part of Rancher's overlay test, which can be found [here](https://ranchermanager.docs.rancher.com/troubleshooting/other-troubleshooting-tips/networking#check-if-overlay-network-is-functioning-correctly). This can be deployed to the cluster by running the following command:
+```bash
 kubectl apply -f https://raw.githubusercontent.com/rancherlabs/support-tools/master/swiss-army-knife/overlaytest.yaml
 ```
 
 This will deploy a deamonset that will run on all nodes in the cluster. These pods will be running `tail -f /dev/null,` which will do nothing but keep the pod running.
 
 You can run the overlay test script by running the following command:
-```
+```bash
 curl -sfL https://raw.githubusercontent.com/rancherlabs/support-tools/master/swiss-army-knife/overlaytest.sh | bash
 ```
 
 ### Admin Tools
 This deployment will deploy `swiss-army-knife` to all nodes in the cluster but with additional permissions and privileges. This is useful for troubleshooting and managing your Rancher environment. The pod will be running `tail -f /dev/null,` which will do nothing but keep the pod running.
+
+This can be deployed to the cluster by running the following command:
+```bash
+kubectl apply -f https://raw.githubusercontent.com/rancherlabs/support-tools/master/swiss-army-knife/admin-tools.yaml
+```
 
 Inside the pod, you will be able to un `kubectl` commands with cluster-admin privileges. Along with this pod being able to gain full access to the node, including the ability to gain a root shell on the node. By running the following commands:
 - `kubectl -n kube-system get pods -l app=swiss-army-knife -o wide`
