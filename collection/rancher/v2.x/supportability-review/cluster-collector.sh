@@ -275,6 +275,11 @@ collect_app_info() {
   if [ ! -s apps/longhorn-system-volumes.json ]; then
     rm apps/longhorn-system-volumes.json
   fi
+
+  kubectl get backuptargets.longhorn.io -n longhorn-system -o json > apps/longhorn-backuptargets.json
+  if [ ! -s apps/longhorn-backuptargets.json ]; then
+    rm apps/longhorn-backuptargets.json
+  fi
 }
 
 collect_cluster_info() {
