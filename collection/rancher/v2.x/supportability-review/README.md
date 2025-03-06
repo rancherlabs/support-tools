@@ -22,7 +22,7 @@ Please verify your environment type and requirements:
 
 ### 🔒 Airgapped Environment Requirements
 You will need to mirror these container images to your private registry:
-- Supportability Review Image: `ghcr.io/rancher/supportability-review:latest`
+- Supportability Review Image: `rancher/supportability-review:latest`
 - Sonobuoy Image: `rancher/mirrored-sonobuoy-sonobuoy:v0.57.3`
 
 ## Security Policy Check
@@ -79,7 +79,7 @@ chmod +x collect.sh
 #### For Airgapped Environments
 ```shell
 # Mirror required images
-export SRC_SR_IMAGE="ghcr.io/rancher/supportability-review:latest"
+export SRC_SR_IMAGE="rancher/supportability-review:latest"
 export DST_SR_IMAGE="registry.example.com/supportability-review:latest"
 docker tag $SRC_SR_IMAGE $DST_SR_IMAGE
 docker push $DST_SR_IMAGE

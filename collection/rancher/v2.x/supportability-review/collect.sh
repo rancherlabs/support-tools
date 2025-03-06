@@ -20,7 +20,7 @@ Environment variables:
 "
 }
 
-SR_IMAGE=${SR_IMAGE:-"ghcr.io/rancher/supportability-review:latest"}
+SR_IMAGE=${SR_IMAGE:-"rancher/supportability-review:latest"}
 
 if [ "${CONTAINER_RUNTIME}" == "" ]; then
   if command -v docker &> /dev/null; then

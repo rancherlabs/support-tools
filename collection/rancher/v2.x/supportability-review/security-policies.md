@@ -100,10 +100,10 @@ spec:
   repositoryDigestMirrors:
   - mirrors:
     - registry.example.com/supportability-review
-    source: ghcr.io/rancher/supportability-review
+    source: rancher/supportability-review
   - mirrors:
     - registry.example.com/sonobuoy
-    source: ghcr.io/rancher/mirrored-sonobuoy-sonobuoy
+    source: rancher/mirrored-sonobuoy-sonobuoy
 ```
 
 ## Troubleshooting Security Policies
