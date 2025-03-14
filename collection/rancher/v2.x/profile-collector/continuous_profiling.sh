@@ -120,7 +120,7 @@ collect() {
         echo
 
         techo Getting metrics for Rancher
-        kubectl -n $NAMESPACE exec $pod -c ${CONTAINER} -- bash -c 'curl -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -k https://localhost/metrics' >$pod-metrics.txt
+        kubectl -n $NAMESPACE exec $pod -c ${CONTAINER} -- bash -c 'curl -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -k https://localhost/metrics' >${TMPDIR}$pod-metrics.txt
       fi
 
       techo Getting rancher-event-logs for $pod
