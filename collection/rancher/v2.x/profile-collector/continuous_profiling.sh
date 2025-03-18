@@ -176,19 +176,6 @@ while getopts "a:p:d:s:t:h" opt; do
 
     # Check if the array is populated correctly (for debugging)
     techo "Profiles array: ${PROFILES[@]}"
-
-    # Iterate over each profile in the array
-    for profile in "${PROFILES[@]}"; do
-      case $profile in
-      goroutine | heap | threadcreate | block | mutex | profile)
-        # Valid profile, do nothing
-        ;;
-      *)
-        techo "Invalid profile: $profile"
-        help && exit 0
-        ;;
-      esac
-    done
     ;;
   s)
     SLEEP="${OPTARG}"
