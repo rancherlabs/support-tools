@@ -15,6 +15,9 @@ SLEEP=120
 # Prefix for profile tarball name
 PREFIX="rancher"
 
+# Log level, default debug
+LOGLEVEL="debug"
+
 # Profile collection time (only required for CPU profiles)
 DURATION=30
 
@@ -47,6 +50,7 @@ help() {
   -p    Profiles to be collected (comma separated): goroutine,heap,threadcreate,block,mutex,profile
   -s    Sleep time between loops in seconds
   -t    Time of CPU profile collections
+  -l    Log level of the Rancher pods: debug or trace
   -h    This help"
 
 }
@@ -62,7 +66,7 @@ collect() {
   rancher)
     CONTAINER=rancher
     NAMESPACE=cattle-system
-    set_rancher_log_level debug
+    set_rancher_log_level $LOGLEVEL
     ;;
   cattle-cluster-agent)
     CONTAINER=cluster-register
@@ -163,7 +167,7 @@ collect() {
 
 }
 
-while getopts "a:p:d:s:t:h" opt; do
+while getopts "a:p:d:s:t:l:h" opt; do
   case $opt in
   a)
     APP="${OPTARG}"
@@ -182,6 +186,9 @@ while getopts "a:p:d:s:t:h" opt; do
     ;;
   t)
     DURATION="${OPTARG}"
+    ;;
+  l)
+    LOGLEVEL="${OPTARG}"
     ;;
   h)
     help && exit 0
