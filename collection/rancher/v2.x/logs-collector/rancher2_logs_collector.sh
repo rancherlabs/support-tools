@@ -252,6 +252,7 @@ system-all() {
   if $(command -v dmidecode >/dev/null 2>&1); then
     dmidecode > $TMPDIR/systeminfo/dmidecode
   fi
+
 }
 
 system-ubuntu() {
