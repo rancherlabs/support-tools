@@ -59,7 +59,86 @@ techo() {
   echo "$(date "+%Y-%m-%d %H:%M:%S"): $*"
 
 }
+collect_rancher() {
 
+  for pod in $(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name); do
+    for profile in ${PROFILES[@]}; do
+      techo Getting $profile profile for $pod
+      if [ "$profile" == "profile" ]; then
+        kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile}?seconds=${DURATION} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
+      else
+        kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
+      fi
+    done
+
+    techo Getting logs for $pod
+    kubectl logs --since 5m -n $NAMESPACE $pod -c ${CONTAINER} >${TMPDIR}/${pod}.log
+    echo
+
+    techo Getting previous logs for $pod
+    kubectl logs -n $NAMESPACE $pod -c ${CONTAINER} --previous=true >${TMPDIR}/${pod}-previous.log
+    echo
+
+    if [ "$APP" == "rancher" ]; then
+      techo Getting rancher-audit-logs for $pod
+      kubectl logs --since 5m -n $NAMESPACE $pod -c rancher-audit-log >${TMPDIR}/${pod}-audit.log
+      echo
+
+      techo Getting metrics for Rancher
+      kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- bash -c 'curl -s -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -k https://127.0.0.1/metrics' >${TMPDIR}/$pod-metrics.txt
+      echo
+    fi
+
+    techo Getting events for $pod
+    kubectl get event --namespace $NAMESPACE --field-selector involvedObject.name=${pod} >${TMPDIR}/${pod}-events.txt
+    echo
+
+    techo Getting describe for $pod
+    kubectl describe pod $pod -n $NAMESPACE >${TMPDIR}/${pod}-describe.txt
+    echo
+  done
+}
+
+collect_fleet() {
+
+  pod=$(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name)
+
+  for profile in ${PROFILES[@]}; do
+    techo Getting $profile profile for $pod
+    if [ "$profile" == "profile" ]; then
+      curl -s http://localhost:60601/debug/pprof/${profile}?seconds=${DURATION} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
+    else
+      curl -s http://localhost:60601/debug/pprof/${profile} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
+    fi
+  done
+
+  techo Getting logs for $pod
+  kubectl logs --since 5m -n $NAMESPACE $pod -c ${CONTAINER} >${TMPDIR}/${pod}.log
+  echo
+
+  techo Getting previous logs for $pod
+  kubectl logs -n $NAMESPACE $pod -c ${CONTAINER} --previous=true >${TMPDIR}/${pod}-previous.log
+  echo
+
+  if [ "$APP" == "rancher" ]; then
+    techo Getting rancher-audit-logs for $pod
+    kubectl logs --since 5m -n $NAMESPACE $pod -c rancher-audit-log >${TMPDIR}/${pod}-audit.log
+    echo
+
+    techo Getting metrics for Rancher
+    kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- bash -c 'curl -s -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -k https://127.0.0.1/metrics' >${TMPDIR}/$pod-metrics.txt
+    echo
+  fi
+
+  techo Getting events for $pod
+  kubectl get event --namespace $NAMESPACE --field-selector involvedObject.name=${pod} >${TMPDIR}/${pod}-events.txt
+  echo
+
+  techo Getting describe for $pod
+  kubectl describe pod $pod -n $NAMESPACE >${TMPDIR}/${pod}-describe.txt
+  echo
+
+}
 collect() {
 
   case $APP in
@@ -75,13 +154,19 @@ collect() {
   fleet-controller)
     CONTAINER=fleet-controller
     NAMESPACE=cattle-fleet-system
+    pod=$(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name)
+    kubectl port-forward -n $NAMESPACE $pod 60601:6060 &
     ;;
   fleet-agent)
     CONTAINER=fleet-agent
     if kubectl get namespace cattle-fleet-local-system >/dev/null; then
       NAMESPACE=cattle-fleet-local-system
+      pod=$(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name)
+      kubectl port-forward -n $NAMESPACE $pod 60601:6060 &
     else
       NAMESPACE=cattle-fleet-system
+      pod=$(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name)
+      kubectl port-forward -n $NAMESPACE $pod 60601:6060 &
     fi
     ;;
   esac
@@ -100,42 +185,11 @@ collect() {
     kubectl top pods -A >>${TMPDIR}/top-pods.txt
     kubectl top nodes >>${TMPDIR}/top-nodes.txt
 
-    for pod in $(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name); do
-      for profile in ${PROFILES[@]}; do
-        techo Getting $profile profile for $pod
-        if [ "$profile" == "profile" ]; then
-          kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile}?seconds=${DURATION} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
-        else
-          kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
-        fi
-      done
-
-      techo Getting logs for $pod
-      kubectl logs --since 5m -n $NAMESPACE $pod -c ${CONTAINER} >${TMPDIR}/${pod}.log
-      echo
-
-      techo Getting previous logs for $pod
-      kubectl logs -n $NAMESPACE $pod -c ${CONTAINER} --previous=true >${TMPDIR}/${pod}-previous.log
-      echo
-
-      if [ "$APP" == "rancher" ]; then
-        techo Getting rancher-audit-logs for $pod
-        kubectl logs --since 5m -n $NAMESPACE $pod -c rancher-audit-log >${TMPDIR}/${pod}-audit.log
-        echo
-
-        techo Getting metrics for Rancher
-        kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- bash -c 'curl -s -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -k https://127.0.0.1/metrics' >${TMPDIR}/$pod-metrics.txt
-        echo
-      fi
-
-      techo Getting rancher-event-logs for $pod
-      kubectl get event --namespace $NAMESPACE --field-selector involvedObject.name=${pod} >${TMPDIR}/${pod}-events.txt
-      echo
-
-      techo Getting describe for $pod
-      kubectl describe pod $pod -n $NAMESPACE >${TMPDIR}/${pod}-describe.txt
-      echo
-    done
+    if [ "$APP" == "rancher" ] || [ "$APP" == "cattle-cluster-agent" ]; then
+      collect_rancher
+    else
+      collect_fleet
+    fi
 
     techo "Getting leases"
     kubectl get leases -n kube-system >${TMPDIR}/leases.txt
