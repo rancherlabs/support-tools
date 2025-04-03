@@ -32,6 +32,8 @@ cleanup() {
   # APP=rancher only: set logging back to normal
   if [ "$APP" == "rancher" ]; then
     set_rancher_log_level info
+  elif [ "$APP" == "fleet-controller" ] || [ "$APP" == "fleet-agent" ]; then
+    kill $PORT_FORWARD_PID
   fi
   exit 0
 }
@@ -120,16 +122,6 @@ collect_fleet() {
   kubectl logs -n $NAMESPACE $pod -c ${CONTAINER} --previous=true >${TMPDIR}/${pod}-previous.log
   echo
 
-  if [ "$APP" == "rancher" ]; then
-    techo Getting rancher-audit-logs for $pod
-    kubectl logs --since 5m -n $NAMESPACE $pod -c rancher-audit-log >${TMPDIR}/${pod}-audit.log
-    echo
-
-    techo Getting metrics for Rancher
-    kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- bash -c 'curl -s -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -k https://127.0.0.1/metrics' >${TMPDIR}/$pod-metrics.txt
-    echo
-  fi
-
   techo Getting events for $pod
   kubectl get event --namespace $NAMESPACE --field-selector involvedObject.name=${pod} >${TMPDIR}/${pod}-events.txt
   echo
@@ -139,6 +131,7 @@ collect_fleet() {
   echo
 
 }
+
 collect() {
 
   case $APP in
@@ -156,6 +149,7 @@ collect() {
     NAMESPACE=cattle-fleet-system
     pod=$(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name)
     kubectl port-forward -n $NAMESPACE $pod 60601:6060 &
+    PORT_FORWARD_PID=$!
     ;;
   fleet-agent)
     CONTAINER=fleet-agent
@@ -163,10 +157,12 @@ collect() {
       NAMESPACE=cattle-fleet-local-system
       pod=$(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name)
       kubectl port-forward -n $NAMESPACE $pod 60601:6060 &
+      PORT_FORWARD_PID=$!
     else
       NAMESPACE=cattle-fleet-system
       pod=$(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name)
       kubectl port-forward -n $NAMESPACE $pod 60601:6060 &
+      PORT_FORWARD_PID=$!
     fi
     ;;
   esac
