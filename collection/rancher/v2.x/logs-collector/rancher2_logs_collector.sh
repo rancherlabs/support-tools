@@ -249,6 +249,9 @@ system-all() {
   if $(command -v conntrack >/dev/null 2>&1); then
     conntrack -S > $TMPDIR/systeminfo/conntrack
   fi
+  if $(command -v dmidecode >/dev/null 2>&1); then
+    dmidecode > $TMPDIR/systeminfo/dmidecode
+  fi
 
 }
 
