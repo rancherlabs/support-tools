@@ -4,10 +4,11 @@
 
 This script is intended to collect:
 - [Golang profiles](https://github.com/pkg/profile) for [Rancher Manager](https://github.com/rancher/rancher/), Rancher Cluster Agent, Fleet Controller and Fleet Agent
-- Rancher debug logs when collecting Rancher profiles
+- Rancher debug or trace logs when collecting Rancher profiles
 - Rancher audit logs when available
 - Events from the cattle-system namespace
 - metrics with kubectl top from pods and nodes
+- Rancher metrics exposed on <RANCHER_URL>/metrics
 
 ## Usage
 
@@ -27,7 +28,7 @@ The script needs to be downloaded and run with a kubeconfig file pointed to the 
  
 * Run the script:
   ```bash
-  sudo bash continuous_profiling.sh
+  bash continuous_profiling.sh
   ```
   The script will run until it receives a SIGKILL (Ctrl-C)
   A tarball will be generated at the same folder where the script is running. Please share that file with Rancher support.
@@ -44,5 +45,6 @@ Rancher 2.x profile-collector
   -p    Profiles to be collected (comma separated): goroutine,heap,threadcreate,block,mutex,profile
   -s    Sleep time between loops in seconds
   -t    Time of CPU profile collections
+  -l    Log level of the Rancher pods: debug or trace
   -h    This help
 ```
