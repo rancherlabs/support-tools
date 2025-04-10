@@ -46,3 +46,16 @@ Rancher 2.x profile-collector
   -t    Time of CPU profile collections
   -h    This help
 ```
+
+## Examples
+* The default collection is equivalent of:
+  ```bash continuous_profiling -a rancher -p goroutine,heap,profile -s 120 -t 30```
+
+* Collecting Upstream Rancher profiles every 30 minutes, and collect trace level logs
+  ```bash continuous_profiling -s 1800 -l trace```
+
+* Collecting cattle-cluster-agent heap and profile
+  ```bash continuous_profiling -a cattle-cluster-agent -p heap,profile ```
+
+* Collecting fleet-agent profile profile (cpu) over a minute
+  ```bash continuous_profiling -a fleet-agent -t 60```
