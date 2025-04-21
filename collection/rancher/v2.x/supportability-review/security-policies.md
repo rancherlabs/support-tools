@@ -106,6 +106,22 @@ spec:
     source: rancher/mirrored-sonobuoy-sonobuoy
 ```
 
+## OPA Exempting Namespaces
+
+### Required Exemption
+```yaml
+apiVersion: config.gatekeeper.sh/v1alpha1
+kind: Config
+metadata:
+  name: config
+  namespace: "gatekeeper-system"
+spec:
+  match:
+    - excludedNamespaces: ["sonobuoy"]
+      processes: ["*"]
+```
+
+
 ## Troubleshooting Security Policies
 
 ### Common Issues and Solutions
