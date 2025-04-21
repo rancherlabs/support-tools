@@ -23,7 +23,7 @@ Please verify your environment type and requirements:
 ### 🔒 Airgapped Environment Requirements
 You will need to mirror these container images to your private registry:
 - Supportability Review Image: `rancher/supportability-review:latest`
-- Sonobuoy Image: `rancher/mirrored-sonobuoy-sonobuoy:v0.57.3`
+- Sonobuoy Image: `rancher/mirrored-sonobuoy-sonobuoy:v0.57.3-rancher2`
 
 ## Security Policy Check
 If your clusters use any of these security tools, review the required configurations:
@@ -84,8 +84,8 @@ export DST_SR_IMAGE="registry.example.com/supportability-review:latest"
 docker tag $SRC_SR_IMAGE $DST_SR_IMAGE
 docker push $DST_SR_IMAGE
 
-export SRC_SONOBUOY_IMAGE="rancher/mirrored-sonobuoy-sonobuoy:v0.57.3"
-export DST_SONOBUOY_IMAGE="registry.example.com/sonobuoy:v0.57.3"
+export SRC_SONOBUOY_IMAGE="rancher/mirrored-sonobuoy-sonobuoy:v0.57.3-rancher2"
+export DST_SONOBUOY_IMAGE="registry.example.com/sonobuoy:v0.57.3-rancher2"
 docker tag $SRC_SONOBUOY_IMAGE $DST_SONOBUOY_IMAGE
 docker push $DST_SONOBUOY_IMAGE
 ```

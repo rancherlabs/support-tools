@@ -179,6 +179,7 @@ collect_rke_info() {
   rm ${OUTPUT_DIR}/rke/full-cluster-state.json
 
   kubectl get ds -n ingress-nginx -o json > ${OUTPUT_DIR}/rke/ingress-nginx-daemonsets.json
+  kubectl -n ingress-nginx exec $(kubectl -n ingress-nginx get pod -l=app.kubernetes.io/component=controller,app.kubernetes.io/name=ingress-nginx -o name) -- /nginx-ingress-controller --help > rke/ingress-nginx-help.txt 2>&1
 }
 
 collect_rke2_info() {
@@ -189,6 +190,8 @@ collect_rke2_info() {
   jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-proxy") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-proxy-args.json
   jq '[ .items[] | select(.metadata.namespace == "kube-system" and .metadata.labels.component == "kube-scheduler") | .spec.containers[0].args ] | .[0]' pods.json > rke2/kube-scheduler-args.json
 
+  kubectl get validatingwebhookconfigurations.admissionregistration.k8s.io -o json > rke2/validatingwebhookconfigurations.json
+  kubectl -n kube-system exec $(kubectl -n kube-system get po -l=app.kubernetes.io/name=rke2-ingress-nginx -o name) -- /nginx-ingress-controller --help > rke2/ingress-nginx-help.txt 2>&1
   kubectl get configmap -n kube-system node-local-dns -o json > rke2/node-local-dns-configmap.json
 
   kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium status -o json > rke2/cilium-status.json
@@ -260,6 +263,7 @@ collect_upstream_cluster_info() {
   kubectl get --no-headers tokens.management.cattle.io | wc -l > token-count.txt
   kubectl get roletemplates -o json > roletemplates.json
   kubectl get clusterrole -o json > clusterrole.json
+  kubectl get machines.cluster.x-k8s.io -n fleet-default -o json > machines.json
 }
 
 collect_app_info() {
