@@ -651,6 +651,10 @@ rke2-k8s() {
   if [[ ${RKE2_SERVER} && ! ${API_SERVER_OFFLINE} ]]; then
     KUBECONFIG=/etc/rancher/${DISTRO}/rke2.yaml
     ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG api-resources > $TMPDIR/${DISTRO}/kubectl/api-resources 2>&1
+    if [ -f /etc/cni/net.d/05-cilium.conflist ]; then
+      ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get CiliumNetworkPolicy -A > $TMPDIR/${DISTRO}/kubectl/ciliumnetworkpolicy 2>&1
+      ${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG get CiliumClusterwideNetworkPolicy > $TMPDIR/${DISTRO}/kubectl/ciliumclusterwidenetworkpolicy 2>&1
+    fi
     RKE2_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations volumeattachments)
     RKE2_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases networkpolicies pods pvc replicasets roles rolebindings statefulsets)
     for OBJECT in "${RKE2_OBJECTS[@]}"; do
