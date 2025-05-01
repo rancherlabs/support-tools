@@ -1,9 +1,9 @@
 # Collection Details
 
 ## Overview
-This document provides transparency about the output collected when running the logs collector script. The collection is designed to gather necessary troublehsooting information while respecting privacy and security concerns.
+This document provides transparency about the output collected when running the logs collector script. The collection is designed to gather necessary troubleshooting information while respecting privacy and security concerns.
 
-Where possible output from the colleciton is sanitized, however we recommend you check a log collection and remove or edit any sensitive data.
+Where possible output from the collection is sanitized, however we recommend you check a log collection and remove or edit any sensitive data.
 
 ### Cluster-level collection
 
