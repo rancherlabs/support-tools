@@ -64,9 +64,9 @@ Collection includes the following areas, the logs collector is designed to gathe
 
 - Related OS logs and configuration:
   - Network configuration - interfaces, iptables
-  - Disk configuration - devices, filesytstems, utilisation
+  - Disk configuration - devices, filesystems, utilization
   - Performance - resource usage, tuning 
-- Related Kubernetes object output, kubectl commands and pod logs
+- Related Kubernetes object output, kubectl commands, and pod logs
   - Related CRD objects
   - Output from kubectl for troubleshooting
   - Pod logs from related namespaces
