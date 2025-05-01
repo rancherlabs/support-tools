@@ -60,7 +60,7 @@ Rancher 2.x logs-collector
 
 ## Scope of collection
 
-Collection includes the following areas, the logs collector is designed to gather necessary diagnostic information while respecting privacy and security concerns. A detailed list is maintained in [collection-details.md]](./collection-details.md).
+Collection includes the following areas, the logs collector is designed to gather necessary diagnostic information while respecting privacy and security concerns. A detailed list is maintained in [collection-details.md](./collection-details.md).
 
 - Related OS logs and configuration:
   - Network configuration - interfaces, iptables
