@@ -57,3 +57,16 @@ Rancher 2.x logs-collector
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
   -f    Force log collection if the minimum space isn't available
 ```
+
+## Scope of collection
+
+Collection includes the following areas, the logs collector is designed to gather necessary diagnostic information while respecting privacy and security concerns. A detailed list is maintained in [collection-details.md]](./collection-details.md).
+
+- Related OS logs and configuration:
+  - Network configuration - interfaces, iptables
+  - Disk configuration - devices, filesytstems, utilisation
+  - Performance - resource usage, tuning 
+- Related Kubernetes object output, kubectl commands and pod logs
+  - Related CRD objects
+  - Output from kubectl for troubleshooting
+  - Pod logs from related namespaces
