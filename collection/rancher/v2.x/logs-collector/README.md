@@ -62,10 +62,11 @@ Rancher 2.x logs-collector
 
 Collection includes the following areas, the logs collector is designed to gather necessary diagnostic information while respecting privacy and security concerns. A detailed list is maintained in [collection-details.md](./collection-details.md).
 
-- Related OS logs and configuration:
+- Related OS logs and configuration:  
   - Network configuration - interfaces, iptables
   - Disk configuration - devices, filesystems, utilization
   - Performance - resource usage, tuning 
+  - OS release and logs - versions, messages/syslog
 - Related Kubernetes object output, kubectl commands, and pod logs
   - Related CRD objects
   - Output from kubectl for troubleshooting
