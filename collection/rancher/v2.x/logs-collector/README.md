@@ -53,9 +53,12 @@ Rancher 2.x logs-collector
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -s    Start day of journald and docker log collection, # of days relative to the current day (ex: -s 7)
   -e    End day of journald and docker log collection, # of days relative to the current day (ex: -e 5)
+  -S    Start date of journald and docker log collection. (ex: -S 2022-12-05)
+  -E    End date of journald and docker log collection. (ex: -E 2022-12-07)
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2|kubeadm)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
   -f    Force log collection if the minimum space isn't available
+  -o    Obfuscate IP addresses and hostnames
 ```
 
 ## Scope of collection
@@ -73,3 +76,5 @@ Collection includes the following areas, the logs collector is designed to gathe
   - Pod logs from related namespaces
 
 The scope of collection is intentionally limited to avoid sensitive data, use minimal resources and disk space, and focus on the core areas needed for troubleshooting.
+
+IP addresses and hostnames are collected and can assist with troubleshooting, these can be obfuscated with the `-o` flag for the log collection script.
