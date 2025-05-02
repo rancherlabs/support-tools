@@ -71,3 +71,5 @@ Collection includes the following areas, the logs collector is designed to gathe
   - Related CRD objects
   - Output from kubectl for troubleshooting
   - Pod logs from related namespaces
+
+The scope of collection is intentionally limited to avoid sensitive data, use minimal resources and disk space, and focus on the core areas needed for troubleshooting.
