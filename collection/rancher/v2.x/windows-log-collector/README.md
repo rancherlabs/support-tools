@@ -1,11 +1,11 @@
-# rancher-windows-log-collector
-Windows log collector for Rancher Windows Worker Nodes
+# Rancher v2.x Windows log-collector
 
+This logs collector project was created to collect logs from Windows Kubernetes nodes. It is designed to be used with RKE1 Windows clusters for troubleshooting support cases.
 
-## How To Run the Script
+## Usage
 
-- Open a new Powershell window with Administrator Privileges (Find Windows Powershell in Start Menu, right click, Run As Administrator)
-- run the following commands in your Powershell window
+- Open a new PowerShell window with Administrator Privileges (Find Windows PowerShell in Start Menu, right click, Run As Administrator)
+- Run the following commands in your PowerShell window
 
 ```ps1
 Set-ExecutionPolicy Bypass
@@ -15,8 +15,8 @@ Start-BitsTransfer https://raw.githubusercontent.com/rancherlabs/support-tools/m
 
 ### Upon successful completion, your log bundle will be on the root of the C: drive (example below)
 
-`dir C:\`
 ```
+> dir C:\
 d-----       11/14/2018   6:56 AM                EFI
 d-----         6/2/2020   3:31 PM                etc
 d-----         6/2/2020   3:31 PM                opt
@@ -32,7 +32,8 @@ d-----         6/1/2020   6:26 PM                Windows
 ```
 
 ### Expected output
-#### Note: The `Unable to Collect Windows Firewall information` error is expected if it there are not Domain specific firewall rules pushed out by the customer
+
+> Note: The `Unable to Collect Windows Firewall information` error is expected if it there are no Domain specific firewall rules
 
 ```ps1
 Running Rancher Log Collection

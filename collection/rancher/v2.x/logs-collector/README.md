@@ -1,23 +1,20 @@
 # Rancher v2.x logs-collector
 
-## Notes
-
-This script is intended to collect logs from:
-- [Rancher Kubernetes Engine (RKE) CLI](https://rancher.com/docs/rke/latest/en/) provisioned clusters
-- [K3s clusters](https://rancher.com/docs/k3s/latest/en/)
+This logs collector project was created to collect logs from Linux Kubernetes nodes. It is designed to be used in the following environments for troubleshooting support cases:
 - [RKE2 clusters](https://docs.rke2.io/)
-- Rancher provisioned [Custom](https://docs.ranchermanager.rancher.io/pages-for-subheaders/use-existing-nodes)
-- [Node Driver](https://docs.ranchermanager.rancher.io/pages-for-subheaders/use-new-nodes-in-an-infra-provider) clusters
-- [Kubeadm](https://kubernetes.io/docs/reference/setup-tools/kubeadm/) clusters has been also recently added.
+- [RKE1 clusters](https://rancher.com/docs/rke/latest/en/)
+- [K3s clusters](https://docs.k3s.io/)
+- [Custom clusters](https://docs.ranchermanager.rancher.io/pages-for-subheaders/use-existing-nodes)
+- [Infrastructure provider clusters](https://ranchermanager.docs.rancher.com/how-to-guides/new-user-guides/launch-kubernetes-with-rancher/use-new-nodes-in-an-infra-provider)
+- [Kubeadm clusters](https://kubernetes.io/docs/reference/setup-tools/kubeadm/)
 
-
-This script may not collect all necessary information when run on nodes in Hosted [Kubernetes Provider clusters](https://docs.ranchermanager.rancher.io/pages-for-subheaders/set-up-clusters-from-hosted-kubernetes-providers).
-
-Output will be written to `/tmp` as a tar.gz archive named `<hostname>-<date>.tar.gz`, the default output directory can be changed with the `-d` flag.
+> Note: This script may not collect all necessary information when run on nodes in a [Hosted Kubernetes Provider](https://ranchermanager.docs.rancher.com/how-to-guides/new-user-guides/kubernetes-clusters-in-rancher-setup/set-up-clusters-from-hosted-kubernetes-providers) cluster.
 
 ## Usage
 
 The script needs to be downloaded and run directly on the node, using the `root` user or `sudo`.
+
+Output will be written to `/tmp` as a tar.gz archive named `<hostname>-<date>.tar.gz`, the default output directory can be changed with the `-d` flag.
 
 ### Download and run the script
 * Save the script as: `rancher2_logs_collector.sh`
@@ -35,6 +32,7 @@ The script needs to be downloaded and run directly on the node, using the `root`
   ```bash
   sudo bash rancher2_logs_collector.sh
   ```
+
 ### Optional: Download and run the script in one command
   ```bash
   curl -Ls rnch.io/rancher2_logs | sudo bash
