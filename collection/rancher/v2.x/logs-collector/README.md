@@ -77,4 +77,6 @@ Collection includes the following areas, the logs collector is designed to gathe
 
 The scope of collection is intentionally limited to avoid sensitive data, use minimal resources and disk space, and focus on the core areas needed for troubleshooting.
 
-IP addresses and hostnames are collected and can assist with troubleshooting, these can be obfuscated with the `-o` flag for the log collection script.
+IP addresses and hostnames are collected and can assist with troubleshooting, however these can be obfuscated when adding the `-o` flag for the log collection script.
+
+Note, if additional verbosity, debug, or audit logging is enabled for the related Kubernetes and OS components, these logs can be included and may contain sensitive output. 
