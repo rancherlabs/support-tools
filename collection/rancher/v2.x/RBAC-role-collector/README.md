@@ -1,6 +1,6 @@
 # Rancher 2.x RBAC role collector
 
-This project was created to collect RABC roles in a cluster to assist troubleshooting
+This project was created to collect RABC roles in a Kubernetes cluster to assist troubleshooting
 
 ## Usage
 
