@@ -1,8 +1,6 @@
 # Rancher v2.x profiles-collector
 
-## Notes
-
-This script is intended to collect:
+This profiles collector project was created to collect:
 - [Golang profiles](https://github.com/pkg/profile) for [Rancher Manager](https://github.com/rancher/rancher/), Rancher Cluster Agent, Fleet Controller and Fleet Agent
 - Rancher debug or trace logs when collecting Rancher profiles
 - Rancher audit logs when available
@@ -12,10 +10,10 @@ This script is intended to collect:
 
 ## Usage
 
-The script needs to be downloaded and run with a kubeconfig file pointed to the local Rancher cluster or a downstream cluster where cattle-cluster-agent pods are running
+The script needs to be downloaded and run with a kubeconfig file for the Rancher Management (local) cluster, or a downstream cluster where cattle-cluster-agent pods are running
 
 ### Download and run the script
-* Save the script as: `continuous_profiling.sh`
+- Save the script as: `continuous_profiling.sh`
 
   Using `wget`:
     ```bash
@@ -26,7 +24,7 @@ The script needs to be downloaded and run with a kubeconfig file pointed to the 
     curl -OLs https://raw.githubusercontent.com/rancherlabs/support-tools/master/collection/rancher/v2.x/profile-collector/continuous_profiling.sh
     ```
  
-* Run the script:
+- Run the script:
   ```bash
   bash continuous_profiling.sh
   ```
@@ -50,14 +48,14 @@ Rancher 2.x profile-collector
 ```
 
 ## Examples
-* The default collection is equivalent of:
+- The default collection is equivalent of:
   ```bash continuous_profiling -a rancher -p goroutine,heap,profile -s 120 -t 30```
 
-* Collecting Upstream Rancher profiles every 30 minutes, and collect trace level logs
+- Collecting Upstream Rancher profiles every 30 minutes, and collect trace level logs
   ```bash continuous_profiling -s 1800 -l trace```
 
-* Collecting cattle-cluster-agent heap and profile
+- Collecting cattle-cluster-agent heap and profile
   ```bash continuous_profiling -a cattle-cluster-agent -p heap,profile ```
 
-* Collecting fleet-agent profile profile (cpu) over a minute
+- Collecting fleet-agent profile profile (cpu) over a minute
   ```bash continuous_profiling -a fleet-agent -t 60```

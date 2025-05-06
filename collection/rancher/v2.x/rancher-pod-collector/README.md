@@ -1,18 +1,20 @@
-# rancher-logs-collector
+# Rancher v2.x rancher-pod-collector
 
-The script needs to be downloaded and run on one of the following servers.
+This project was created to collect output for the Rancher installation in a Rancher Management (local) cluster when troubleshooting support cases
 
-* A server or workstation with kubectl access to the local cluster.
-* Directly on one of the local cluster nodes using the `root` user or using `sudo`.
-* As a k8s deployment on the local cluster.
+This script needs to be downloaded and run on one of the following locations:
 
-## How to use
+- A server or workstation with kubectl access to the Rancher Management (local) cluster
+- Directly on one of the cluster nodes using the `root` user or using `sudo`
+- As a k8s deployment on the local cluster
 
-* Download the script and save as: `rancher-pod-collector.sh`
-* Make sure the script is executable: `chmod +x rancher-pod-collector.sh`
-* Run the script: `./rancher-pod-collector.sh`
+## Usage
 
-The script will create a .tar.gz log collection in /tmp by default, all flags are optional.
+- Download the script and save as: `rancher-pod-collector.sh`
+- Make sure the script is executable: `chmod +x rancher-pod-collector.sh`
+- Run the script: `./rancher-pod-collector.sh`
+
+Output will be written to `/tmp` as a tar.gz archive named `<context>-<date>.tar.gz`, the default output directory can be changed with the `-d` flag.
 
 ## Flags
 

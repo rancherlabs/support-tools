@@ -1,8 +1,8 @@
 # Rancher 2.x Systems Summary v2
 
-The script runs as a pod in the Rancher 2.x cluster and collects information about the systems in the cluster. The script collects the following information:
+The script runs as a pod in the Rancher Management (local) cluster and collects information about the clusters managed by Rancher. The script collects the following information:
 
-- Rancher server version and installation UUID.
+- Rancher server version and installation UUID
 - Details of all clusters managed by Rancher, including:
   - Cluster ID and name
   - Kubernetes version
@@ -15,11 +15,11 @@ The script runs as a pod in the Rancher 2.x cluster and collects information abo
   - CPU and RAM capacity
   - Operating system and Docker version
   - Creation timestamp
-- Total count of nodes across all clusters.
+- Total count of nodes across all clusters
 
 ## How to use
 
-Run the following command to deploy the script as a pod in the Rancher local cluster:
+Run the following command to deploy the script as a pod in the Rancher Management (local) cluster:
 
 ```bash
 # Deploy the pod in the cluster
@@ -31,14 +31,14 @@ while [[ $(kubectl get pod rancher-systems-summary-pod -n cattle-system -o 'json
   sleep 5
 done
 
-# Grab the logs from the pod
-kubectl logs pod/rancher-systems-summary-pod -n cattle-system
+# Follow the logs from the pod
+kubectl logs -f pod/rancher-systems-summary-pod -n cattle-system
 
 # Clean up the pod
 kubectl delete pod/rancher-systems-summary-pod -n cattle-system
 ```
 
-NOTE: It might take a few minutes for the pod to collect the information and display it in the logs. The script will delete the pod after displaying the information.
+> Note: It might take a few minutes for the pod to collect the information and display it in the logs. The script will exit after displaying the information, you should see `Total node count` at the end of the log output
 
 Example output:
 
