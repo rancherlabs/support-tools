@@ -23,7 +23,7 @@ Please verify your environment type and requirements:
 ### 🔒 Airgapped Environment Requirements
 You will need to mirror these container images to your private registry:
 - Supportability Review Image: `rancher/supportability-review:latest`
-- Sonobuoy Image: `rancher/mirrored-sonobuoy-sonobuoy:v0.57.3-rancher2`
+- Sonobuoy Image: `rancher/mirrored-sonobuoy-sonobuoy:latest`
 
 ## Security Policy Check
 If your clusters use any of these security tools, review the required configurations:
@@ -79,15 +79,16 @@ chmod +x collect.sh
 #### For Airgapped Environments
 ```shell
 # Mirror required images
-export SRC_SR_IMAGE="rancher/supportability-review:latest"
-export DST_SR_IMAGE="registry.example.com/supportability-review:latest"
-docker tag $SRC_SR_IMAGE $DST_SR_IMAGE
-docker push $DST_SR_IMAGE
-
-export SRC_SONOBUOY_IMAGE="rancher/mirrored-sonobuoy-sonobuoy:v0.57.3-rancher2"
-export DST_SONOBUOY_IMAGE="registry.example.com/sonobuoy:v0.57.3-rancher2"
-docker tag $SRC_SONOBUOY_IMAGE $DST_SONOBUOY_IMAGE
-docker push $DST_SONOBUOY_IMAGE
+$ export PRIVATE_REGISTRY="registry.example.com:5000"
+$ docker pull rancher/supportability-review:latest
+$ docker pull rancher/mirrored-sonobuoy-sonobuoy:latest
+$ docker pull rancher/security-scan:v0.6.1
+$ docker tag rancher/supportability-review:latest $PRIVATE_REGISTRY/rancher/supportability-review:latest
+$ docker tag rancher/mirrored-sonobuoy-sonobuoy:latest $PRIVATE_REGISTRY/rancher/mirrored-sonobuoy-sonobuoy:latest
+$ docker tag rancher/security-scan:v0.6.1 $PRIVATE_REGISTRY/rancher/security-scan:v0.6.1
+$ docker push $PRIVATE_REGISTRY/rancher/supportability-review:latest
+$ docker push $PRIVATE_REGISTRY/rancher/mirrored-sonobuoy-sonobuoy:latest
+$ docker push $PRIVATE_REGISTRY/rancher/security-scan:v0.6.1
 ```
 
 ### 2. Configuration Setup
@@ -96,9 +97,6 @@ docker push $DST_SONOBUOY_IMAGE
 # Required for all environments
 export RANCHER_URL="https://rancher.example.com"
 export RANCHER_TOKEN="token-a1b2c:hp7nxfs25w5g7rlc6gkasddhzpphfjbgmcqg6g2kpv52gxg7tl2fgpq2q"
-
-# Additional for airgapped environments
-export SR_IMAGE=$DST_SR_IMAGE
 
 # Optional: For nodes with custom taints
 export SONOBUOY_TOLERATION_FILE="/path/to/tolerations.yaml"
@@ -117,8 +115,14 @@ export SR_COLLECT_CLUSTER_INFO_DUMP=1
 #### Airgapped Environment
 ```shell
 ./collect.sh \
-  --sr-image=$DST_SR_IMAGE \
-  --sonobuoy-image=$DST_SONOBUOY_IMAGE
+  --private-registry=$PRIVATE_REGISTRY
+```
+#### Airgapped Environment with Image Pull Secret
+```shell
+./collect.sh \
+  --private-registry=$PRIVATE_REGISTRY \
+  --private-registry-secret-user=<user name> \
+  --private-registry-secret-password=<password>
 ```
 
 ## Troubleshooting Common Issues
