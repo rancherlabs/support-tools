@@ -478,7 +478,9 @@ rke2-logs() {
   fi
   if [ -f /var/lib/rancher/${DISTRO}/agent/containerd/containerd.log ]
     then
-      cp -p /var/lib/rancher/${DISTRO}/agent/containerd/containerd.log $TMPDIR/${DISTRO}
+      sed -E -e 's#("pod-impersonation\.cattle\.io/token":")[^"]+(")#\1[REDACTED]\2#g' \
+             -e 's#(pod-impersonation\.cattle\.io/token:)([^ ]+)([ ]|$)#\1[REDACTED]\3#g' \
+             /var/lib/rancher/${DISTRO}/agent/containerd/containerd.log > $TMPDIR/${DISTRO}/containerd.log
   fi
   if [ -f /etc/rancher/${DISTRO}/config.yaml ]
     then
