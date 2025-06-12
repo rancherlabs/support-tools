@@ -482,6 +482,14 @@ rke2-logs() {
              -e 's#(pod-impersonation\.cattle\.io/token:)([^ ]+)([ ]|$)#\1[REDACTED]\3#g' \
              /var/lib/rancher/${DISTRO}/agent/containerd/containerd.log > $TMPDIR/${DISTRO}/containerd.log
   fi
+  if [ -f $TMPDIR/${DISTRO}/crictl/info ]
+    then
+      sed -E -e 's/\("username":\s*"\)[^"]*/\1[REDACTED]/' \
+             -e 's/\("password":\s*"\)[^"]*/\1[REDACTED]/' \
+             $TMPDIR/${DISTRO}/crictl/info
+      sed -i -E 's/"([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+)"/"[REDACTED]"/g; s/"([a-zA-Z0-9.-]+:[0-9]+)"/"[REDACTED]"/g' $TMPDIR/${DISTRO}/crictl/info
+
+  fi
   if [ -f /etc/rancher/${DISTRO}/config.yaml ]
     then
       grep -Ev "token|access-key|secret-key" /etc/rancher/${DISTRO}/config.yaml >& $TMPDIR/${DISTRO}/config.yaml
