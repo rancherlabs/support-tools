@@ -484,10 +484,9 @@ rke2-logs() {
   fi
   if [ -f $TMPDIR/${DISTRO}/crictl/info ]
     then
-      sed -E -e 's/\("username":\s*"\)[^"]*/\1[REDACTED]/' \
-             -e 's/\("password":\s*"\)[^"]*/\1[REDACTED]/' \
-             $TMPDIR/${DISTRO}/crictl/info
-      sed -i -E 's/"([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+)"/"[REDACTED]"/g; s/"([a-zA-Z0-9.-]+:[0-9]+)"/"[REDACTED]"/g' $TMPDIR/${DISTRO}/crictl/info
+      sed -i -E -e 's/("username":\s*")[^"]*/\1[REDACTED]/; s/("password":\s*")[^"]*/\1[REDACTED]/' \
+          -e 's/"([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+)"/"[REDACTED]"/g; s/"([a-zA-Z0-9.-]+:[0-9]+)"/"[REDACTED]"/g' \
+          $TMPDIR/${DISTRO}/crictl/info
 
   fi
   if [ -f /etc/rancher/${DISTRO}/config.yaml ]
