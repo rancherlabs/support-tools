@@ -121,7 +121,7 @@ export SR_COLLECT_CLUSTER_INFO_DUMP=1
 ```shell
 ./collect.sh \
   --private-registry=$PRIVATE_REGISTRY \
-  --private-registry-secret-user=<user name> \
+  --private-registry-secret-username=<user name> \
   --private-registry-secret-password=<password>
 ```
 
