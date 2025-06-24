@@ -708,7 +708,8 @@ rke2-k8s() {
   for RKE2_LOG_DIR in agent server
     do
       if [ -d "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs/" ]; then
-        cp -rp "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs/" "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs"
+        mkdir -p "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs"
+        find "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs" -mtime -"${START_DAYS:=$VAR_LOG_DAYS}" -type f -exec cp -p {} "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs/" \;
       fi
   done
 
