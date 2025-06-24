@@ -713,7 +713,7 @@ rke2-k8s() {
     do
       if [ -d "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs/" ]; then
         mkdir -p "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs"
-        find "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs" -mtime -"${START_DAY}" -type f -exec cp -p {} "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs/" \;
+        find "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs" "${FIND_FLAG}" -type f -exec cp -p {} "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs/" \;
       fi
   done
 
@@ -1364,6 +1364,7 @@ while getopts "c:d:s:e:S:E:r:fpoh" opt; do
       START_DAY="$OPTARG"
       START=$(date -d "-$OPTARG days" '+%Y-%m-%d')
       SINCE_FLAG=(--since "$START")
+      FIND_FLAG=(-mtime -"${START_DAY}")
       techo "Logging since $START"
       ;;
     e)
