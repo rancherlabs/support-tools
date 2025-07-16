@@ -499,7 +499,7 @@ rke2-logs() {
     then
       for _FILE in "/etc/rancher/${DISTRO}/config.yaml.d/"*
         do
-          grep -Ev "token|access-key|secret-key" "/etc/rancher/${DISTRO}/config.yaml.d/$_FILE" >& "${TMPDIR}/${DISTRO}/$_FILE"
+          grep -Ev "token|access-key|secret-key" $_FILE >& "${TMPDIR}/${DISTRO}/$(basename $_FILE)"
       done
   fi
 
