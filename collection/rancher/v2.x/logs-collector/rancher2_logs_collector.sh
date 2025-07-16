@@ -14,8 +14,8 @@ JOURNALD_LOGS=(docker k3s rke2-agent rke2-server containerd cloud-init systemd-n
 # Included /var/log files
 VAR_LOG_FILES=(syslog messages kern docker cloud-init audit/ dmesg)
 
-# Days of /var/log files to include
-VAR_LOG_DAYS=7
+# Default days log files to include
+DEFAULT_LOG_DAYS=7
 
 # Minimum space needed to run the script (MB)
 SPACE=1536
@@ -611,8 +611,8 @@ k3s-k8s() {
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       for SYSTEM_POD in $(k3s kubectl -n "$SYSTEM_NAMESPACE" get pods --no-headers -o custom-columns=NAME:.metadata.name); do
-        k3s kubectl -n "$SYSTEM_NAMESPACE" logs --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD" 2>&1
-        k3s kubectl -n "$SYSTEM_NAMESPACE" logs -p --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous" 2>&1
+        k3s kubectl -n "$SYSTEM_NAMESPACE" "$KUBECTL_SINCE_FLAG" logs --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD" 2>&1
+        k3s kubectl -n "$SYSTEM_NAMESPACE" logs --previous --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous" 2>&1
       done
     done
   elif [[ "${K3S_AGENT}" || "${API_SERVER_OFFLINE}" ]]; then
@@ -683,7 +683,7 @@ rke2-k8s() {
     KUBECONFIG="/etc/rancher/${DISTRO}/rke2.yaml"
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       for SYSTEM_POD in $("${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" get pods --no-headers -o custom-columns=NAME:.metadata.name); do
-        "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" logs --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}" 2>&1
+        "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" "$KUBECTL_SINCE_FLAG" logs --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}" 2>&1
         "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" logs -p --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}-previous" 2>&1
       done
     done
@@ -691,7 +691,7 @@ rke2-k8s() {
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       if ls -d "/var/log/pods/${SYSTEM_NAMESPACE}"* > /dev/null 2>&1; then
-        cp -r -p "/var/log/pods/${SYSTEM_NAMESPACE}"* "${TMPDIR}/${DISTRO}/podlogs/"
+        find "/var/log/pods/${SYSTEM_NAMESPACE}" -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp -p {} "${TMPDIR}/${DISTRO}/podlogs/" \;
       fi
     done
   fi
@@ -709,7 +709,7 @@ rke2-k8s() {
     do
       if [ -d "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs/" ]; then
         mkdir -p "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs"
-        find "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs" -mtime -"${START_DAYS:=$VAR_LOG_DAYS}" -type f -exec cp -p {} "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs/" \;
+        find "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs" -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp -p {} "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs/" \;
       fi
   done
 
@@ -786,7 +786,7 @@ var-log() {
 
   if [ -n "${START_DAY}" ]
     then
-      VAR_LOG_DAYS="$START_DAY"
+      DEFAULT_LOG_DAYS="$START_DAY"
   fi
 
   techo "Collecting system logs from /var/log"
@@ -796,7 +796,7 @@ var-log() {
     do
       if ls "/var/log/${LOG_FILE}"* >/dev/null 2>&1
         then
-          find "/var/log/${LOG_FILE}"* -mtime -"${VAR_LOG_DAYS}" -type f "${EXCLUDE_FILES[@]}" -exec cp -p {} "${TMPDIR}/systemlogs/" \;
+          find "/var/log/${LOG_FILE}"* -mtime -"${DEFAULT_LOG_DAYS}" -type f "${EXCLUDE_FILES[@]}" -exec cp -p {} "${TMPDIR}/systemlogs/" \;
       fi
   done
 
@@ -805,7 +805,7 @@ var-log() {
       if [ -d "/var/log/${STAT_PACKAGE}" ]
         then
           mkdir -p "${TMPDIR}/systemlogs/${STAT_PACKAGE}-data"
-          find "/var/log/${STAT_PACKAGE}" -mtime -"${VAR_LOG_DAYS}" -type f "${EXCLUDE_FILES[@]}" -exec cp -p {} "${TMPDIR}/systemlogs/${STAT_PACKAGE}-data" \;
+          find "/var/log/${STAT_PACKAGE}" -mtime -"${DEFAULT_LOG_DAYS}" -type f "${EXCLUDE_FILES[@]}" -exec cp -p {} "${TMPDIR}/systemlogs/${STAT_PACKAGE}-data" \;
       fi
   done
 
@@ -1405,6 +1405,8 @@ if [ -n "$START_DAY" ] && [ -n "$END_DAY" ] && [ "$END_DAY" -ge "$START_DAY" ]
     techo "Start day should be greater than end day"
     exit 1
 fi
+
+KUBECTL_SINCE_FLAG=(--since="$(( ${START_DAY:=$DEFAULT_LOG_DAYS} * 24 ))h")
 
 setup
 disk-space
