@@ -158,6 +158,9 @@ collect_common_cluster_info() {
     echo "SR_COLLECT_CLUSTER_INFO_DUMP is set, hence collecting cluster-info dump"
     kubectl cluster-info dump > cluster-info.dump.log
   fi
+
+  # Run Trivy Vulnerability scan
+  /etc/sonobuoy/trivy.py > trivy.log 2>&1
 }
 
 collect_rke_info() {

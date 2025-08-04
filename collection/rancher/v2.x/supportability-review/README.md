@@ -65,7 +65,7 @@ If your clusters use any of these security tools, review the required configurat
 4. **SELinux**
    - Please use `export ENABLE_PRIVILEGED="true"`, if SELinux is enabled.
 
-# ✅ Post Environmental Assessment - Installation Steps ✅
+# ✅ Post Assesment - Installation Steps ✅
 
 ### 1. Environment Preparation
 
