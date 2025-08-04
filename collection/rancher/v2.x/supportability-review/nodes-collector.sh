@@ -328,7 +328,7 @@ delete_sensitive_info() {
 }
 
 move_ip_map() {
-  if "${OBFUSCATE}" == "true"; then
+  if [ "${OBFUSCATE}" == "true" ]; then
     echo "moving map"
     mv ip_map.json ${SONOBUOY_RESULTS_DIR}/
   else
@@ -350,7 +350,7 @@ main() {
   collect_node_info
 
   #Handle Obfuscate env var
-  if "${OBFUSCATE}" == "true"; then
+  if [ "${OBFUSCATE}" == "true" ]; then
     echo "obfuscation enabled"
     echo "true" > "obfuscate_data"
 
