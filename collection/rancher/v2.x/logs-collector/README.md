@@ -21,7 +21,7 @@ Output will be written to `/tmp` as a tar.gz archive named `<hostname>-<date>.ta
 
   Using `wget`:
     ```bash
-    wget https://raw.githubusercontent.com/rancherlabs/support-tools/master/collection/rancher/v2.x/logs-collector/rancher2_logs_collector.sh
+    wget --backups https://raw.githubusercontent.com/rancherlabs/support-tools/master/collection/rancher/v2.x/logs-collector/rancher2_logs_collector.sh
     ```
   Using `curl`:
     ```bash
