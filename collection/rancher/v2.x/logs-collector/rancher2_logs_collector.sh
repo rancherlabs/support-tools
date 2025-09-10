@@ -255,6 +255,10 @@ system-all() {
   if command -v conntrack >/dev/null 2>&1; then
     conntrack -S > "${TMPDIR}/systeminfo/conntrack"
   fi
+  if [ -d "/etc/NetworkManager/conf.d" ]; then
+    ls -la /etc/NetworkManager/conf.d/ > "${TMPDIR}/systeminfo/networkmanager-configs" 2>&1
+    find /etc/NetworkManager/conf.d -maxdepth 1 -type f -print -exec cat "{}" \; >> "${TMPDIR}/systeminfo/networkmanager-configs" 2>&1
+  fi
 
 }
 
