@@ -128,10 +128,6 @@ collect_common_cluster_info() {
   if [ ! -s istio-system-apps.json ]; then
     rm istio-system-apps.json
   fi
-  kubectl get apps.catalog.cattle.io -n cis-operator-system -o json > cis-operator-system-apps.json
-  if [ ! -s cis-operator-system-apps.json ]; then
-    rm cis-operator-system-apps.json
-  fi
   kubectl get apps.catalog.cattle.io -n cattle-monitoring-system -o json > cattle-monitoring-system-apps.json
   if [ -s cattle-monitoring-system-apps.json ]; then
     if [ $(jq '.items | length' cattle-monitoring-system-apps.json) -lt 1 ]; then
@@ -160,7 +156,7 @@ collect_common_cluster_info() {
   fi
 
   # Run Trivy Vulnerability scan
-  /etc/sonobuoy/trivy.py > trivy.log 2>&1
+  /etc/sonobuoy/trivy.py ${SONOBUOY_NAMESPACE} > trivy.log 2>&1
 }
 
 collect_rke_info() {
@@ -250,6 +246,10 @@ collect_upstream_cluster_info() {
   kubectl get features.management.cattle.io -o json > features-management.json
   kubectl get bundledeployments.fleet.cattle.io -A -o json > bundledeployment.json
   kubectl get deploy -n cattle-system -o json > cattle-system-deploy.json
+  kubectl get deployments.apps -A -o json | jq -cr '.items[] | select(.metadata.name == "secrets-store-sync-controller-manager") | .spec.template.spec.containers[0].image | split(":")[1] | sub("^v"; "") | split(".") | map(tonumber) | (.[0] * 10000 + .[1] * 100 + .[2])' > secrets-store-sync-controller-manager-version
+  if [ ! -s secrets-store-sync-controller-manager-version ]; then
+    rm secrets-store-sync-controller-manager-version
+  fi
   kubectl get configmap -n kube-system cattle-controllers -o json > cattle-controllers-configmap.json
   kubectl get bundles.fleet.cattle.io -n fleet-local  -o json > fleet-local-bundle.json
   kubectl get apps.catalog.cattle.io -n cattle-resources-system -o json > cattle-resources-system-apps.json
