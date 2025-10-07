@@ -45,56 +45,55 @@ Example output:
 ```bash
 Rancher Systems Summary Report
 ==============================
-Run on Mon Aug 12 16:46:44 UTC 2024
+Run on Tue Oct  7 14:44:27 UTC 2025
 
-NAME                       READY   STATUS    RESTARTS      AGE
-rancher-747c5647d7-5fmh7   2/2     Running   3 (63m ago)   94m
-rancher-747c5647d7-76hjr   2/2     Running   5 (61m ago)   101m
-rancher-747c5647d7-sfmlc   2/2     Running   2 (35m ago)   92m
-Rancher version: v2.9.0
-Rancher id: b82b0b06-6f0b-4052-9f17-3602499f07dc
+NAME                      READY   STATUS    RESTARTS        AGE
+rancher-5d5896844-bkmlj   1/1     Running   2 (27d ago)     27d
+rancher-5d5896844-t8hvc   1/1     Running   6 (6d14h ago)   27d
+rancher-5d5896844-wcf7q   1/1     Running   1 (6d8h ago)    27d
+Rancher version: v2.12.1
+Rancher id: 57299729-c16b-4857-8a48-3a45f36b2b94
 
-Cluster Id     Name             K8s Version           Provider   Created                Nodes
-c-m-mfc8m8z5   a1-ops-prd       v1.30.2+rke2r1        imported   2024-01-27T20:16:15Z   <none>
-c-m-tncnvhrs   a1-harvester-prd v1.27.13+rke2r1       rke2       2023-12-11T00:52:36Z   <none>
-local          a1-rancher-prd   v1.30.2+rke2r1        rke2       2023-08-13T08:46:40Z   <none>
-
---------------------------------------------------------------------------------
-Cluster: a1-ops-prd (c-m-mfc8m8z5)
-Node Id         Address                                         Role     CPU   RAM           OS       Docker Version   Created
-machine-4m5rd   172.28.2.217,a1-ops-prd-medium-7962bbf5-wrc2t   <none>   8     16273392Ki    <none>   <none>           2024-07-10T18:28:25Z
-machine-4tvh7   172.28.2.142,a1-ops-prd-mgmt-105e966c-xvlg7     <none>   8     16273396Ki    <none>   <none>           2024-07-09T13:19:54Z
-machine-5dnpc   172.28.2.234,a1-ops-prd-large-ba0dc7eb-tpmh8    <none>   12    49228384Ki    <none>   <none>           2024-07-12T06:33:51Z
-machine-bpmld   172.28.2.235,a1-ops-prd-large-ba0dc7eb-2xzfv    <none>   12    49228376Ki    <none>   <none>           2024-07-12T06:39:50Z
-machine-hnhqb   172.28.2.185,a1-ops-prd-mgmt-105e966c-b68bx     <none>   8     16273400Ki    <none>   <none>           2024-07-08T05:36:20Z
-machine-j7ckv   172.28.2.220,a1-ops-prd-medium-7962bbf5-sptzb   <none>   8     16273412Ki    <none>   <none>           2024-07-10T18:34:02Z
-machine-lvljm   172.28.2.218,a1-ops-prd-small-8918c748-9hjl7    <none>   4     8029568Ki     <none>   <none>           2024-07-10T18:32:48Z
-machine-q8blw   172.28.2.205,a1-ops-prd-small-8918c748-5wz8n    <none>   4     8029568Ki     <none>   <none>           2024-07-10T17:58:51Z
-machine-rslml   172.28.2.222,a1-ops-prd-small-8918c748-rs7tf    <none>   4     8029564Ki     <none>   <none>           2024-07-10T21:55:58Z
-machine-sv2n2   172.28.2.167,a1-ops-prd-mgmt-105e966c-fbtdz     <none>   8     16273400Ki    <none>   <none>           2024-07-08T13:29:51Z
-machine-v5mxt   172.28.2.219,a1-ops-prd-small-8918c748-r9knc    <none>   4     8029556Ki     <none>   <none>           2024-07-10T18:33:35Z
-machine-vs9tn   172.28.2.223,a1-ops-prd-medium-7962bbf5-lqfwj   <none>   8     16273400Ki    <none>   <none>           2024-07-10T21:54:43Z
-machine-xjwjv   172.28.2.236,a1-ops-prd-large-ba0dc7eb-sbrfm    <none>   12    49228388Ki    <none>   <none>           2024-07-12T06:47:55Z
-machine-z674w   172.28.2.221,a1-ops-prd-small-8918c748-tlzvx    <none>   4     8029560Ki     <none>   <none>           2024-07-10T21:06:23Z
-Node count: 14
+Cluster Id     Name             K8s Version      Provider    Created                Nodes
+c-4kt65        3nuc-harvester   v1.32.4+rke2r1   harvester   2025-07-26T21:28:19Z   <none>
+c-hcrk7        observability    v1.32.7+k3s1     k3s         2025-08-20T20:16:37Z   <none>
+c-m-sh4jmcxr   rke2-harv        v1.32.6+rke2r1   rke2        2025-08-05T20:04:21Z   <none>
+local          local            v1.32.6+k3s1     k3s         2025-07-26T21:23:04Z   <none>
 
 --------------------------------------------------------------------------------
-Cluster: a1-harvester-prd (c-m-tncnvhrs)
-Node Id         Address                   Role     CPU   RAM           OS       Docker Version   Created
-machine-4rbqg   172.28.2.22,a1hrr720p02   <none>   24    396150564Ki   <none>   <none>           2023-12-11T01:32:03Z
-machine-f864m   172.28.2.24,a1hrr720p04   <none>   24    264029632Ki   <none>   <none>           2024-02-10T00:54:14Z
-machine-p5lqp   172.28.2.21,a1hrr720p01   <none>   24    264030104Ki   <none>   <none>           2023-12-11T00:54:08Z
-machine-srwm6   172.28.2.23,a1hrr720p03   <none>   24    396150588Ki   <none>   <none>           2023-12-11T03:12:46Z
-machine-wfv9d   172.28.2.25,a1hrr720p05   <none>   24    264049860Ki   <none>   <none>           2024-02-10T01:01:46Z
-Node count: 5
+Cluster: 3nuc-harvester (c-4kt65)
+Node Id         Address               etcd   Control Plane   Worker   CPU   RAM          OS                     Container Runtime Version   Created
+machine-br42p   10.10.12.103,nuc-03   true   true            false    12    65544020Ki   Harvester v1.5.1-rc2   containerd://2.0.4-k3s2     2025-07-26T21:30:26Z
+machine-f4zxg   10.10.12.101,nuc-01   true   true            false    12    65560396Ki   Harvester v1.5.1-rc2   containerd://2.0.4-k3s2     2025-07-26T21:30:26Z
+machine-hqtmv   10.10.12.102,nuc-02   true   true            false    12    65544008Ki   Harvester v1.5.1-rc2   containerd://2.0.4-k3s2     2025-07-26T21:30:26Z
+Node count: 3
 
 --------------------------------------------------------------------------------
-Cluster: a1-rancher-prd (local)
-Node Id         Address                     Role     CPU   RAM          OS       Docker Version   Created
-machine-5xwg6   172.28.4.191,a1ubranvp-02   <none>   16    32761048Ki   <none>   <none>           2024-07-07T09:03:53Z
-machine-kplk9   172.28.4.116,a1ubranvp-03   <none>   16    32761056Ki   <none>   <none>           2024-07-07T08:55:21Z
-machine-tgqhj   172.28.4.160,a1ubranvp-01   <none>   16    32761060Ki   <none>   <none>           2024-07-07T09:03:53Z
+Cluster: observability (c-hcrk7)
+Node Id         Address                         etcd   Control Plane   Worker   CPU   RAM          OS                     Container Runtime Version    Created
+machine-4j4rp   10.10.12.182,observability-02   true   true            false    4     16381888Ki   SUSE Linux Micro 6.1   containerd://2.0.5-k3s2.32   2025-08-20T20:17:40Z
+machine-8bs8x   10.10.12.181,observability-01   true   true            false    4     16381892Ki   SUSE Linux Micro 6.1   containerd://2.0.5-k3s2.32   2025-08-20T20:17:40Z
+machine-z5khp   10.10.12.183,observability-03   true   true            false    4     16381892Ki   SUSE Linux Micro 6.1   containerd://2.0.5-k3s2.32   2025-08-20T20:17:40Z
+Node count: 3
+
+--------------------------------------------------------------------------------
+Cluster: rke2-harv (c-m-sh4jmcxr)
+Node Id         Address                                           etcd    Control Plane   Worker   CPU   RAM         OS                     Container Runtime Version   Created
+machine-29qwr   10.10.15.94,rke2-harv-workers-sm-xv9q4-k9lnh      false   false           true     4     8137228Ki   SUSE Linux Micro 6.1   containerd://2.0.5-k3s1     2025-08-25T15:38:35Z
+machine-f4hwq   10.10.15.80,rke2-harv-control-plane-92bsj-pf5tn   true    true            false    2     4015184Ki   SUSE Linux Micro 6.1   containerd://2.0.5-k3s1     2025-08-05T20:13:11Z
+machine-fjftz   10.10.15.93,rke2-harv-workers-sm-xv9q4-s688w      false   false           true     4     8137228Ki   SUSE Linux Micro 6.1   containerd://2.0.5-k3s1     2025-08-25T15:29:59Z
+machine-g6z62   10.10.15.77,rke2-harv-control-plane-92bsj-z6qcp   true    true            false    2     4015184Ki   SUSE Linux Micro 6.1   containerd://2.0.5-k3s1     2025-08-05T20:12:37Z
+machine-gpbxx   10.10.15.92,rke2-harv-workers-sm-xv9q4-d5h8t      false   false           true     4     8137228Ki   SUSE Linux Micro 6.1   containerd://2.0.5-k3s1     2025-08-25T15:29:37Z
+machine-l9sl6   10.10.15.76,rke2-harv-control-plane-92bsj-kdm4h   true    true            false    2     4015184Ki   SUSE Linux Micro 6.1   containerd://2.0.5-k3s1     2025-08-05T20:10:11Z
+Node count: 6
+
+--------------------------------------------------------------------------------
+Cluster: local (local)
+Node Id         Address                   etcd   Control Plane   Worker   CPU   RAM         OS                                    Container Runtime Version    Created
+machine-bhffb   10.10.12.123,rancher-03   true   true            false    2     7730528Ki   SUSE Linux Enterprise Server 15 SP6   containerd://2.0.5-k3s2.32   2025-07-31T13:32:48Z
+machine-mwx5g   10.10.12.122,rancher-02   true   true            false    2     7730536Ki   SUSE Linux Enterprise Server 15 SP6   containerd://2.0.5-k3s1.32   2025-07-26T21:23:21Z
+machine-rnwmp   10.10.12.121,rancher-01   true   true            false    2     7730536Ki   SUSE Linux Enterprise Server 15 SP6   containerd://2.0.5-k3s1.32   2025-07-26T21:23:21Z
 Node count: 3
 --------------------------------------------------------------------------------
-Total node count: 22
+Total node count: 15
 ```
