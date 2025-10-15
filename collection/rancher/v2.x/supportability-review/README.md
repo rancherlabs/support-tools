@@ -192,6 +192,8 @@ The supportability review tool collects diagnostic information from:
 - No sensitive application data or secrets are collected
 - Node collection focuses on system configuration and Kubernetes components
 - All collected data is bundled and encrypted
+- Ability to mask hostnames and IP addresses via obfuscation feature.
+- - enabling obfuscation will result in some checks being skipped or alltogether broken. Enable using the command line flag --obfuscate=true.
 
 #### Detailed Collection Information
 - [Collection Details](./collection-details.md) - Comprehensive inventory of collected data

@@ -106,10 +106,7 @@ collect_common_cluster_info() {
   }
   kubectl get services -A -o json > services.json
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' services.json > terminating-services
-  kubectl get deploy -n cattle-system -o json | jq '.items[] | select(.metadata.name=="cattle-cluster-agent") | .status.conditions[] | select(.type=="Available") | .status == "True"' > cattle-cluster-agent-is-running
-  if [ ! -s cattle-cluster-agent-is-running ]; then
-    rm cattle-cluster-agent-is-running
-  fi
+  kubectl get deploy -n cattle-system -o json > cattle-system-deploy.json
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
   kubectl get deploy -n cattle-neuvector-system -o json > cattle-neuvector-system-deploy.json
   kubectl get statefulsets -n cattle-fleet-system -o json > cattle-fleet-system-statefulsets.json
@@ -157,6 +154,10 @@ collect_common_cluster_info() {
 
   # Run Trivy Vulnerability scan
   /etc/sonobuoy/trivy.py ${SONOBUOY_NAMESPACE} > trivy.log 2>&1
+
+  # Check bitnami images
+  jq -cr '.items[].spec.containers[].image' pods.json | grep "bitnami/" > bitnami-image
+  jq -cr '.items[].spec.containers[].image' pods.json | grep "bitnamilegacy/" > bitnamilegacy-image
 }
 
 collect_rke_info() {
@@ -238,6 +239,7 @@ collect_k3s_info() {
 collect_harvester_info() {
   mkdir -p "${OUTPUT_DIR}/harvester"
 
+  kubectl get settings.harvesterhci.io -o json > harvester/settings.json
   kubectl get deploy -n harvester-system -o json > harvester/harvester-system-deploy.json
 }
 
@@ -245,7 +247,6 @@ collect_harvester_info() {
 collect_upstream_cluster_info() {
   kubectl get features.management.cattle.io -o json > features-management.json
   kubectl get bundledeployments.fleet.cattle.io -A -o json > bundledeployment.json
-  kubectl get deploy -n cattle-system -o json > cattle-system-deploy.json
   kubectl get deployments.apps -A -o json | jq -cr '.items[] | select(.metadata.name == "secrets-store-sync-controller-manager") | .spec.template.spec.containers[0].image | split(":")[1] | sub("^v"; "") | split(".") | map(tonumber) | (.[0] * 10000 + .[1] * 100 + .[2])' > secrets-store-sync-controller-manager-version
   if [ ! -s secrets-store-sync-controller-manager-version ]; then
     rm secrets-store-sync-controller-manager-version
@@ -259,6 +260,10 @@ collect_upstream_cluster_info() {
   rancher_deployment_name=$(kubectl -n cattle-system get deployments.apps -o json | jq -cr ".items[] | select(.metadata.labels.chart == \"rancher-$rancher_version\") | .metadata.name")
   jq "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\") | .spec.nodeName] | unique | length" pods.json > unique-rancher-pod-count-by-node
   number_of_rancher_pods=$(jq -cr "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\") | .metadata.name] | length" pods.json)
+  kubectl get deployments.apps $rancher_deployment_name -n cattle-system -o json | jq -cr '.spec.template.spec.containers[0].env[] | select(.name=="AUDIT_LEVEL") | .value' > auditlog-level
+  if [ ! -s auditlog-level ]; then
+    rm auditlog-level
+  fi
 
   kubectl get settings.management.cattle.io install-uuid -o json > settings-install-uuid.json
   kubectl get settings.management.cattle.io ui-brand -o json > settings-ui-brand.json
@@ -267,6 +272,12 @@ collect_upstream_cluster_info() {
   kubectl get roletemplates -o json > roletemplates.json
   kubectl get clusterrole -o json > clusterrole.json
   kubectl get machines.cluster.x-k8s.io -n fleet-default -o json > machines.json
+  kubectl get clusters.provisioning.cattle.io -A -o json > clusters.provisioning.cattle.io.json
+  kubectl exec deployments/rancher -n cattle-system -- ls -l /var/lib/rancher > var-lib-rancher.txt
+}
+
+collect_downstream_cluster_info() {
+  kubectl -n cattle-system exec deployments/cattle-cluster-agent -- ls -l /var/lib/rancher/ > var-lib-rancher.txt
 }
 
 collect_app_info() {
@@ -293,6 +304,8 @@ collect_cluster_info() {
   collect_common_cluster_info
   if [ "${IS_UPSTREAM_CLUSTER}" == "true" ]; then
     collect_upstream_cluster_info
+  else
+    collect_downstream_cluster_info
   fi
 
   case $CLUSTER_PROVIDER in
