@@ -74,10 +74,7 @@ collect_systeminfo() {
   df -i ${HOST_FS_PREFIX}/var > systeminfo/dfivar 2>&1
   df ${HOST_FS_PREFIX}/var > systeminfo/dfvar 2>&1
 
-  # TODO: Check if the sysctl settings are same on the host/inside the container
-  if $(command -v sysctl >/dev/null 2>&1); then
-    sysctl -a > systeminfo/sysctla 2>/dev/null
-  fi
+  mount | grep cgroup > systeminfo/mount_cgroup
 
   kubectl version -o json > systeminfo/kubectl-version.json 2>/dev/null
   kubectl get settings.management.cattle.io server-version -o json > systeminfo/server-version.json 2>/dev/null
@@ -111,6 +108,10 @@ collect_networking_info_ip4() {
 
   conntrack -S > networking/conntrack.out
   nft list ruleset > networking/nft_ruleset 2>&1
+  cat ${HOST_FS_PREFIX}/proc/sys/net/bridge/bridge-nf-call-ip6tables > networking/bridge-nf-call-ip6tables
+  cat ${HOST_FS_PREFIX}/proc/sys/net/bridge/bridge-nf-call-iptables > networking/bridge-nf-call-iptables
+  cat ${HOST_FS_PREFIX}/proc/sys/net/ipv4/ip_forward > networking/ipv4_ip_forward
+  cat ${HOST_FS_PREFIX}/proc/sys/net/ipv4/ip_local_port_range > networking/ip_local_port_range
   cat ${HOST_FS_PREFIX}/proc/sys/net/netfilter/nf_conntrack_max > networking/nf_conntrack_max
   cat ${HOST_FS_PREFIX}/proc/sys/net/netfilter/nf_conntrack_count > networking/nf_conntrack_count
 
