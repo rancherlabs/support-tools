@@ -336,9 +336,11 @@ collect_leases() {
     # List all leases
     kubectl get leases -n "$LEASE_NAMESPACE" -o wide > "${output_dir}/leases-list.txt" 2>&1 || true
 
-    # Get operator-specific lease
-    kubectl get lease "${OPERATOR_NAME}" -n "$LEASE_NAMESPACE" -o yaml > "${output_dir}/lease-${OPERATOR_NAME}.yaml" 2>&1 || true
-    kubectl describe lease "${OPERATOR_NAME}" -n "$LEASE_NAMESPACE" > "${output_dir}/lease-${OPERATOR_NAME}-describe.txt" 2>&1 || true
+    # Get operator-specific leases (one right now, eventually we may have more)
+    for LEASE_NAME in scc-controllers; do
+        kubectl get lease "${LEASE_NAME}" -n "$LEASE_NAMESPACE" -o yaml > "${output_dir}/lease-${LEASE_NAME}.yaml" 2>&1 || true
+        kubectl describe lease "${LEASE_NAME}" -n "$LEASE_NAMESPACE" > "${output_dir}/lease-${LEASE_NAME}-describe.txt" 2>&1 || true
+    done
 }
 
 # Function to collect events
