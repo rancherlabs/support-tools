@@ -123,10 +123,16 @@ if ! command -v kubectl &> /dev/null; then
     exit 1
 fi
 
-# Check if yq is available for redaction
+# Check if jq and yq are available for redaction
 if [[ "$REDACT" == "true" ]] && ! command -v yq &> /dev/null && ! command -v jq &> /dev/null; then
     log_warn "jq or yq not found. Secret redaction will be more aggressive and less specific."
     log_warn "Install both jq and yq for selective redaction of secret fields."
+    if ! command -v jq &> /dev/null; then
+      log_warn "jq is missing or not in PATH env"
+    fi
+    if ! command -v yq &> /dev/null; then
+      log_warn "yq is missing or not in PATH env"
+    fi
 fi
 
 # Check if we can connect to the cluster
