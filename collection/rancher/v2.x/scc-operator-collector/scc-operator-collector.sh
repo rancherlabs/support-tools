@@ -26,10 +26,11 @@ usage() {
 Usage: $(basename "$0") [OPTIONS]
 
 Collect diagnostic information for the SCC Operator into a support bundle.
+This script is designed to be run with minimal dependencies (only kubectl and awk).
+For analyzing the bundle, use the 'analyzer.sh' script on a machine with jq and yq.
 
 OPTIONS:
     --no-redact              Disable redaction of sensitive information in secrets.
-                             This will force folder output and convert secret data to readable stringData.
                              (WARNING: Bundle will contain sensitive data)
     --output <folder|tar>    Output format (default: tar)
                              - folder: Create a directory with collected files
@@ -40,19 +41,17 @@ OPTIONS:
     -h, --help               Show this help message
 
 EXAMPLES:
-    # Collect support bundle with default settings (specific fields redacted, tar.gz output)
+    # Collect support bundle with default settings (sensitive fields redacted, tar.gz output)
     $(basename "$0")
 
-    # Collect bundle without redaction (for local debugging only, forces folder output)
+    # Collect bundle without redaction (for local debugging only)
     $(basename "$0") --no-redact
 
-    # Create a folder bundle for local inspection
-    $(basename "$0") --output folder
-
 SECURITY NOTES:
-    - By default, specific sensitive fields in secrets are redacted.
-    - Use --no-redact only for local debugging.
-    - When --no-redact is used, output is automatically forced to 'folder' for security.
+    - By default, sensitive secret data is redacted.
+    - Use the 'analyzer.sh' script to view secrets in a human-readable format.
+    - If using --no-redact, the output will be forced to folder mode.
+    - If using --no-redact, the output will contain all base64-encoded secret data.
 
 EOF
     exit 1
@@ -76,6 +75,7 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --no-redact)
             REDACT="false"
+            OUTPUT_FORMAT="folder"
             shift
             ;;
         --output)
@@ -110,33 +110,16 @@ if [[ "$OUTPUT_FORMAT" != "folder" && "$OUTPUT_FORMAT" != "tar" ]]; then
     exit 1
 fi
 
-# Security check: if --no-redact is used, force folder output
-if [[ "$REDACT" == "false" && "$OUTPUT_FORMAT" == "tar" ]]; then
-    log_warn "The --no-redact flag is being used, which contains sensitive data."
-    log_warn "Forcing output to 'folder' format for security purposes."
-    OUTPUT_FORMAT="folder"
+# Enforce folder output for no-redact mode
+if [[ "$REDACT" == "false" && "$OUTPUT_FORMAT" != "folder" ]]; then
+  OUTPUT_FORMAT="folder"
+  log_warn "Forcing output to folder due to no-redact flag usage"
 fi
 
 # Check if kubectl is available
 if ! command -v kubectl &> /dev/null; then
     log_error "kubectl not found. Please install kubectl and try again."
     exit 1
-fi
-
-# Check if jq and yq are available for redaction
-if [[ "$REDACT" == "true" ]]; then
-    if ! command -v jq &> /dev/null; then
-      log_warn "jq is missing or not in PATH env"
-      JQ_MISSING=1
-    fi
-    if ! command -v yq &> /dev/null; then
-      log_warn "yq is missing or not in PATH env"
-      YQ_MISSING=1
-    fi
-    if [[ -n "$JQ_MISSING" || -n "$YQ_MISSING" ]]; then
-      log_warn "jq or yq not found. Secret redaction will be more aggressive and less specific."
-      log_warn "Install both jq and yq for selective redaction of secret fields."
-    fi
 fi
 
 # Check if we can connect to the cluster
@@ -150,46 +133,17 @@ BUNDLE_DIR="${BUNDLE_NAME}"
 log_info "Creating support bundle directory: ${BUNDLE_DIR}"
 mkdir -p "${BUNDLE_DIR}"
 
-# Redaction/Transformation function for secrets
+# Redaction function for secrets
 redact_secret() {
     local input_file="$1"
     local secret_name="$2"
 
-    # Fallback for missing tools
-    if [[ -n "$YQ_MISSING" || -n "$JQ_MISSING" ]]; then
-        if [[ "$REDACT" == "false" ]]; then
-            log_warn "yq not found, cannot convert secret data to stringData for readability. Secret data will remain base64 encoded."
-            cat "$input_file"
-        else
-            log_warn "jq and/or yq not found, falling back to basic (full) redaction for secret '$secret_name'."
-            # Fallback: use sed to redact all values under the 'data:' field. This is an aggressive but safe default.
-            awk '
-            /^data:/ {in_data=1; print; next}
-            in_data && /^[[:space:]]+[a-zA-Z0-9_.-]+:/ {
-              sub(/:.*/, ": \"[REDACTED]\""); print; next
-            }
-            in_data && /^[^[:space:]]/ {in_data=0}
-            {print}
-            ' "$input_file"
-        fi
-        return
-    fi
-
-    # Step 1: Always convert .data to .stringData for readability.
-    # This creates a temporary representation of the secret in JSON format.
-    local secret_json
-    secret_json=$(yq eval '(select(.kind == "Secret" and .data) | .stringData = .data | del(.data) | .stringData |= with_entries(.value |= @base64d)) // .' -o=json "$input_file")
-
-    # If redaction is disabled, we're done. Convert back to YAML and exit.
     if [[ "$REDACT" == "false" ]]; then
-        echo "$secret_json" | yq eval -P -
+        cat "$input_file"
         return
     fi
 
-    # Step 2: Apply redaction to the .stringData field.
     local do_not_redact_keys=()
-
-    # Define keys that are safe to be included in the support bundle.
     if [[ "$secret_name" =~ ^scc-system-credentials- ]]; then
          do_not_redact_keys+=("systemLogin" "systemToken")
     elif [[ "$secret_name" == "scc-registration" ]]; then
@@ -198,27 +152,30 @@ redact_secret() {
          do_not_redact_keys+=("payload")
     fi
 
-    local key_conditions="false" # Default to redacting everything
+    local key_regex_part=""
     if [[ ${#do_not_redact_keys[@]} -gt 0 ]]; then
-      key_conditions=""
-      for key in "${do_not_redact_keys[@]}"; do
-          [[ -n "$key_conditions" ]] && key_conditions+=" or "
-          key_conditions+=".key == \"${key}\""
-      done
+        key_regex_part="^[[:space:]]+($(IFS="|"; echo "${do_not_redact_keys[*]}")):"
+    else
+        key_regex_part="^$" # Match nothing
     fi
 
-    # The jq filter now redacts a field in .stringData if it does NOT match the key_conditions.
-    echo "$secret_json" \
-      | jq --arg cond "$key_conditions" '
-          if .stringData then
-            .stringData |= with_entries(
-              if ('"$key_conditions"') then . else .value = "[REDACTED]" end
-            )
-          else
-            .
-          end
-        ' \
-      | yq eval -P -
+    local redacted_b64
+    redacted_b64=$(echo -n "[REDACTED]" | base64)
+
+    awk -v keep_regex="$key_regex_part" -v redacted_val="$redacted_b64" '
+        /^data:/ {in_data=1; print; next}
+        in_data && /^[[:space:]]+[a-zA-Z0-9_.-]+:/ {
+            if (keep_regex != "^$" && $0 ~ keep_regex) {
+                print
+            } else {
+                sub(/:.*/, ": " redacted_val);
+                print
+            }
+            next
+        }
+        in_data && /^[^[:space:]]/ {in_data=0}
+        {print}
+    ' "$input_file"
 }
 
 # Function to collect cluster information
@@ -243,7 +200,8 @@ collect_registrations() {
     kubectl get registrations.scc.cattle.io -A -o wide > "${output_dir}/registrations-list.txt" 2>&1 || true
 
     # Get detailed YAML for each registration
-    local registrations=$(kubectl get registrations.scc.cattle.io -A -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+    local registrations
+    registrations=$(kubectl get registrations.scc.cattle.io -A -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
 
     if [[ -n "$registrations" ]]; then
         for reg in $registrations; do
@@ -276,7 +234,8 @@ collect_secrets() {
 
     # Collect secrets matching patterns
     for pattern in "${secret_patterns[@]}"; do
-        local secrets=$(kubectl get secrets -n "$OPERATOR_NAMESPACE" -o jsonpath="{.items[?(@.metadata.name matches \"^${pattern}\")].metadata.name}" 2>/dev/null || echo "")
+        local secrets
+        secrets=$(kubectl get secrets -n "$OPERATOR_NAMESPACE" -o jsonpath="{.items[?(@.metadata.name matches \"^${pattern}\")].metadata.name}" 2>/dev/null || echo "")
 
         if [[ -n "$secrets" ]]; then
             for secret in $secrets; do
@@ -296,9 +255,9 @@ collect_secrets() {
     kubectl get secrets -n "$OPERATOR_NAMESPACE" -o wide > "${output_dir}/secrets-list.txt" 2>&1 || true
 
     if [[ "$REDACT" == "true" ]]; then
-        echo "NOTE: Specific sensitive fields in secrets have been redacted for security." > "${output_dir}/REDACTED.txt"
+        echo "NOTE: Sensitive fields in secrets have been redacted for security." > "${output_dir}/REDACTED.txt"
     else
-        echo "WARNING: This bundle contains UNREDACTED secret data" > "${output_dir}/UNREDACTED-WARNING.txt"
+        echo "WARNING: This bundle contains UNREDACTED secret data (base64 encoded)." > "${output_dir}/UNREDACTED-WARNING.txt"
     fi
 }
 
@@ -325,7 +284,8 @@ collect_operator_pods() {
     kubectl get pods -n "$OPERATOR_NAMESPACE" -o wide > "${output_dir}/pods-list.txt" 2>&1 || true
 
     # Get pods with operator label
-    local pods=$(kubectl get pods -n "$OPERATOR_NAMESPACE" -l "app.kubernetes.io/name=${OPERATOR_NAME}" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+    local pods
+    pods=$(kubectl get pods -n "$OPERATOR_NAMESPACE" -l "app.kubernetes.io/name=${OPERATOR_NAME}" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
 
     if [[ -n "$pods" ]]; then
         for pod in $pods; do
@@ -358,7 +318,7 @@ collect_leases() {
     # List all leases
     kubectl get leases -n "$LEASE_NAMESPACE" -o wide > "${output_dir}/leases-list.txt" 2>&1 || true
 
-    # Get operator-specific leases (one right now, eventually we may have more)
+    # Get operator-specific leases
     for LEASE_NAME in scc-controllers; do
         kubectl get lease "${LEASE_NAME}" -n "$LEASE_NAMESPACE" -o yaml > "${output_dir}/lease-${LEASE_NAME}.yaml" 2>&1 || true
         kubectl describe lease "${LEASE_NAME}" -n "$LEASE_NAMESPACE" > "${output_dir}/lease-${LEASE_NAME}-describe.txt" 2>&1 || true
@@ -397,9 +357,9 @@ collect_crd() {
 create_metadata() {
     log_info "Creating metadata file..."
     local metadata_file="${BUNDLE_DIR}/metadata.txt"
-    local redaction_note="Unredacted"
-    if [[ "$REDACT" == "true" ]]; then
-        redaction_note="Specific fields redacted"
+    local redaction_note="Sensitive secret data redacted"
+    if [[ "$REDACT" == "false" ]]; then
+        redaction_note="Unredacted (base64 encoded)"
     fi
 
     cat > "$metadata_file" <<EOF
@@ -438,9 +398,9 @@ EOF
 
 !!! SECURITY WARNING !!!
 =======================
-This support bundle contains UNREDACTED secret data.
+This support bundle contains UNREDACTED secret data (base64 encoded).
 Do NOT share this bundle externally.
-Only use for local debugging purposes.
+Use the 'analyzer.sh' script for local debugging.
 
 EOF
     fi
