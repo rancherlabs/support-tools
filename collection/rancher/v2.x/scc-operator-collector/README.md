@@ -115,4 +115,4 @@ The script creates a new `processed-secrets` directory inside the bundle directo
 -   Decodes all `data` fields from secrets and displays them as human-readable `stringData`.
 -   For the `rancher-scc-metrics` secret, it pretty-prints the JSON `payload` for easier review.
 
-This allows you to easily inspect secret contents without manual `base64` decoding, which is especially useful when debugging unredacted bundles locally.
+This allows you to easily inspect secret contents without manual `base64` decoding, which is especially useful when reviewing bundles locally.
