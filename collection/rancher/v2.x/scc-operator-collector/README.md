@@ -13,10 +13,21 @@ The script can be run directly from your local machine, provided you have `kubec
 
 ### Execution
 
+Save a copy of the script:
+
+- Using `wget`:
+    ```bash
+    wget --backups https://raw.githubusercontent.com/rancherlabs/support-tools/master/collection/rancher/v2.x/scc-operator-collector/scc-operator-collector.sh
+    ```
+- Using `curl`:
+    ```bash
+    curl -OLs https://raw.githubusercontent.com/rancherlabs/support-tools/master/collection/rancher/v2.x/scc-operator-collector/scc-operator-collector.sh
+    ```
+
 To run the collector with default settings:
 
 ```bash
-./scc-operator-collector.sh
+bash scc-operator-collector.sh
 ```
 
 This will create a compressed `tar.gz` archive named `scc-support-bundle-<timestamp>.tar.gz` in the current directory.
@@ -38,23 +49,23 @@ The script accepts several options to customize its behavior:
 
 - **Default collection:**
   ```bash
-  ./scc-operator-collector.sh
+  bash scc-operator-collector.sh
   ```
 
 - **Collect into a folder for local inspection:**
   ```bash
-  ./scc-operator-collector.sh --output folder
+  bash scc-operator-collector.sh --output folder
   ```
 
 - **Collect without redacting secrets (for local debugging only):**
   ```bash
-  ./scc-operator-collector.sh --no-redact
+  bash scc-operator-collector.sh --no-redact
   ```
   *Note: This will force the output to `folder` format for security reasons.*
 
 - **Collect from a custom namespace:**
   ```bash
-  ./scc-operator-collector.sh --namespace my-scc-operator
+  bash scc-operator-collector.sh --namespace my-scc-operator
   ```
 
 ## What is Collected?
