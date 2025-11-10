@@ -6,7 +6,7 @@
 set -e
 
 # Default values
-REDACT=true
+REDACT="true"
 OUTPUT_FORMAT="tar"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 BUNDLE_NAME="scc-support-bundle-${TIMESTAMP}"
@@ -17,7 +17,7 @@ OPERATOR_NAME="rancher-scc-operator"
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
+YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
 # Usage information
@@ -75,7 +75,7 @@ log_error() {
 while [[ $# -gt 0 ]]; do
     case $1 in
         --no-redact)
-            REDACT=false
+            REDACT="false"
             shift
             ;;
         --output)
@@ -124,14 +124,18 @@ if ! command -v kubectl &> /dev/null; then
 fi
 
 # Check if jq and yq are available for redaction
-if [[ "$REDACT" == "true" ]] && ! command -v yq &> /dev/null && ! command -v jq &> /dev/null; then
-    log_warn "jq or yq not found. Secret redaction will be more aggressive and less specific."
-    log_warn "Install both jq and yq for selective redaction of secret fields."
+if [[ "$REDACT" == "true" ]]; then
     if ! command -v jq &> /dev/null; then
       log_warn "jq is missing or not in PATH env"
+      JQ_MISSING=1
     fi
     if ! command -v yq &> /dev/null; then
       log_warn "yq is missing or not in PATH env"
+      YQ_MISSING=1
+    fi
+    if [[ -n "$JQ_MISSING" || -n "$YQ_MISSING" ]]; then
+      log_warn "jq or yq not found. Secret redaction will be more aggressive and less specific."
+      log_warn "Install both jq and yq for selective redaction of secret fields."
     fi
 fi
 
@@ -153,7 +157,7 @@ redact_secret() {
 
     if [[ "$REDACT" == "false" ]]; then
         # When not redacting, convert data to stringData for readability if yq is available
-        if command -v yq &> /dev/null; then
+        if [[ -z "$YQ_MISSING" ]]; then
             # This expression moves .data to .stringData and base64-decodes the values.
             # The '// .' ensures that files that are not secrets or have no .data field are passed through unchanged.
             yq eval '(select(.kind == "Secret" and .data) | .stringData = .data | del(.data) | .stringData |= with_entries(.value |= @base64d)) // .' "$input_file"
@@ -164,7 +168,7 @@ redact_secret() {
         return
     fi
 
-    if ! command -v jq &> /dev/null && ! command -v yq &> /dev/null; then
+    if [[ -n "$JQ_MISSING" || -n "$YQ_MISSING" ]]; then
         log_warn "jq and/or yq not found, falling back to basic (full) redaction for secret '$secret_name'."
         # Fallback: use sed for basic redaction
         sed -E 's/(^\s+[a-zA-Z0-9_-]+:).*/\1 REDACTED/' "$input_file"
