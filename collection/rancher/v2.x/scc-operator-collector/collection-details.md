@@ -59,8 +59,8 @@ Kubernetes events to provide a timeline of recent activities.
 Information about the leader election lease for the operator.
 
 - **`leases-list.txt`**: A list of all leases in the lease namespace.
-- **`lease-<operator-name>.yaml`**: The YAML definition of the operator's lease object.
-- **`lease-<operator-name>-describe.txt`**: The output of `kubectl describe lease <operator-name>`.
+- **`lease-scc-controllers.yaml`**: The YAML definition of the `scc-controllers` lease object.
+- **`lease-scc-controllers-describe.txt`**: The output of `kubectl describe lease scc-controllers`.
 
 ### 6. Operator Pods (`operator-pods/`)
 
