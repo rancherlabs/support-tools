@@ -155,52 +155,70 @@ redact_secret() {
     local input_file="$1"
     local secret_name="$2"
 
-    if [[ "$REDACT" == "false" ]]; then
-        # When not redacting, convert data to stringData for readability if yq is available
-        if [[ -z "$YQ_MISSING" ]]; then
-            # This expression moves .data to .stringData and base64-decodes the values.
-            # The '// .' ensures that files that are not secrets or have no .data field are passed through unchanged.
-            yq eval '(select(.kind == "Secret" and .data) | .stringData = .data | del(.data) | .stringData |= with_entries(.value |= @base64d)) // .' "$input_file"
-        else
+    # Fallback for missing tools
+    if [[ -n "$YQ_MISSING" || -n "$JQ_MISSING" ]]; then
+        if [[ "$REDACT" == "false" ]]; then
             log_warn "yq not found, cannot convert secret data to stringData for readability. Secret data will remain base64 encoded."
             cat "$input_file"
+        else
+            log_warn "jq and/or yq not found, falling back to basic (full) redaction for secret '$secret_name'."
+            # Fallback: use sed to redact all values under the 'data:' field. This is an aggressive but safe default.
+            awk '
+            /^data:/ {in_data=1; print; next}
+            in_data && /^[[:space:]]+[a-zA-Z0-9_.-]+:/ {
+              sub(/:.*/, ": \"[REDACTED]\""); print; next
+            }
+            in_data && /^[^[:space:]]/ {in_data=0}
+            {print}
+            ' "$input_file"
         fi
         return
     fi
 
-    if [[ -n "$JQ_MISSING" || -n "$YQ_MISSING" ]]; then
-        log_warn "jq and/or yq not found, falling back to basic (full) redaction for secret '$secret_name'."
-        # Fallback: use sed for basic redaction
-        sed -E 's/(^\s+[a-zA-Z0-9_-]+:).*/\1 REDACTED/' "$input_file"
+    # Step 1: Always convert .data to .stringData for readability.
+    # This creates a temporary representation of the secret in JSON format.
+    local secret_json
+    secret_json=$(yq eval '(select(.kind == "Secret" and .data) | .stringData = .data | del(.data) | .stringData |= with_entries(.value |= @base64d)) // .' -o=json "$input_file")
+
+    # If redaction is disabled, we're done. Convert back to YAML and exit.
+    if [[ "$REDACT" == "false" ]]; then
+        echo "$secret_json" | yq eval -P -
         return
     fi
 
-    local keys_to_redact=()
-    if [[ "$secret_name" == "scc-registration" || "$secret_name" =~ ^registration-code- ]]; then
-        keys_to_redact+=("regCode")
-    elif [[ "$secret_name" =~ ^scc-system-credentials- ]]; then
-        keys_to_redact+=("password")
+    # Step 2: Apply redaction to the .stringData field.
+    local do_not_redact_keys=()
+
+    # Define keys that are safe to be included in the support bundle.
+    if [[ "$secret_name" =~ ^scc-system-credentials- ]]; then
+         do_not_redact_keys+=("systemLogin" "systemToken")
+    elif [[ "$secret_name" == "scc-registration" ]]; then
+         do_not_redact_keys+=("registrationType")
+    elif [[ "$secret_name" == "rancher-scc-metrics" ]]; then
+         do_not_redact_keys+=("payload")
     fi
 
-    if [[ ${#keys_to_redact[@]} -gt 0 ]]; then
-      local key_conditions=""
-      for key in "${keys_to_redact[@]}"; do
+    local key_conditions="false" # Default to redacting everything
+    if [[ ${#do_not_redact_keys[@]} -gt 0 ]]; then
+      key_conditions=""
+      for key in "${do_not_redact_keys[@]}"; do
           [[ -n "$key_conditions" ]] && key_conditions+=" or "
           key_conditions+=".key == \"${key}\""
       done
-
-      yq eval -o=json "$input_file" \
-        | jq --arg cond "$key_conditions" '
-            .data |= with_entries(
-              if ('"$key_conditions"') then .value = "[REDACTED]" else . end
-            )
-          ' \
-        | yq eval -P -
-    else
-        # If no specific keys are targeted for redaction for this secret,
-        # we pass it through unmodified.
-        cat "$input_file"
     fi
+
+    # The jq filter now redacts a field in .stringData if it does NOT match the key_conditions.
+    echo "$secret_json" \
+      | jq --arg cond "$key_conditions" '
+          if .stringData then
+            .stringData |= with_entries(
+              if ('"$key_conditions"') then . else .value = "[REDACTED]" end
+            )
+          else
+            .
+          end
+        ' \
+      | yq eval -P -
 }
 
 # Function to collect cluster information
