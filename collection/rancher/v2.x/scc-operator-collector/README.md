@@ -24,11 +24,11 @@ If run on a k8s cluster node, the script only needs to be run on a single node a
 1.  **Download the script:**
     -   Using `wget`:
         ```bash
-        wget https://raw.githubusercontent.com/rancher/support-tools/master/collection/rancher/v2.x/scc-operator-collector/scc-operator-collector.sh
+        wget https://raw.githubusercontent.com/rancherlabs/support-tools/refs/heads/master/collection/rancher/v2.x/scc-operator-collector/scc-operator-collector.sh
         ```
     -   Using `curl`:
         ```bash
-        curl -O https://raw.githubusercontent.com/rancher/support-tools/master/collection/rancher/v2.x/scc-operator-collector/scc-operator-collector.sh
+        curl -O https://raw.githubusercontent.com/rancherlabs/support-tools/refs/heads/master/collection/rancher/v2.x/scc-operator-collector/scc-operator-collector.sh
         ```
 
 2.  **Run the collector:**
