@@ -360,6 +360,13 @@ networking() {
     mkdir -p "${TMPDIR}/networking/cni"
     find /etc/cni/net.d -type f -not -name '*kubeconfig' -exec cp {} "${TMPDIR}/networking/cni" ';'
   fi
+  if command -v ethtool >/dev/null 2>&1; then
+    for _interface in flannel.1 vxlan.calico cilium_vxlan
+      do
+        echo "--- $_interface" >> "${TMPDIR}/networking/ethtool" 2>&1
+        ethtool -k $_interface >> "${TMPDIR}/networking/ethtool" 2>&1
+    done
+  fi
 
 }
 
