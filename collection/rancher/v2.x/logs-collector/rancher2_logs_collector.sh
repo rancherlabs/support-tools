@@ -14,6 +14,10 @@ JOURNALD_LOGS=(docker k3s rke2-agent rke2-server containerd cloud-init systemd-n
 # Included /var/log files
 VAR_LOG_FILES=(syslog messages kern docker cloud-init audit/ dmesg)
 
+# Included Kubernetes object types
+K8S_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations volumeattachments)
+K8S_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases networkpolicies pods pvc replicasets roles rolebindings statefulsets)
+
 # Default days log files to include
 DEFAULT_LOG_DAYS=7
 
@@ -597,27 +601,24 @@ k3s-k8s() {
     techo "Collecting k3s cluster logs"
     mkdir -p "${TMPDIR}/${DISTRO}/kubectl"
     KUBECONFIG=/var/lib/rancher/${DISTRO}/agent/kubelet.kubeconfig
-    k3s kubectl --kubeconfig="$KUBECONFIG" get nodes -o wide > "${TMPDIR}/${DISTRO}/kubectl/nodes" 2>&1
-    k3s kubectl --kubeconfig="$KUBECONFIG" describe nodes > "${TMPDIR}/${DISTRO}/kubectl/nodesdescribe" 2>&1
+    k3s kubectl --kubeconfig="$KUBECONFIG" api-resources > "${TMPDIR}/${DISTRO}/kubectl/api-resources" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" version > "${TMPDIR}/${DISTRO}/kubectl/version" 2>&1
-    k3s kubectl --kubeconfig="$KUBECONFIG" get pods -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/pods" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" get svc -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/services" 2>&1
   fi
 
   if [[ "${K3S_SERVER}" && ! "${API_SERVER_OFFLINE}" ]]; then
     unset KUBECONFIG
-    k3s kubectl api-resources > "${TMPDIR}/${DISTRO}/kubectl/api-resources" 2>&1
-    K3S_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations volumeattachments)
-    K3S_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases networkpolicies pods pvc replicasets roles rolebindings statefulsets)
-    for OBJECT in "${K3S_OBJECTS[@]}"; do
+    k3s kubectl get nodes -o wide > "${TMPDIR}/${DISTRO}/kubectl/nodes" 2>&1
+    k3s kubectl describe nodes > "${TMPDIR}/${DISTRO}/kubectl/nodesdescribe" 2>&1
+    k3s kubectl get pods -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/pods" 2>&1
+
+    for OBJECT in "${K8S_OBJECTS[@]}"; do
       k3s kubectl get "$OBJECT" -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
     done
-    for OBJECT in "${K3S_OBJECTS_NAMESPACED[@]}"; do
+    for OBJECT in "${K8S_OBJECTS_NAMESPACED[@]}"; do
       k3s kubectl get "$OBJECT" --all-namespaces -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
     done
-  fi
 
-  if [[ "${K3S_SERVER}" && ! "${API_SERVER_OFFLINE}" ]]; then
     techo "Collecting system pod logs"
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
@@ -626,6 +627,7 @@ k3s-k8s() {
         k3s kubectl -n "$SYSTEM_NAMESPACE" logs --previous --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous" 2>&1
       done
     done
+
   elif [[ "${K3S_AGENT}" || "${API_SERVER_OFFLINE}" ]]; then
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
@@ -662,33 +664,28 @@ rke2-k8s() {
     techo "Collecting rke2 cluster logs"
     mkdir -p "${TMPDIR}/${DISTRO}/kubectl"
     KUBECONFIG="${RKE2_DATA_DIR}/agent/kubelet.kubeconfig"
-    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get nodes -o wide > "${TMPDIR}/${DISTRO}/kubectl/nodes" 2>&1
-    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" describe nodes > "${TMPDIR}/${DISTRO}/kubectl/nodesdescribe" 2>&1
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" version > "${TMPDIR}/${DISTRO}/kubectl/version" 2>&1
-    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get pods -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/pods" 2>&1
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get svc -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/services" 2>&1
+    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" api-resources > "${TMPDIR}/${DISTRO}/kubectl/api-resources" 2>&1
   fi
 
   if [[ "${RKE2_SERVER}" && ! "${API_SERVER_OFFLINE}" ]]; then
     KUBECONFIG="/etc/rancher/${DISTRO}/rke2.yaml"
-    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" api-resources > "${TMPDIR}/${DISTRO}/kubectl/api-resources" 2>&1
+    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get nodes -o wide > "${TMPDIR}/${DISTRO}/kubectl/nodes" 2>&1
+    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" describe nodes > "${TMPDIR}/${DISTRO}/kubectl/nodesdescribe" 2>&1
+    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get pods -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/pods" 2>&1
     if [ -f /etc/cni/net.d/05-cilium.conflist ]; then
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get CiliumNetworkPolicy -A > "${TMPDIR}/${DISTRO}/kubectl/ciliumnetworkpolicy" 2>&1
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get CiliumClusterwideNetworkPolicy > "${TMPDIR}/${DISTRO}/kubectl/ciliumclusterwidenetworkpolicy" 2>&1
     fi
 
-    RKE2_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations volumeattachments)
-    RKE2_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases networkpolicies pods pvc replicasets roles rolebindings statefulsets)
-
-    for OBJECT in "${RKE2_OBJECTS[@]}"; do
+    for OBJECT in "${K8S_OBJECTS[@]}"; do
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get "$OBJECT" -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
     done
-    for OBJECT in "${RKE2_OBJECTS_NAMESPACED[@]}"; do
+    for OBJECT in "${K8S_OBJECTS_NAMESPACED[@]}"; do
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get "$OBJECT" --all-namespaces -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
     done
-  fi
 
-  if [[ "${RKE2_SERVER}" && ! "${API_SERVER_OFFLINE}" ]]; then
     techo "Collecting rke2 system pod logs"
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
     KUBECONFIG="/etc/rancher/${DISTRO}/rke2.yaml"
@@ -698,6 +695,7 @@ rke2-k8s() {
         "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" logs -p --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}-previous" 2>&1
       done
     done
+
   elif [[ "${RKE2_AGENT}" || "${API_SERVER_OFFLINE}" ]]; then
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
