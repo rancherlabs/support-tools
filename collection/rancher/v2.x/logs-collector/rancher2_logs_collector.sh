@@ -630,9 +630,10 @@ k3s-k8s() {
 
   elif [[ "${K3S_AGENT}" || "${API_SERVER_OFFLINE}" ]]; then
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
+    cd /var/log/pods
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-      if ls -d "/var/log/pods/$SYSTEM_NAMESPACE"* > /dev/null 2>&1; then
-        cp -r -p "/var/log/pods/$SYSTEM_NAMESPACE"* "${TMPDIR}/${DISTRO}/podlogs/"
+      if ls -d "${SYSTEM_NAMESPACE}_"* > /dev/null 2>&1; then
+        find "${SYSTEM_NAMESPACE}"_* -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp --parents -p {} "${TMPDIR}/${DISTRO}/podlogs/" \;
       fi
     done
   fi
@@ -698,9 +699,10 @@ rke2-k8s() {
 
   elif [[ "${RKE2_AGENT}" || "${API_SERVER_OFFLINE}" ]]; then
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
+    cd /var/log/pods
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-      if ls -d "/var/log/pods/${SYSTEM_NAMESPACE}"* > /dev/null 2>&1; then
-        find "/var/log/pods/${SYSTEM_NAMESPACE}" -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp -p {} "${TMPDIR}/${DISTRO}/podlogs/" \;
+      if ls -d "${SYSTEM_NAMESPACE}_"* > /dev/null 2>&1; then
+        find "${SYSTEM_NAMESPACE}"_* -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp --parents -p {} "${TMPDIR}/${DISTRO}/podlogs/" \;
       fi
     done
   fi
@@ -766,8 +768,9 @@ kubeadm-k8s() {
     done
   done
   for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-    if ls -d "/var/log/pods/${SYSTEM_NAMESPACE}"* > /dev/null 2>&1; then
-      cp -r -p "/var/log/pods/${SYSTEM_NAMESPACE}"* "${TMPDIR}/kubeadm/podlogs/"
+    cd /var/log/pods
+    if ls -d "${SYSTEM_NAMESPACE}_"* > /dev/null 2>&1; then
+      find "${SYSTEM_NAMESPACE}"_* -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp --parents -p {} "${TMPDIR}/kubeadm/podlogs/" \;
     fi
   done
 
