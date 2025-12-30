@@ -459,9 +459,9 @@ k3s-logs() {
   fi
   if [ -d "/etc/rancher/${DISTRO}/config.yaml.d" ]
     then
-      for _FILE in /etc/rancher/"${DISTRO}"/config.yaml.d/*
+      for _FILE in "/etc/rancher/${DISTRO}/config.yaml.d/"*
         do
-          grep -Ev "token|access-key|secret-key" "/etc/rancher/${DISTRO}/config.yaml.d/$_FILE" >& "${TMPDIR}/${DISTRO}/$_FILE"
+          grep -Ev "token|access-key|secret-key" $_FILE >& "${TMPDIR}/${DISTRO}/$(basename $_FILE)"
       done
   fi
 
@@ -591,9 +591,11 @@ k3s-k8s() {
   if [ -d "/var/lib/rancher/${DISTRO}/server" ]; then
     K3S_SERVER=true
     k3s kubectl get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1
-    if ! k3s kubectl get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1; then
-      API_SERVER_OFFLINE=true
-      techo "[!] Kube-apiserver is offline, collecting local pod logs only"
+    if [[ $? -ne 0 && ! "${API_SERVER_OFFLINE}" ]]
+      then
+        API_SERVER_OFFLINE=true
+        techo "[!] Kube-apiserver is offline, collecting local pod logs only"
+    fi
     fi
   fi
 
@@ -1041,7 +1043,7 @@ rke2-etcd() {
 
 k3s-etcd() {
 
-  if echo > /dev/tcp/127.0.0.1/2379 2>/dev/null; then
+  if (echo > /dev/tcp/127.0.0.1/2379) >/dev/null 2>&1; then
     techo "Collecting k3s etcd info"
     mkdir -p "${TMPDIR}/etcd"
     K3S_DIR=/var/lib/rancher/k3s
