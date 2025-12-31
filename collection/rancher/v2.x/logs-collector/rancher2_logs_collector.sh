@@ -607,6 +607,7 @@ k3s-k8s() {
     k3s kubectl --kubeconfig="$KUBECONFIG" get pods -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/pods" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" api-resources > "${TMPDIR}/${DISTRO}/kubectl/api-resources" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" version > "${TMPDIR}/${DISTRO}/kubectl/version" 2>&1
+    KUBECONFIG=/var/lib/rancher/${DISTRO}/agent/kubeproxy.kubeconfig
     k3s kubectl --kubeconfig="$KUBECONFIG" get svc -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/services" 2>&1
   fi
 
