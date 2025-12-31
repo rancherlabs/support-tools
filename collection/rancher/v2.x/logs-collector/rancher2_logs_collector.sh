@@ -596,7 +596,6 @@ k3s-k8s() {
         API_SERVER_OFFLINE=true
         techo "[!] Kube-apiserver is offline, collecting local pod logs only"
     fi
-    fi
   fi
 
   if [[ "${K3S_AGENT}" && ! "${API_SERVER_OFFLINE}" ]]; then
