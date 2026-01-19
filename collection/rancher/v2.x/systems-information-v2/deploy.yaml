@@ -5,6 +5,7 @@ metadata:
   namespace: cattle-system
 spec:
   serviceAccountName: rancher
+  restartPolicy: Never
   containers:
     - name: rancher-systems-summary
       image: rancherlabs/swiss-army-knife
@@ -20,17 +21,50 @@ spec:
           echo "Rancher id: $(kubectl get settings.management.cattle.io install-uuid --no-headers -o custom-columns=id:value)";
           echo;
           kubectl get clusters.management.cattle.io -o custom-columns=Cluster\ Id:metadata.name,Name:spec.displayName,K8s\ Version:status.version.gitVersion,Provider:status.provider,Created:metadata.creationTimestamp,Nodes:status.appliedSpec.rancherKubernetesEngineConfig.nodes[*].address;
-          CLUSTER_IDS=$(kubectl get cluster.management.cattle.io --no-headers -o custom-columns=id:metadata.name);
+          CLUSTER_IDS=$(kubectl get cluster.management.cattle.io --no-headers -o custom-columns=id:metadata.name)
+          TOTAL_NODE_COUNT=0
+          TOTAL_CPU_COUNT=0
+          TOTAL_CP_CPU=0
+          TOTAL_WORKER_CPU=0
+
           for ID in $CLUSTER_IDS; do
-            CLUSTER_NAME=$(kubectl get cluster.management.cattle.io ${ID} --no-headers -o custom-columns=name:spec.displayName);
-            NODE_COUNT=$(kubectl get nodes.management.cattle.io -n ${ID} --no-headers 2>/dev/null | wc -l );
-            ((TOTAL_NODE_COUNT += NODE_COUNT));
-            echo;
-            echo '--------------------------------------------------------------------------------';
-            echo "Cluster: ${CLUSTER_NAME} (${ID})";
-             kubectl get nodes.management.cattle.io -n ${ID} -o custom-columns=Node\ Id:metadata.name,Address:status.internalNodeStatus.addresses[*].address,etcd:spec.etcd,Control\ Plane:spec.controlPlane,Worker:spec.worker,CPU:status.internalNodeStatus.capacity.cpu,RAM:status.internalNodeStatus.capacity.memory,OS:status.internalNodeStatus.nodeInfo.osImage,Container\ Runtime\ Version:status.internalNodeStatus.nodeInfo.containerRuntimeVersion,Created:metadata.creationTimestamp;
-            echo "Node count: ${NODE_COUNT}";
-          done;
-          echo '--------------------------------------------------------------------------------';
-          echo "Total node count: ${TOTAL_NODE_COUNT}";
-  restartPolicy: Never
+            CLUSTER_NAME=$(kubectl get cluster.management.cattle.io ${ID} --no-headers -o custom-columns=name:spec.displayName)
+
+            # Get node count
+            NODE_COUNT=$(kubectl get nodes.management.cattle.io -n ${ID} --no-headers 2>/dev/null | wc -l)
+
+            # Calculate Total CPUs for this cluster
+            CLUSTER_CPU_TOTAL=$(kubectl get nodes.management.cattle.io -n ${ID} --no-headers -o custom-columns=CPU:status.internalNodeStatus.capacity.cpu 2>/dev/null | awk '{sum += $1} END {print sum + 0}')
+
+            # Calculate Control Plane CPUs (where spec.controlPlane is true)
+            CP_CPU_TOTAL=$(kubectl get nodes.management.cattle.io -n ${ID} --no-headers -o custom-columns=CP:spec.controlPlane,CPU:status.internalNodeStatus.capacity.cpu 2>/dev/null | awk '$1=="true" {sum += $2} END {print sum + 0}')
+
+            # Calculate Worker CPUs (where spec.worker is true)
+            WORKER_CPU_TOTAL=$(kubectl get nodes.management.cattle.io -n ${ID} --no-headers -o custom-columns=W:spec.worker,CPU:status.internalNodeStatus.capacity.cpu 2>/dev/null | awk '$1=="true" {sum += $2} END {print sum + 0}')
+
+            # Update Global Totals
+            ((TOTAL_NODE_COUNT += NODE_COUNT))
+            ((TOTAL_CPU_COUNT += CLUSTER_CPU_TOTAL))
+            ((TOTAL_CP_CPU += CP_CPU_TOTAL))
+            ((TOTAL_WORKER_CPU += WORKER_CPU_TOTAL))
+
+            echo
+            echo '--------------------------------------------------------------------------------'
+            echo "Cluster: ${CLUSTER_NAME} (${ID})"
+
+            # Detailed Node List
+            kubectl get nodes.management.cattle.io -n ${ID} -o custom-columns=Node\ Id:metadata.name,Address:status.internalNodeStatus.addresses[*].address,etcd:spec.etcd,CP:spec.controlPlane,W:spec.worker,CPU:status.internalNodeStatus.capacity.cpu,RAM:status.internalNodeStatus.capacity.memory,OS:status.internalNodeStatus.nodeInfo.osImage,Created:metadata.creationTimestamp
+
+            echo ""
+            echo "Node count:         ${NODE_COUNT}"
+            echo "Control Plane CPUs: ${CP_CPU_TOTAL}"
+            echo "Worker Node CPUs:   ${WORKER_CPU_TOTAL}"
+            echo "Cluster Total CPUs: ${CLUSTER_CPU_TOTAL}"
+          done
+
+          echo '--------------------------------------------------------------------------------'
+          echo "GLOBAL SUMMARY"
+          echo "Total Nodes:              ${TOTAL_NODE_COUNT}"
+          echo "Total Control Plane CPUs: ${TOTAL_CP_CPU}"
+          echo "Total Worker CPUs:        ${TOTAL_WORKER_CPU}"
+          echo "Total Aggregate CPUs:     ${TOTAL_CPU_COUNT}"
