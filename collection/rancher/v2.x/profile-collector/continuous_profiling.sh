@@ -85,30 +85,39 @@ collect_pod() {
   echo
 }
 
+collect_rancher_pod() {
+
+  local pod=$1
+
+  for profile in ${PROFILES[@]}; do
+    techo Getting $profile profile for $pod
+    if [ "$profile" == "profile" ]; then
+      kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile}?seconds=${DURATION} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
+    else
+      kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
+    fi
+  done
+
+  collect_pod "$pod" "$NAMESPACE" "$CONTAINER" "$TMPDIR"
+
+  if [ "$APP" == "rancher" ]; then
+    techo Getting rancher-audit-logs for $pod
+    kubectl logs --since 5m -n $NAMESPACE $pod -c rancher-audit-log >${TMPDIR}/${pod}-audit.log
+    echo
+
+    techo Getting metrics for Rancher
+    kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- bash -c 'curl -s -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -k https://127.0.0.1/metrics' >${TMPDIR}/$pod-metrics.txt
+    echo
+  fi
+}
+
 collect_rancher() {
 
   for pod in $(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name); do
-    for profile in ${PROFILES[@]}; do
-      techo Getting $profile profile for $pod
-      if [ "$profile" == "profile" ]; then
-        kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile}?seconds=${DURATION} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
-      else
-        kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- curl -s http://localhost:6060/debug/pprof/${profile} >${TMPDIR}/${pod}-${profile}-$(date +'%Y-%m-%dT%H_%M_%S')
-      fi
-    done
-
-    collect_pod "$pod" "$NAMESPACE" "$CONTAINER" "$TMPDIR"
-
-    if [ "$APP" == "rancher" ]; then
-      techo Getting rancher-audit-logs for $pod
-      kubectl logs --since 5m -n $NAMESPACE $pod -c rancher-audit-log >${TMPDIR}/${pod}-audit.log
-      echo
-
-      techo Getting metrics for Rancher
-      kubectl exec -n $NAMESPACE $pod -c ${CONTAINER} -- bash -c 'curl -s -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -k https://127.0.0.1/metrics' >${TMPDIR}/$pod-metrics.txt
-      echo
-    fi
+    collect_rancher_pod "$pod" &
   done
+
+  wait
 }
 
 collect_fleet() {
