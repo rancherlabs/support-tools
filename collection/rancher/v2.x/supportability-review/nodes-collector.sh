@@ -81,6 +81,7 @@ collect_systeminfo() {
   if [ ! -s systeminfo/server-version.json ]; then
     rm systeminfo/server-version.json
   fi
+  lsblk -d -o name,rota > systeminfo/rotational 2>&1
 }
 
 collect_networking_info_ip4() {

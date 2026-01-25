@@ -155,9 +155,10 @@ collect_common_cluster_info() {
   # Run Trivy Vulnerability scan
   /etc/sonobuoy/trivy.py ${SONOBUOY_NAMESPACE} > trivy.log 2>&1
 
-  # Check bitnami images
+  # Check images
   jq -cr '.items[].spec.containers[].image' pods.json | grep "bitnami/" > bitnami-image
   jq -cr '.items[].spec.containers[].image' pods.json | grep "bitnamilegacy/" > bitnamilegacy-image
+  jq -cr '.items[].spec.containers[].image' pods.json | grep "/nginx-ingress-controller" > nginx-ingress-controller-image
 }
 
 collect_rke_info() {
@@ -260,10 +261,6 @@ collect_upstream_cluster_info() {
   rancher_deployment_name=$(kubectl -n cattle-system get deployments.apps -o json | jq -cr ".items[] | select(.metadata.labels.chart == \"rancher-$rancher_version\") | .metadata.name")
   jq "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\") | .spec.nodeName] | unique | length" pods.json > unique-rancher-pod-count-by-node
   number_of_rancher_pods=$(jq -cr "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\") | .metadata.name] | length" pods.json)
-  kubectl get deployments.apps $rancher_deployment_name -n cattle-system -o json | jq -cr '.spec.template.spec.containers[0].env[] | select(.name=="AUDIT_LEVEL") | .value' > auditlog-level
-  if [ ! -s auditlog-level ]; then
-    rm auditlog-level
-  fi
 
   kubectl get settings.management.cattle.io install-uuid -o json > settings-install-uuid.json
   kubectl get settings.management.cattle.io ui-brand -o json > settings-ui-brand.json
@@ -297,6 +294,11 @@ collect_app_info() {
   kubectl get backuptargets.longhorn.io -n longhorn-system -o json > apps/longhorn-backuptargets.json
   if [ ! -s apps/longhorn-backuptargets.json ]; then
     rm apps/longhorn-backuptargets.json
+  fi
+
+  kubectl get deploy -A -o json | jq -cr '.items[] | select(.metadata.labels."app.kubernetes.io/name" == "headlamp")' > apps/headlamp.json
+  if [ ! -s apps/headlamp.json ]; then
+    rm apps/headlamp.json
   fi
 }
 
