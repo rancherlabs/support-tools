@@ -125,6 +125,9 @@ export SR_COLLECT_CLUSTER_INFO_DUMP=1
   --private-registry-secret-password=<password>
 ```
 
+#### Sonobuoy Namespace
+By default, `sonobuoy` runs in the `sonobuoy` namespace. You can change the namespace used by `sonobuoy` by using the `--sonobuoy-namespace` argument. Note that `sonobuoy` deletes the namespace it used on exit.
+
 ## Troubleshooting Common Issues
 
 ### 1. Permission Issues
