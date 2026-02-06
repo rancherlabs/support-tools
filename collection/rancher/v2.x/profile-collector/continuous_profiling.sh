@@ -28,6 +28,19 @@ MAIN_FILENAME="profiles-$(date +'%Y-%m-%d_%H_%M').tar"
 BLOB_URL=
 BLOB_TOKEN=
 
+techo() {
+  echo "$(date "+%Y-%m-%d %H:%M:%S"): $*"
+}
+
+set_rancher_log_level() {
+  local level="$1"
+
+  kubectl --namespace cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
+    techo Setting "$rancherpod" "$level" logging
+    kubectl --namespace cattle-system exec "$rancherpod" -c rancher -- loglevel --set "$level"
+  done
+}
+
 cleanup_app() {
   case "$APP" in
   rancher)
@@ -68,8 +81,6 @@ shutdown() {
   exit 0
 }
 
-trap cleanup SIGINT
-
 export TZ=UTC
 
 help() {
@@ -84,11 +95,6 @@ help() {
   -t    Time of CPU profile collections
   -l    Log level of the Rancher pods: debug or trace
   -h    This help"
-
-}
-
-techo() {
-  echo "$(date "+%Y-%m-%d %H:%M:%S"): $*"
 
 }
 
@@ -291,16 +297,5 @@ while getopts "a:p:d:s:t:l:h" opt; do
     ;;
   esac
 done
-
-set_rancher_log_level() {
-
-  local level="$1"
-
-  kubectl --namespace cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
-    techo Setting "$rancherpod" "$level" logging
-    kubectl --namespace cattle-system exec "$rancherpod" -c rancher -- loglevel --set "$level"
-  done
-
-}
 
 collect
