@@ -28,13 +28,43 @@ MAIN_FILENAME="profiles-$(date +'%Y-%m-%d_%H_%M').tar"
 BLOB_URL=
 BLOB_TOKEN=
 
-cleanup() {
-  # APP=rancher only: set logging back to normal
-  if [ "$APP" == "rancher" ]; then
-    set_rancher_log_level info
-  elif [ "$APP" == "fleet-controller" ] || [ "$APP" == "fleet-agent" ]; then
-    kill $PORT_FORWARD_PID
-  fi
+cleanup_app() {
+  case "$APP" in
+  rancher)
+    # timing out to avoid cleanup to hang the whole terminal
+    if command -v timeout >/dev/null; then
+      timeout 5s set_rancher_log_level info || techo "Warning: Failed to set log level to info"
+    else
+      set_rancher_log_level info
+    fi
+    ;;
+  fleet-controller | fleet-agent)
+    if [[ -n "${PORT_FORWARD_PID:-}" ]]; then
+      kill "$PORT_FORWARD_PID" 2>/dev/null || true
+    fi
+    ;;
+  esac
+}
+
+cleanup_files() {
+  techo "Removing $TMPDIR"
+  [[ -n "$TMPDIR" ]] && rm -rf "$TMPDIR"
+  techo "Removing $FILENAME"
+  [[ -n "$FILENAME" ]] && rm -f "/tmp/$FILENAME"
+}
+
+shutdown() {
+  # disable trap to prevent infinite loops if a command fails
+  trap - EXIT SIGINT SIGTERM
+
+  techo "Shutting down safely..."
+  cleanup_app
+
+  # this ensures no process keeps running from collect_rancher_pod
+  jobs -p | xargs -r kill 2>/dev/null || true
+
+  cleanup_files
+
   exit 0
 }
 
@@ -136,13 +166,12 @@ collect_fleet() {
   collect_pod "$pod" "$NAMESPACE" "$CONTAINER" "$TMPDIR"
 }
 
-collect() {
-
-  case $APP in
+init_app_env() {
+  case "$APP" in
   rancher)
     CONTAINER=rancher
     NAMESPACE=cattle-system
-    set_rancher_log_level $LOGLEVEL
+    set_rancher_log_level "$LOGLEVEL"
     ;;
   cattle-cluster-agent)
     CONTAINER=cluster-register
@@ -151,25 +180,31 @@ collect() {
   fleet-controller)
     CONTAINER=fleet-controller
     NAMESPACE=cattle-fleet-system
-    pod=$(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name)
-    kubectl port-forward -n $NAMESPACE $pod 60601:6060 &
-    PORT_FORWARD_PID=$!
+    pod=$(kubectl -n "$NAMESPACE" get pods -l app="$APP" --no-headers -o custom-columns=name:.metadata.name)
+    kubectl port-forward -n "$NAMESPACE" "$pod" 60601:6060 &
+    PORT_FORWARD_PID="$!"
     ;;
   fleet-agent)
     CONTAINER=fleet-agent
     if kubectl get namespace cattle-fleet-local-system >/dev/null; then
       NAMESPACE=cattle-fleet-local-system
-      pod=$(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name)
-      kubectl port-forward -n $NAMESPACE $pod 60601:6060 &
-      PORT_FORWARD_PID=$!
+      pod=$(kubectl -n "$NAMESPACE" get pods -l app="$APP" --no-headers -o custom-columns=name:.metadata.name)
+      kubectl port-forward -n "$NAMESPACE" "$pod" 60601:6060 &
+      PORT_FORWARD_PID="$!"
     else
       NAMESPACE=cattle-fleet-system
-      pod=$(kubectl -n $NAMESPACE get pods -l app=${APP} --no-headers -o custom-columns=name:.metadata.name)
-      kubectl port-forward -n $NAMESPACE $pod 60601:6060 &
-      PORT_FORWARD_PID=$!
+      pod=$(kubectl -n "$NAMESPACE" get pods -l app="$APP" --no-headers -o custom-columns=name:.metadata.name)
+      kubectl port-forward -n "$NAMESPACE" "$pod" 60601:6060 &
+      PORT_FORWARD_PID="$!"
     fi
     ;;
   esac
+}
+
+collect() {
+  init_app_env
+
+  trap shutdown EXIT SIGINT SIGTERM
 
   while true; do
 
@@ -212,8 +247,8 @@ collect() {
     fi
 
     echo
-    techo "Removing ${TMPDIR}"
-    rm -r -f "${TMPDIR}" >/dev/null 2>&1
+    cleanup_files
+    echo
 
     techo "Sleeping ${SLEEP} seconds before next capture..."
     sleep ${SLEEP}
