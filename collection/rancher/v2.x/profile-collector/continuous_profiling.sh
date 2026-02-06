@@ -63,10 +63,10 @@ techo() {
 }
 
 collect_pod() {
-  local pod=$1
-  local namespace=$2
-  local container=$3
-  local tmpdir=$4
+  local pod="$1"
+  local namespace="$2"
+  local container="$3"
+  local tmpdir="$4"
 
   techo Getting logs for pod:"$pod"
   kubectl logs --since 5m -n "$namespace" "$pod" -c "$container" >"$tmpdir"/"$pod".log
@@ -87,7 +87,7 @@ collect_pod() {
 
 collect_rancher_pod() {
 
-  local pod=$1
+  local pod="$1"
 
   for profile in ${PROFILES[@]}; do
     techo Getting $profile profile for $pod
@@ -258,9 +258,12 @@ while getopts "a:p:d:s:t:l:h" opt; do
 done
 
 set_rancher_log_level() {
+
+  local level="$1"
+
   kubectl --namespace cattle-system get pods -l app=rancher --no-headers -o custom-columns=name:.metadata.name | while read rancherpod; do
-    techo Setting $rancherpod $1 logging
-    kubectl --namespace cattle-system exec $rancherpod -c rancher -- loglevel --set $1
+    techo Setting "$rancherpod" "$level" logging
+    kubectl --namespace cattle-system exec "$rancherpod" -c rancher -- loglevel --set "$level"
   done
 
 }
