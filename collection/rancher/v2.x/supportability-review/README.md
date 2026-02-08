@@ -103,6 +103,10 @@ export SONOBUOY_TOLERATION_FILE="/path/to/tolerations.yaml"
 
 # Optional: For cluster-info dump
 export SR_COLLECT_CLUSTER_INFO_DUMP=1
+
+# Optional: Proxy settings
+export COLLECTOR_HTTP_PROXY="http://proxy.example.com:8080"
+export COLLECTOR_HTTPS_PROXY="https://proxy.example.com:8080"
 ```
 
 ### 3. Run Collection
