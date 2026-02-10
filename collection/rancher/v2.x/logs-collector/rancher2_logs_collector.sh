@@ -560,7 +560,7 @@ rke-k8s() {
     done
   done
 
-  mkdir -p "${TMPDIR}/${DISTRO}/kubectl"
+  mkdir -p "${TMPDIR}/${DISTRO}/kubectl/poddescribe"
   KUBECONFIG=/etc/kubernetes/ssl/kubecfg-kube-node.yaml
   docker exec kubelet kubectl get nodes -o wide --kubeconfig=$KUBECONFIG > "${TMPDIR}/${DISTRO}/kubectl/nodes" 2>&1
   docker exec kubelet kubectl describe nodes --kubeconfig=$KUBECONFIG > "${TMPDIR}/${DISTRO}/kubectl/nodesdescribe" 2>&1
@@ -570,7 +570,7 @@ rke-k8s() {
   docker exec kubelet kubectl get configmaps --all-namespaces --kubeconfig=$KUBECONFIG > "${TMPDIR}/${DISTRO}/kubectl/configmaps" 2>&1
   docker exec kubelet kubectl get namespaces --kubeconfig=$KUBECONFIG > "${TMPDIR}/${DISTRO}/kubectl/namespaces" 2>&1
   for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-    docker exec kubelet kubectl describe pod -n "$SYSTEM_NAMESPACE" --kubeconfig="$KUBECONFIG" > "${TMPDIR}/${DISTRO}/kubectl/poddescribe-$SYSTEM_NAMESPACE" 2>&1
+    docker exec kubelet kubectl describe pod -n "$SYSTEM_NAMESPACE" --kubeconfig="$KUBECONFIG" > "${TMPDIR}/${DISTRO}/kubectl/poddescribe/$SYSTEM_NAMESPACE" 2>&1
   done
 
   techo "Collecting nginx-proxy info"
@@ -603,7 +603,7 @@ k3s-k8s() {
 
   if [[ "${K3S_AGENT}" && ! "${API_SERVER_OFFLINE}" ]]; then
     techo "Collecting k3s cluster logs"
-    mkdir -p "${TMPDIR}/${DISTRO}/kubectl"
+    mkdir -p "${TMPDIR}/${DISTRO}/kubectl/poddescribe"
     KUBECONFIG=/var/lib/rancher/${DISTRO}/agent/k3scontroller.kubeconfig
     k3s kubectl --kubeconfig="$KUBECONFIG" get nodes -o wide > "${TMPDIR}/${DISTRO}/kubectl/nodes" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" describe nodes > "${TMPDIR}/${DISTRO}/kubectl/nodesdescribe" 2>&1
@@ -611,7 +611,7 @@ k3s-k8s() {
     k3s kubectl --kubeconfig="$KUBECONFIG" api-resources > "${TMPDIR}/${DISTRO}/kubectl/api-resources" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" version > "${TMPDIR}/${DISTRO}/kubectl/version" 2>&1
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-      k3s kubectl --kubeconfig="$KUBECONFIG" describe pod -n "$SYSTEM_NAMESPACE" > "${TMPDIR}/${DISTRO}/kubectl/poddescribe-$SYSTEM_NAMESPACE" 2>&1
+      k3s kubectl --kubeconfig="$KUBECONFIG" describe pod -n "$SYSTEM_NAMESPACE" > "${TMPDIR}/${DISTRO}/kubectl/poddescribe/$SYSTEM_NAMESPACE" 2>&1
     done
     KUBECONFIG=/var/lib/rancher/${DISTRO}/agent/kubeproxy.kubeconfig
     k3s kubectl --kubeconfig="$KUBECONFIG" get svc -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/services" 2>&1
@@ -671,7 +671,7 @@ rke2-k8s() {
 
   if [[ "${RKE2_AGENT}" && ! "${API_SERVER_OFFLINE}" ]]; then
     techo "Collecting rke2 cluster logs"
-    mkdir -p "${TMPDIR}/${DISTRO}/kubectl"
+    mkdir -p "${TMPDIR}/${DISTRO}/kubectl/poddescribe"
     KUBECONFIG="${RKE2_DATA_DIR}/agent/kubeproxy.kubeconfig"
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get nodes -o wide > "${TMPDIR}/${DISTRO}/kubectl/nodes" 2>&1
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" describe nodes > "${TMPDIR}/${DISTRO}/kubectl/nodesdescribe" 2>&1
@@ -681,7 +681,7 @@ rke2-k8s() {
     KUBECONFIG="${RKE2_DATA_DIR}/agent/rke2controller.kubeconfig"
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get pods -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/pods" 2>&1
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-      "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" describe pod -n "$SYSTEM_NAMESPACE" > "${TMPDIR}/${DISTRO}/kubectl/poddescribe-$SYSTEM_NAMESPACE" 2>&1
+      "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" describe pod -n "$SYSTEM_NAMESPACE" > "${TMPDIR}/${DISTRO}/kubectl/poddescribe/$SYSTEM_NAMESPACE" 2>&1
     done
   fi
 
