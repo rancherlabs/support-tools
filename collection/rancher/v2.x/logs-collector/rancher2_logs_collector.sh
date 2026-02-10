@@ -569,6 +569,9 @@ rke-k8s() {
   docker exec kubelet kubectl get endpoints -o wide --all-namespaces --kubeconfig=$KUBECONFIG > "${TMPDIR}/${DISTRO}/kubectl/endpoints" 2>&1
   docker exec kubelet kubectl get configmaps --all-namespaces --kubeconfig=$KUBECONFIG > "${TMPDIR}/${DISTRO}/kubectl/configmaps" 2>&1
   docker exec kubelet kubectl get namespaces --kubeconfig=$KUBECONFIG > "${TMPDIR}/${DISTRO}/kubectl/namespaces" 2>&1
+  for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
+    docker exec kubelet kubectl describe pod -n "$SYSTEM_NAMESPACE" --kubeconfig="$KUBECONFIG" > "${TMPDIR}/${DISTRO}/kubectl/poddescribe-$SYSTEM_NAMESPACE" 2>&1
+  done
 
   techo "Collecting nginx-proxy info"
   if docker inspect nginx-proxy >/dev/null 2>&1; then
@@ -607,6 +610,9 @@ k3s-k8s() {
     k3s kubectl --kubeconfig="$KUBECONFIG" get pods -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/pods" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" api-resources > "${TMPDIR}/${DISTRO}/kubectl/api-resources" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" version > "${TMPDIR}/${DISTRO}/kubectl/version" 2>&1
+    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
+      k3s kubectl --kubeconfig="$KUBECONFIG" describe pod -n "$SYSTEM_NAMESPACE" > "${TMPDIR}/${DISTRO}/kubectl/poddescribe-$SYSTEM_NAMESPACE" 2>&1
+    done
     KUBECONFIG=/var/lib/rancher/${DISTRO}/agent/kubeproxy.kubeconfig
     k3s kubectl --kubeconfig="$KUBECONFIG" get svc -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/services" 2>&1
   fi
@@ -674,6 +680,9 @@ rke2-k8s() {
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" api-resources > "${TMPDIR}/${DISTRO}/kubectl/api-resources" 2>&1
     KUBECONFIG="${RKE2_DATA_DIR}/agent/rke2controller.kubeconfig"
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get pods -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/pods" 2>&1
+    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
+      "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" describe pod -n "$SYSTEM_NAMESPACE" > "${TMPDIR}/${DISTRO}/kubectl/poddescribe-$SYSTEM_NAMESPACE" 2>&1
+    done
   fi
 
   if [[ "${RKE2_SERVER}" && ! "${API_SERVER_OFFLINE}" ]]; then
