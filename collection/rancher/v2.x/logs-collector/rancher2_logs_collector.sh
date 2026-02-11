@@ -122,7 +122,7 @@ sherlock() {
           fi
       elif command -v docker >/dev/null 2>&1
         then
-          if docker ps >/dev/null 2>&1
+          if docker ps -a | grep kubelet >/dev/null 2>&1
             then
               if [ -z "${DISTRO}" ]
                 then
