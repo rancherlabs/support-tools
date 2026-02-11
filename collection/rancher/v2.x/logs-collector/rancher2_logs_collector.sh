@@ -248,7 +248,7 @@ system-all() {
     sysctl -a > "${TMPDIR}/systeminfo/sysctla" 2>/dev/null
   fi
   if command -v systemctl >/dev/null 2>&1; then
-    systemctl list-units > "${TMPDIR}/systeminfo/systemd-units" 2>&1
+    systemctl list-units --all > "${TMPDIR}/systeminfo/systemd-units" 2>&1
   fi
   if command -v systemctl >/dev/null 2>&1; then
     systemctl list-unit-files > "${TMPDIR}/systeminfo/systemd-unit-files" 2>&1
@@ -844,7 +844,7 @@ journald-log() {
   techo "Collecting system logs from journald"
   mkdir -p "${TMPDIR}/journald"
   for JOURNALD_LOG in "${JOURNALD_LOGS[@]}"; do
-    if grep "$JOURNALD_LOG.service" "${TMPDIR}/systeminfo/systemd-units" > /dev/null 2>&1; then
+    if grep "$JOURNALD_LOG.service" "${TMPDIR}/systeminfo/systemd-unit-files" > /dev/null 2>&1; then
       "${JOURNALCTL_CMD[@]}" --unit="$JOURNALD_LOG" > "${TMPDIR}/journald/$JOURNALD_LOG"
     fi
   done
