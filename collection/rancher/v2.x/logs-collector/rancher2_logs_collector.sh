@@ -243,7 +243,7 @@ system-all() {
   if command -v pidstat >/dev/null 2>&1; then
     pidstat -drshut -p ALL 2 5 > "${TMPDIR}/systeminfo/pidstatx" 2>&1
   fi
-  lsof -Pn > "${TMPDIR}/systeminfo/lsof" 2>&1 & timeout_cmd "lsof"
+  lsof -Pn > "${TMPDIR}/systeminfo/lsof" 2>/dev/null & timeout_cmd "lsof"
   if command -v sysctl >/dev/null 2>&1; then
     sysctl -a > "${TMPDIR}/systeminfo/sysctla" 2>/dev/null
   fi
