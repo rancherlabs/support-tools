@@ -690,6 +690,8 @@ rke2-k8s() {
     if [ -f /etc/cni/net.d/05-cilium.conflist ]; then
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get CiliumNetworkPolicy -A > "${TMPDIR}/${DISTRO}/kubectl/ciliumnetworkpolicy" 2>&1
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get CiliumClusterwideNetworkPolicy > "${TMPDIR}/${DISTRO}/kubectl/ciliumclusterwidenetworkpolicy" 2>&1
+      "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n kube-system exec ds/cilium -c cilium-agent -- cilium status -o json > "${TMPDIR}/${DISTRO}/kubectl/ciliumstatus.json"
+      "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg service list -o json > "${TMPDIR}/${DISTRO}/kubectl/ciliumdbgservicelist.json"
     fi
 
     for OBJECT in "${K8S_OBJECTS[@]}"; do
