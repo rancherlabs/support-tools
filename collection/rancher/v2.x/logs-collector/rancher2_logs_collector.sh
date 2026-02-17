@@ -616,7 +616,8 @@ k3s-k8s() {
     k3s kubectl --kubeconfig="$KUBECONFIG" get nodes -o wide > "${TMPDIR}/${DISTRO}/kubectl/nodes" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" describe nodes > "${TMPDIR}/${DISTRO}/kubectl/nodesdescribe" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" get pods -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/pods" 2>&1
-    k3s kubectl --kubeconfig="$KUBECONFIG" get pods -n kube-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
+    k3s kubectl --kubeconfig="$KUBECONFIG" get pods --namespace kube-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
+    k3s kubectl --kubeconfig="$KUBECONFIG" get pods --namespace cattle-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" api-resources > "${TMPDIR}/${DISTRO}/kubectl/api-resources" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" version > "${TMPDIR}/${DISTRO}/kubectl/version" 2>&1
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
@@ -636,7 +637,7 @@ k3s-k8s() {
       k3s kubectl get "$OBJECT" --all-namespaces -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
     done
     for APP_NS in "${APP_NAMESPACES[@]}"; do
-      k3s kubectl get apps.catalog.cattle.io -n $APP_NS 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
+      k3s kubectl get apps.catalog.cattle.io --ignore-not-found=true --namespace $APP_NS 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
     done
 
     techo "Collecting system pod logs"
@@ -692,7 +693,8 @@ rke2-k8s() {
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" api-resources > "${TMPDIR}/${DISTRO}/kubectl/api-resources" 2>&1
     KUBECONFIG="${RKE2_DATA_DIR}/agent/rke2controller.kubeconfig"
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get pods -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/pods" 2>&1
-    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get pods -n kube-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
+    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get pods --namespace kube-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
+    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get pods --namespace cattle-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" describe pod -n "$SYSTEM_NAMESPACE" > "${TMPDIR}/${DISTRO}/kubectl/poddescribe/$SYSTEM_NAMESPACE" 2>&1
     done
@@ -714,7 +716,7 @@ rke2-k8s() {
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get "$OBJECT" --all-namespaces -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
     done
     for APP_NS in "${APP_NAMESPACES[@]}"; do
-      "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get apps.catalog.cattle.io -n $APP_NS 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
+      "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get apps.catalog.cattle.io --ignore-not-found=true --namespace $APP_NS 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
     done
 
     techo "Collecting rke2 system pod logs"
@@ -776,7 +778,8 @@ kubeadm-k8s() {
   kubectl --kubeconfig="$KUBECONFIG" describe nodes > "${TMPDIR}/kubeadm/kubectl/nodesdescribe" 2>&1
   kubectl --kubeconfig="$KUBECONFIG" version > "${TMPDIR}/kubeadm/kubectl/version" 2>&1
   kubectl --kubeconfig="$KUBECONFIG" get pods -o wide --all-namespaces > "${TMPDIR}/kubeadm/kubectl/pods" 2>&1
-  kubectl --kubeconfig="$KUBECONFIG" get pods -n kube-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
+  kubectl --kubeconfig="$KUBECONFIG" get pods --namespace kube-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
+  kubectl --kubeconfig="$KUBECONFIG" get pods --namespace cattle-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
   kubectl --kubeconfig="$KUBECONFIG" get svc -o wide --all-namespaces > "${TMPDIR}/kubeadm/kubectl/services" 2>&1
   kubectl --kubeconfig="$KUBECONFIG" cluster-info dump > "${TMPDIR}/kubeadm/kubectl/cluster-info_dump" 2>&1
 
