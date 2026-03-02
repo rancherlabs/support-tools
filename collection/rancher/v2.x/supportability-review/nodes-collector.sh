@@ -82,6 +82,7 @@ collect_systeminfo() {
     rm systeminfo/server-version.json
   fi
   lsblk -d -o name,rota > systeminfo/rotational 2>&1
+  systemd-detect-virt > systeminfo/detect-virt 2>&1
 }
 
 collect_networking_info_ip4() {

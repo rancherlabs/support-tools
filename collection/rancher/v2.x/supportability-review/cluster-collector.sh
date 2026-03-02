@@ -109,6 +109,7 @@ collect_common_cluster_info() {
   kubectl get deploy -n cattle-system -o json > cattle-system-deploy.json
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
   kubectl get deploy -n cattle-neuvector-system -o json > cattle-neuvector-system-deploy.json
+  kubectl get deploy -n kube-system -o json > kube-system-deploy.json
   kubectl get statefulsets -n cattle-fleet-system -o json > cattle-fleet-system-statefulsets.json
   kubectl get settings.management.cattle.io server-version -o json > server-version.json
   if [ ! -s server-version.json ]; then
