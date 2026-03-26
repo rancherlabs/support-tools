@@ -154,7 +154,7 @@ collect_common_cluster_info() {
   fi
 
   # Run Trivy Vulnerability scan
-  /etc/sonobuoy/trivy.py ${SONOBUOY_NAMESPACE} > trivy.log 2>&1
+  #/etc/sonobuoy/trivy.py ${SONOBUOY_NAMESPACE} > trivy.log 2>&1
 
   # Check images
   jq -cr '.items[].spec.containers[].image' pods.json | grep "bitnami/" > bitnami-image
