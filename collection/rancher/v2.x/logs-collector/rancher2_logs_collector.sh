@@ -618,6 +618,7 @@ k3s-k8s() {
     KUBECONFIG=/var/lib/rancher/${DISTRO}/agent/k3scontroller.kubeconfig
     k3s kubectl --kubeconfig="$KUBECONFIG" get nodes -o wide > "${TMPDIR}/${DISTRO}/kubectl/nodes" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" describe nodes > "${TMPDIR}/${DISTRO}/kubectl/nodesdescribe" 2>&1
+    k3s kubectl --kubeconfig="$KUBECONFIG" get nodes -o json > "${TMPDIR}/${DISTRO}/kubectl/nodes.json" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" get pods -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/pods" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" get pods --namespace kube-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
     k3s kubectl --kubeconfig="$KUBECONFIG" get pods --namespace cattle-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
@@ -691,6 +692,7 @@ rke2-k8s() {
     KUBECONFIG="${RKE2_DATA_DIR}/agent/kubeproxy.kubeconfig"
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get nodes -o wide > "${TMPDIR}/${DISTRO}/kubectl/nodes" 2>&1
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" describe nodes > "${TMPDIR}/${DISTRO}/kubectl/nodesdescribe" 2>&1
+    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get nodes -o json > "${TMPDIR}/${DISTRO}/kubectl/nodes.json" 2>&1
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" version > "${TMPDIR}/${DISTRO}/kubectl/version" 2>&1
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get svc -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/services" 2>&1
     "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" api-resources > "${TMPDIR}/${DISTRO}/kubectl/api-resources" 2>&1
@@ -779,6 +781,7 @@ kubeadm-k8s() {
   mkdir -p "${TMPDIR}/kubeadm/kubectl"
   kubectl --kubeconfig="$KUBECONFIG" get nodes -o wide > "${TMPDIR}/kubeadm/kubectl/nodes" 2>&1
   kubectl --kubeconfig="$KUBECONFIG" describe nodes > "${TMPDIR}/kubeadm/kubectl/nodesdescribe" 2>&1
+  kubectl --kubeconfig="$KUBECONFIG" get nodes -o json > "${TMPDIR}/kubeadm/kubectl/nodes.json" 2>&1
   kubectl --kubeconfig="$KUBECONFIG" version > "${TMPDIR}/kubeadm/kubectl/version" 2>&1
   kubectl --kubeconfig="$KUBECONFIG" get pods -o wide --all-namespaces > "${TMPDIR}/kubeadm/kubectl/pods" 2>&1
   kubectl --kubeconfig="$KUBECONFIG" get pods --namespace kube-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
