@@ -212,7 +212,7 @@ system-all() {
       cp -p /run/systemd/resolve/resolv.conf "${TMPDIR}/systeminfo/systemd-resolved" 2>&1
   fi
   date 2>&1 | tee -a "${TMPDIR}/systeminfo/date" "${TMPDIR}/versions" >/dev/null
-  free -h 2>&1 | tee -a "${TMPDIR}/systeminfo/memory" "${TMPDIR}/versions" >/dev/null
+  free -h 2>&1 | tee -a "${TMPDIR}/systeminfo/freeh" >/dev/null
   uptime > "${TMPDIR}/systeminfo/uptime" 2>&1
   dmesg -T > "${TMPDIR}/systeminfo/dmesg" 2>&1
   df -h > "${TMPDIR}/systeminfo/dfh" 2>&1
