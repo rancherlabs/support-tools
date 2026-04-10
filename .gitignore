@@ -1,2 +1,12 @@
 .DS_Store
 **/scc-support-bundle-*
+
+# AI agent files
+CLAUDE.md
+.claude/
+.cursor/
+.cursorrules
+.copilot/
+.github/copilot-instructions.md
+.aider*
+.continue/

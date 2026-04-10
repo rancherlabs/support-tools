@@ -3,7 +3,10 @@ This script is designed to walk through all the ingresses in a cluster and test 
 
 ## Run script
 ```
-curl https://raw.githubusercontent.com/rancherlabs/support-tools/master/NGINX-to-pods-check/check.sh | bash
+curl -sL https://raw.githubusercontent.com/rancherlabs/support-tools/master/NGINX-to-pods-check/check.sh -o /tmp/check.sh
+# sha256 as of master — update this hash after modifying the script
+echo "e263fc245aa50475440f4e45870168da6cb8a0c59fcafc9f022dd0cb9aef691a  /tmp/check.sh" | sha256sum -c -
+bash /tmp/check.sh
 ```
 
 ## Example output
