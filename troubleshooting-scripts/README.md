@@ -1,30 +1,30 @@
 # Troubleshooting Scripts
 
-## kube-scheduler
+Scripts support **RKE2** and **k3s**. RKE1 commands are preserved in deprecated sections within each README.
 
-### Finding the current leader
+## Contents
 
-Command(s): `curl -s https://raw.githubusercontent.com/rancherlabs/support-tools/master/troubleshooting-scripts/kube-scheduler/find-leader.sh | bash`
+| Directory | Description |
+|-----------|-------------|
+| [rke2-reference/](rke2-reference/README.md) | Quick reference: install, binaries, kubeconfig, crictl, logging |
+| [etcd/](etcd/README.md) | etcd health, status, maintenance, and direct key queries |
+| [kube-apiserver/](kube-apiserver/) | API server endpoint checks and responsiveness |
+| [kube-scheduler/](kube-scheduler/) | Find the active kube-scheduler leader |
+| [determine-leader/](determine-leader/) | Find the active Rancher leader pod |
 
-**Example Output**
+## Quick links
 
-```bash
-kube-scheduler is the leader on node a1ubk8slabl03
-```
+- etcd health check script (RKE2/k3s, auto-detecting):
+  ```bash
+  curl -s https://raw.githubusercontent.com/rancherlabs/support-tools/master/troubleshooting-scripts/etcd/check-endpoints.sh | sudo bash
+  ```
 
-## determine-leader
+- kube-scheduler leader:
+  ```bash
+  curl -s https://raw.githubusercontent.com/rancherlabs/support-tools/master/troubleshooting-scripts/kube-scheduler/find-leader.sh | bash
+  ```
 
-Command(s): `curl -s https://raw.githubusercontent.com/rancherlabs/support-tools/master/troubleshooting-scripts/determine-leader/rancher2_determine_leader.sh | bash`
-
-**Example Output**
-
-```bash
-NAME                                    POD-IP         HOST-IP
-cattle-cluster-agent-776d795ff8-x77nq   10.42.0.93     10.10.100.83
-cattle-node-agent-4bsx6                 10.10.100.83   10.10.100.83
-rancher-54d47dc9cf-d4qt9                10.42.0.92     10.10.100.83
-rancher-54d47dc9cf-prn4d                10.42.0.90     10.10.100.83
-rancher-54d47dc9cf-rsn4g                10.42.0.91     10.10.100.83
-
-rancher-54d47dc9cf-prn4d is the leader in this Rancher instance
-```
+- Rancher leader pod:
+  ```bash
+  curl -s https://raw.githubusercontent.com/rancherlabs/support-tools/master/troubleshooting-scripts/determine-leader/rancher2_determine_leader.sh | bash
+  ```
