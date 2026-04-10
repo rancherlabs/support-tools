@@ -37,6 +37,8 @@ All binaries live under `/var/lib/rancher/rke2/bin/`:
 
 ```
 containerd
+containerd-shim
+containerd-shim-runc-v1
 containerd-shim-runc-v2
 crictl
 ctr
@@ -52,12 +54,20 @@ runc
 
 ## kubeconfig
 
+Via environment variable:
+
 ```bash
 export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
 /var/lib/rancher/rke2/bin/kubectl get nodes
 ```
 
-Or add to your shell profile:
+Via inline flag (no env required):
+
+```bash
+/var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml get nodes
+```
+
+Add to your shell profile (persistent):
 
 ```bash
 echo 'export KUBECONFIG=/etc/rancher/rke2/rke2.yaml' >> ~/.bashrc
@@ -157,6 +167,33 @@ journalctl -f -u rke2-agent
 # kubelet log
 /var/lib/rancher/rke2/agent/logs/kubelet.log
 ```
+
+---
+
+## Systemd Service Files
+
+| File | Path |
+|------|------|
+| Server service unit | `/usr/local/lib/systemd/system/rke2-server.service` |
+| Agent service unit | `/usr/local/lib/systemd/system/rke2-agent.service` |
+| Server env override | `/etc/default/rke2-server` |
+| Agent env override | `/etc/default/rke2-agent` |
+
+Use the env override files to set or override RKE2 environment variables without editing the unit file directly (survives upgrades).
+
+---
+
+## Distribution Contents
+
+Scripts and configs installed alongside the RKE2 binary:
+
+| File | Location | Purpose |
+|------|----------|---------|
+| `rke2-killall.sh` | `/usr/local/bin/rke2-killall.sh` | Stop all RKE2 processes and unmount volumes |
+| `rke2-uninstall.sh` | `/usr/local/bin/rke2-uninstall.sh` | Fully remove RKE2 from a Linux node |
+| `rke2-cis-sysctl.conf` | `/usr/local/lib/sysctl.d/60-rke2-cis.conf` | Kernel parameter overrides for CIS hardening |
+
+> **Warning:** `rke2-uninstall.sh` removes all RKE2 data and config — run only when decommissioning a node.
 
 ---
 
