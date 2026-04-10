@@ -35,7 +35,10 @@ Output will be written to `/tmp` as a tar.gz archive named `<hostname>-<date>.ta
 
 ### Optional: Download and run the script in one command
   ```bash
-  curl -Ls rnch.io/rancher2_logs | sudo bash
+  curl -sL https://rnch.io/rancher2_logs -o /tmp/rancher2_logs_collector.sh
+  # sha256 as of master — update this hash after modifying the script
+  echo "c3a29113c74149da2232ca3510a373d3ac7e225d04ef5ebf12371e2f9fe5e6ac  /tmp/rancher2_logs_collector.sh" | sha256sum -c -
+  sudo bash /tmp/rancher2_logs_collector.sh
   ```
   > Note: This command requires `curl` to be installed, and internet access from the node.
 
