@@ -1,5 +1,5 @@
 ## Running builder to download metadata files
-FROM alpine AS builder
+FROM alpine@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 AS builder
 MAINTAINER Matthew Mattox matt.mattox@suse.com
 RUN  apk update && apk add --update-cache \
     wget \
@@ -12,7 +12,7 @@ WORKDIR /root/
 RUN /usr/local/bin/download.sh
 
 ## Building webserver
-FROM httpd:alpine
+FROM httpd:alpine@sha256:8f26f33a7002658050e9ab2cd6b77502619dfc89d0a6ba2e9e4a202e0ef04596
 MAINTAINER Matthew Mattox matt.mattox@suse.com
 RUN  apk update && apk add --update-cache \
     wget \
