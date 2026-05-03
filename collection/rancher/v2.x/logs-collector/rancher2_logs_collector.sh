@@ -121,6 +121,10 @@ sherlock() {
             else
               FOUND+="k3s "
           fi
+      elif [[ -f "/var/run/secrets/kubernetes.io/serviceaccount/token" && $(command -v kubectl) ]]
+        then
+          DISTRO=pod
+          echo "pod" | tee -a "${TMPDIR}/collector-output.log"
       elif command -v docker >/dev/null 2>&1
         then
           if docker ps -a | grep kubelet >/dev/null 2>&1
@@ -399,6 +403,10 @@ provisioning-crds() {
     then
       KUBECONFIG=/etc/rancher/${DISTRO}/rke2.yaml
       ctlcmd="${RKE2_DATA_DIR}/bin/kubectl --kubeconfig=$KUBECONFIG"
+      CONTROL_PLANE=1
+  elif [[ "${DISTRO}" = "pod" && $(command -v kubectl) ]]
+    then
+      ctlcmd="kubectl"
       CONTROL_PLANE=1
   fi
 
@@ -710,8 +718,8 @@ rke2-k8s() {
     if [ -f /etc/cni/net.d/05-cilium.conflist ]; then
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get CiliumNetworkPolicy -A > "${TMPDIR}/${DISTRO}/kubectl/ciliumnetworkpolicy" 2>&1
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get CiliumClusterwideNetworkPolicy > "${TMPDIR}/${DISTRO}/kubectl/ciliumclusterwidenetworkpolicy" 2>&1
-      "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n kube-system exec ds/cilium -c cilium-agent -- cilium status -o json > "${TMPDIR}/${DISTRO}/kubectl/ciliumstatus.json"
-      "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg service list -o json > "${TMPDIR}/${DISTRO}/kubectl/ciliumdbgservicelist.json"
+      "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n kube-system exec ds/cilium -c cilium-agent -- cilium status -o json > "${TMPDIR}/${DISTRO}/kubectl/ciliumstatus.json" 2>&1
+      "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg service list -o json > "${TMPDIR}/${DISTRO}/kubectl/ciliumdbgservicelist.json" 2>&1
     fi
 
     for OBJECT in "${K8S_OBJECTS[@]}"; do
@@ -760,6 +768,57 @@ rke2-k8s() {
         find "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs" -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp -p {} "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs/" \;
       fi
   done
+
+}
+
+pod-k8s() {
+
+  if ! kubectl get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1; then
+    API_SERVER_OFFLINE=true
+    techo "[!] Kube-apiserver is offline, may not be able to collect any output"
+  fi
+
+  if [[ ! "${API_SERVER_OFFLINE}" ]]; then
+    techo "Collecting cluster logs"
+    mkdir -p "${TMPDIR}/${DISTRO}/kubectl/poddescribe"
+    kubectl get nodes -o wide > "${TMPDIR}/${DISTRO}/kubectl/nodes" 2>&1
+    kubectl describe nodes > "${TMPDIR}/${DISTRO}/kubectl/nodesdescribe" 2>&1
+    kubectl get nodes -o json > "${TMPDIR}/${DISTRO}/kubectl/nodes.json" 2>&1
+    kubectl version > "${TMPDIR}/${DISTRO}/kubectl/version" 2>&1
+    kubectl get svc -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/services" 2>&1
+    kubectl api-resources > "${TMPDIR}/${DISTRO}/kubectl/api-resources" 2>&1
+    kubectl get pods -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/pods" 2>&1
+    kubectl get pods --namespace kube-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
+    kubectl get pods --namespace cattle-system -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[*].image >> "${TMPDIR}/versions" 2>&1
+
+    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
+      kubectl describe pod -n "$SYSTEM_NAMESPACE" > "${TMPDIR}/${DISTRO}/kubectl/poddescribe/$SYSTEM_NAMESPACE" 2>&1
+    done
+
+    kubectl get CiliumNetworkPolicy -A > "${TMPDIR}/${DISTRO}/kubectl/ciliumnetworkpolicy" 2>&1
+    kubectl get CiliumClusterwideNetworkPolicy > "${TMPDIR}/${DISTRO}/kubectl/ciliumclusterwidenetworkpolicy" 2>&1
+    kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium status -o json > "${TMPDIR}/${DISTRO}/kubectl/ciliumstatus.json" 2>&1
+    kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg service list -o json > "${TMPDIR}/${DISTRO}/kubectl/ciliumdbgservicelist.json" 2>&1
+
+    for OBJECT in "${K8S_OBJECTS[@]}"; do
+      kubectl get "$OBJECT" -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
+    done
+    for OBJECT in "${K8S_OBJECTS_NAMESPACED[@]}"; do
+      kubectl get "$OBJECT" --all-namespaces -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
+    done
+    for APP_NS in "${APP_NAMESPACES[@]}"; do
+      kubectl get apps.catalog.cattle.io --ignore-not-found=true --namespace $APP_NS 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
+    done
+
+    techo "Collecting system pod logs"
+    mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
+    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
+      for SYSTEM_POD in $(kubectl -n "$SYSTEM_NAMESPACE" get pods --no-headers -o custom-columns=NAME:.metadata.name); do
+        kubectl -n "$SYSTEM_NAMESPACE" "$KUBECTL_SINCE_FLAG" logs --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}" 2>&1
+        kubectl -n "$SYSTEM_NAMESPACE" logs -p --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}-previous" 2>&1
+      done
+    done
+  fi
 
 }
 
@@ -1475,54 +1534,49 @@ if [ -n "$DISK_FULL" ]
 fi
 
 sherlock
-system-all
-networking
+if [ ! "$DISTRO" = "pod" ]; then
+  system-all
+  networking
+  var-log
+  if [ "$INIT" = "systemd" ]; then
+      journald-log
+  fi
 
-if [ "$OSRELEASE" = "rhel" ] || [ "$OSRELEASE" = "centos" ]; then
-  system-rhel
-elif [ "$OSRELEASE" = "ubuntu" ]; then
-  system-ubuntu
+  case "$OSRELEASE" in
+    rhel|centos)
+      system-rhel
+      ;;
+    ubuntu)
+      system-ubuntu
+      ;;
+    sles)
+      system-sles
+      ;;
+    *)
+      echo "[!] Unsupported OS: $OSRELEASE"
+      ;;
+  esac
 fi
 
-if [ "$OSRELEASE" = "sles" ]; then
-    system-sles
-fi
-
-if [ "$DISTRO" = "rke" ]; then
-    rke-logs
-    rke-k8s
-    rke-certs
-    rke-etcd
-elif [ "$DISTRO" = "k3s" ]; then
-    k3s-logs
-    k3s-k8s
-    k3s-certs
-    k3s-etcd
-elif [ "$DISTRO" = "rke2" ]; then
-    rke2-logs
-    rke2-k8s
-    rke2-certs
-    rke2-etcd
-elif [ "$DISTRO" = "kubeadm" ]; then
-    kubeadm-k8s
-    kubeadm-certs
-    kubeadm-etcd
-fi
-
-var-log
-
-if [ "$INIT" = "systemd" ]; then
-    journald-log
-fi
-
-if [ "$OBFUSCATE" ]; then
-    obfuscate
-fi
+case "$DISTRO" in
+  rke2|k3s|rke) actions="logs k8s certs etcd" ;;
+  kubeadm)      actions="k8s certs etcd" ;;
+  pod)          actions="k8s" ;;
+  *)            echo "[!] Unknown distro: may not be able to collect any Kubernetes output"; return 1 ;;
+esac
 
 if [ ! "$API_SERVER_OFFLINE" ]; then
     provisioning-crds
   else
     techo "[!] Kube-apiserver is offline, skipping provisioning CRDs"
+fi
+
+for action in $actions; do
+  "${DISTRO}-${action}"
+done
+
+if [ "$OBFUSCATE" ]; then
+    obfuscate
 fi
 
 archive
