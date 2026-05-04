@@ -773,7 +773,10 @@ rke2-k8s() {
 
 pod-k8s() {
 
-  if ! kubectl get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1; then
+  TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+  CA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+  if ! kubectl get --raw='/healthz' --request-timeout=5s --server="https://$KURNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT" --certificate-authority=$CA_CERT --token=$TOKEN > /dev/null 2>&1; then
     API_SERVER_OFFLINE=true
     techo "[!] Kube-apiserver is offline, may not be able to collect any output"
   fi
@@ -1565,15 +1568,15 @@ case "$DISTRO" in
   *)            echo "[!] Unknown distro: may not be able to collect any Kubernetes output"; return 1 ;;
 esac
 
+for action in $actions; do
+  "${DISTRO}-${action}"
+done
+
 if [ ! "$API_SERVER_OFFLINE" ]; then
     provisioning-crds
   else
     techo "[!] Kube-apiserver is offline, skipping provisioning CRDs"
 fi
-
-for action in $actions; do
-  "${DISTRO}-${action}"
-done
 
 if [ "$OBFUSCATE" ]; then
     obfuscate
