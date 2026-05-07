@@ -35,12 +35,20 @@ Output will be written to `/tmp` as a tar.gz archive named `<hostname>-<date>.ta
 
 ### Optional: Download and run the script in one command
   ```bash
-  curl -sL https://rnch.io/rancher2_logs -o /tmp/rancher2_logs_collector.sh
-  # sha256 as of master — update this hash after modifying the script
-  echo "c3a29113c74149da2232ca3510a373d3ac7e225d04ef5ebf12371e2f9fe5e6ac  /tmp/rancher2_logs_collector.sh" | sha256sum -c -
-  sudo bash /tmp/rancher2_logs_collector.sh
+  curl -Ls rnch.io/rancher2_logs | sudo bash
   ```
   > Note: This command requires `curl` to be installed, and internet access from the node.
+
+### Optional: Run the script from a pod
+  - Deploy the log collector pod:
+  ```bash
+  kubectl apply -f https://raw.githubusercontent.com/rancherlabs/support-tools/refs/heads/master/collection/rancher/v2.x/logs-collector/logs_collector.yaml
+  kubectl exec -it rancher-logs-collector -- bash /usr/local/bin/rancher2_logs_collector.sh
+  ```
+
+  - Copy the collection from the pod using the "kubectl cp" command example in the output
+
+  > Note: When run from a pod the log collection only captures Kubernetes-specific output. To collect OS or node-level output, run the logs collector directly on a node.
 
 ## Flags
 
