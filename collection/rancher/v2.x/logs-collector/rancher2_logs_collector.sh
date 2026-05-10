@@ -1587,5 +1587,5 @@ if [ "$DISTRO" = "pod" ]; then
   echo "
 To copy the collection from the pod:
 
-  kubectl cp rancher-logs-collector:${DIR_NAME}/${LOGNAME}.tar.gz ${LOGNAME}.tar.gz"
+  kubectl cp $(hostname):${DIR_NAME}/${LOGNAME}.tar.gz ${LOGNAME}.tar.gz"
 fi
