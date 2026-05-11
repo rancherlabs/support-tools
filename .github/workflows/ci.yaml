@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  detect_secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install detect-secrets
+        run: pip install detect-secrets
+
+      - name: Build baseline from origin/master
+        run: |
+          git fetch origin master
+          git worktree add /tmp/main-checkout origin/master
+          # Copy baseline config so detect-secrets uses consistent plugins/filters
+          cp .secrets.baseline /tmp/main-checkout/
+          cd /tmp/main-checkout
+          detect-secrets scan \
+            --exclude-files '\.secrets\.baseline' \
+            . > /tmp/main-baseline.json
+          cd $GITHUB_WORKSPACE
+          rm -rf /tmp/main-checkout
+          git worktree prune
+
+      - name: Scan merge commit and compare
+        run: |
+          detect-secrets scan \
+            --exclude-files '\.secrets\.baseline' \
+            > /tmp/pr-scan.json
+          python3 - <<'EOF'
+          import json, sys
+
+          with open('/tmp/pr-scan.json') as f:
+              pr_scan = json.load(f)
+          with open('/tmp/main-baseline.json') as f:
+              main_baseline = json.load(f)
+
+          # Hashes from origin/master's current code
+          main_hashes = {
+              s['hashed_secret']
+              for secrets in main_baseline.get('results', {}).values()
+              for s in secrets
+          }
+
+          # Hashes from the committed baseline — covers legacy reviewed findings
+          # that master may have since diverged from, or the first-time setup
+          try:
+              with open('.secrets.baseline') as f:
+                  committed = json.load(f)
+              committed_hashes = {
+                  s['hashed_secret']
+                  for secrets in committed.get('results', {}).values()
+                  for s in secrets
+              }
+          except (FileNotFoundError, json.JSONDecodeError):
+              committed_hashes = set()
+
+          # Union: known-safe set covers both current master + legacy reviewed state
+          baseline_hashes = main_hashes | committed_hashes
+
+          new_findings = []
+          for path, secrets in pr_scan.get('results', {}).items():
+              for s in secrets:
+                  if s['hashed_secret'] not in baseline_hashes:
+                      new_findings.append((path, s))
+
+          if new_findings:
+              print("UNREVIEWED SECRETS introduced by this PR:")
+              for path, s in sorted(new_findings, key=lambda x: (x[0], x[1].get('line_number', 0))):
+                  print(f"  {path}:{s['line_number']} [{s['type']}]")
+              sys.exit(1)
+
+          pr_total = sum(len(v) for v in pr_scan.get('results', {}).values())
+          print(f"All {pr_total} finding(s) are in the baseline — OK")
+          EOF
