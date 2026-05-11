@@ -1416,7 +1416,6 @@ EOF
 
 cleanup() {
 
-  techo "Removing $TMPDIR_BASE"
   rm -r -f "$TMPDIR_BASE" > /dev/null 2>&1
 
 }
@@ -1584,3 +1583,13 @@ fi
 archive
 cleanup
 echo "$(timestamp): Finished"
+if [ "$DISTRO" = "pod" ]; then
+  if [ -f "/var/run/secrets/kubernetes.io/serviceaccount/namespace" ]; then
+    NS=$(cat "/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+    NS_FLAG="-n $NS"
+  fi
+  echo "
+To copy the collection from the pod:
+
+  kubectl cp ${NS_FLAG} $(hostname):${DIR_NAME}/${LOGNAME}.tar.gz ${LOGNAME}.tar.gz"
+fi

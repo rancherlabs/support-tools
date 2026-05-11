@@ -45,6 +45,5 @@ spec:
   serviceAccountName: rancher-logs-collector
   containers:
     - name: rancher-logs-collector
-      image: rancherlabs/swiss-army-knife:v2.0-rc6
-      imagePullPolicy: IfNotPresent
+      image: rancherlabs/swiss-army-knife:latest
   restartPolicy: Always
