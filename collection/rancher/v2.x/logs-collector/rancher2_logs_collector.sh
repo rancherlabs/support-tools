@@ -1624,7 +1624,7 @@ if [ "$CHROOTED_DEBUG_POD" = "true" ]; then
   echo "
     To copy the collection from the debug pod:
 
-      kubectl cp <node-debugger pod name>:/host${DIR_NAME}/${LOGNAME}.tar.gz ${LOGNAME}.tar.gz"
+      kubectl cp \$POD_NAME:/host${DIR_NAME}/${LOGNAME}.tar.gz ${LOGNAME}.tar.gz"
   # Sleep for 1 day to allow log collection from the pod
   sleep 86400
 fi

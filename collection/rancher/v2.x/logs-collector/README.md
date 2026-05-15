@@ -67,10 +67,12 @@ If you do not have direct SSH access to a node but need to collect OS or node-le
 
 - Start the debug pod on the node:
 
+The script will re-execute in a chroot environment and generate a `.tar.gz` archive. The logs collector pod will sleep for 1 day to keep the pod running to provide access to the pod logs and copying the archive file.
+
   #### Using the `rancherlabs/swiss-army-knife` container image
   - Start a debug session on the node, and execute the logs collector with the `-D` flag:
     ```bash
-    kubectl debug node/${NODE_NAME} -it --image=rancherlabs/swiss-army-knife -- bash /usr/local/bin/rancher2_logs_collector.sh -D
+    kubectl debug node/${NODE_NAME} --attach=false --image=rancherlabs/swiss-army-knife -- bash -c "rancher2_logs_collector.sh -D"
     ```
 
   #### Alternatively: Using another container image
@@ -79,19 +81,24 @@ If you do not have direct SSH access to a node but need to collect OS or node-le
     export IMAGE="<container-image>"
     ```
     ```bash
-    kubectl debug node/${NODE_NAME} -it --image=${IMAGE} -- bash -c "curl -OLs https://raw.githubusercontent.com/rancherlabs/support-tools/master/collection/rancher/v2.x/logs-collector/rancher2_logs_collector.sh && bash rancher2_logs_collector.sh -D"
+    kubectl debug node/${NODE_NAME} --attach=false --image=${IMAGE} -- bash -c "curl -OLs https://raw.githubusercontent.com/rancherlabs/support-tools/master/collection/rancher/v2.x/logs-collector/rancher2_logs_collector.sh && bash rancher2_logs_collector.sh -D"
     ```
 
     > **Note** This approach requires `curl` to be installed and internet access to download the script
 
-- The script will re-execute in a chroot environment and generate a `.tar.gz` archive. To download the archive, first find the name of the debug pod that was just created, and use the pod name in the `kubectl cp` command example from the logs collector output,
+- To view the logs and download the archive, copy the name of the debug pod that was just created, set the variable and use the pod name in the command examples below:
   ```bash
-  kubectl get pods | grep "node-debugger-${NODE_NAME}"
+  POD_NAME=<node-debugger-pod-name-here>
   ```
+  ```bash
+  kubectl logs -f $POD_NAME
+  ```
+
+- Once finished, copy the logs from the pod using the example command in the pod logs.
 
 - Clean up the debug pod when finished:
   ```bash
-  kubectl delete pod <node-debugger pod name>
+  kubectl delete pod $POD_NAME
   ```
 
 ## Flags
