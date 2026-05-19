@@ -1417,13 +1417,16 @@ EOF
 cleanup() {
 
   rm -r -f "$TMPDIR_BASE" > /dev/null 2>&1
+  if [ "$CHROOTED_DEBUG_POD" = "true" ]; then
+    rm /tmp/$(basename "$0")
+  fi
 
 }
 
 help() {
 
   echo "Rancher 2.x logs-collector
-  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -r <k8s distribution> -p -f ]
+  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -r <k8s distribution> -p -f -D ]
 
   All flags are optional
 
@@ -1436,7 +1439,8 @@ help() {
   -r    Override k8s distribution if not automatically detected (rke|k3s|rke2|kubeadm)
   -p    When supplied runs with the default nice/ionice priorities, otherwise use the lowest priorities
   -f    Force log collection if the minimum space isn't available
-  -o    Obfuscate IP addresses"
+  -o    Obfuscate IP addresses
+  -D    Run script via chroot /host (for use with kubectl debug node)"
 
 }
 
@@ -1460,7 +1464,7 @@ if [[ $EUID -ne 0 ]] && [[ "$DEV" == "" ]]
     exit 1
 fi
 
-while getopts "c:d:s:e:S:E:r:fpoh" opt; do
+while getopts "c:d:s:e:S:E:r:fpohD" opt; do
   case $opt in
     c)
       FLAG_DATA_DIR="$OPTARG"
@@ -1500,6 +1504,9 @@ while getopts "c:d:s:e:S:E:r:fpoh" opt; do
     o)
       OBFUSCATE=true
       ;;
+    D)
+      DEBUG_POD=true
+      ;;
     h)
       help && exit 0
       ;;
@@ -1511,6 +1518,26 @@ while getopts "c:d:s:e:S:E:r:fpoh" opt; do
       help && exit 0
   esac
 done
+
+if [ "$DEBUG_POD" = "true" ]; then
+  if [ ! -d "/host" ]; then
+    techo "Error: /host directory not found. This flag is intended for use with 'kubectl debug node'."
+    exit 1
+  fi
+  cp -u "$0" "/host/tmp/$(basename "$0")"
+  ARGS=()
+  for arg in "$@"; do
+    if [ "$arg" != "-D" ]; then
+      ARGS+=("$arg")
+    fi
+  done
+  techo "Re-executing script via chroot /host..."
+  export CHROOTED_DEBUG_POD=true
+  exec chroot /host bash "/tmp/$(basename "$0")" "${ARGS[@]}" || {
+    techo "[!] Failed to enter chroot at /host. Check mounts." >&2
+    exit 1
+  }
+fi
 
 if [ -n "$START_DAY" ] && [ -n "$END_DAY" ] && [ "$END_DAY" -ge "$START_DAY" ]
   then
@@ -1589,7 +1616,15 @@ if [ "$DISTRO" = "pod" ]; then
     NS_FLAG="-n $NS"
   fi
   echo "
-To copy the collection from the pod:
+    To copy the collection from the pod:
 
-  kubectl cp ${NS_FLAG} $(hostname):${DIR_NAME}/${LOGNAME}.tar.gz ${LOGNAME}.tar.gz"
+      kubectl cp ${NS_FLAG} $(hostname):${DIR_NAME}/${LOGNAME}.tar.gz ${LOGNAME}.tar.gz"
+fi
+if [ "$CHROOTED_DEBUG_POD" = "true" ]; then
+  echo "
+    To copy the collection from the debug pod:
+
+      kubectl cp \$POD_NAME:/host${DIR_NAME}/${LOGNAME}.tar.gz ${LOGNAME}.tar.gz"
+  # Sleep for 1 day to allow log collection from the pod
+  sleep 86400
 fi
