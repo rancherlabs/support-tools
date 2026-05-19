@@ -10,6 +10,18 @@ This logs collector project was created to collect logs from Linux Kubernetes no
 
 > Note: This script may not collect all necessary information when run on nodes in a [Hosted Kubernetes Provider](https://ranchermanager.docs.rancher.com/how-to-guides/new-user-guides/kubernetes-clusters-in-rancher-setup/set-up-clusters-from-hosted-kubernetes-providers) cluster.
 
+## Table of Contents
+
+- [Usage](#usage)
+  - [Download and run the script](#download-and-run-the-script)
+  - [Optional: Download and run the script in one command](#optional-download-and-run-the-script-in-one-command)
+  - [Optional: Run the script from a pod](#optional-run-the-script-from-a-pod)
+  - [Optional: Run the script with kubectl debug](#optional-run-the-script-with-kubectl-debug)
+    - [Using the `rancherlabs/swiss-army-knife` container image](#using-the-rancherlabsswiss-army-knife-container-image)
+    - [Alternatively: Using another container image](#alternatively-using-another-container-image)
+- [Flags](#flags)
+- [Scope of collection](#scope-of-collection)
+
 ## Usage
 
 The script needs to be downloaded and run directly on the node, using the `root` user or `sudo`.
@@ -56,7 +68,7 @@ Output will be written to `/tmp` as a tar.gz archive named `<hostname>-<date>.ta
 
   > Note: When run from a pod the log collection only captures Kubernetes-specific output. To collect OS or node-level output, run the logs collector directly on a node.
 
-### Optional: Run the script via kubectl debug
+### Optional: Run the script with kubectl debug
 
 If you do not have direct SSH access to a node but need to collect OS or node-level output (such as OS and container runtime logs), you can use the `kubectl debug` command to schedule an ephemeral pod on a node and run the logs collector.
 
