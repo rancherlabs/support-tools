@@ -1580,6 +1580,12 @@ if [ ! "$DISTRO" = "pod" ]; then
     sles)
       system-sles
       ;;
+    sle-micro)
+      system-sles
+      ;;
+    opensuse-leap)
+      system-sles
+      ;;
     *)
       echo "[!] Unsupported OS: $OSRELEASE"
       ;;
