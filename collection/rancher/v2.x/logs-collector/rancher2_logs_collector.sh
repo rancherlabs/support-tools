@@ -17,7 +17,7 @@ VAR_LOG_FILES=(syslog messages kern docker cloud-init audit/ dmesg)
 
 # Included Kubernetes object types
 K8S_OBJECTS=(clusterroles clusterrolebindings crds mutatingwebhookconfigurations namespaces nodes pv validatingwebhookconfigurations volumeattachments)
-K8S_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases networkpolicies pods pvc replicasets roles rolebindings statefulsets)
+K8S_OBJECTS_NAMESPACED=(apiservices configmaps cronjobs deployments daemonsets endpoints events helmcharts hpa ingress jobs leases networkpolicies networkpolicies.projectcalico.org globalnetworkpolicies.projectcalico.org pods pvc replicasets roles rolebindings statefulsets)
 
 # Default days log files to include
 DEFAULT_LOG_DAYS=7
