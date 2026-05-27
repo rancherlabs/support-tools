@@ -4,7 +4,6 @@
 
 # Included namespaces
 SYSTEM_NAMESPACES=(kube-system kube-public cattle-system cattle-alerting cattle-logging cattle-pipeline cattle-provisioning-capi-system cattle-resources-system ingress-nginx cattle-prometheus istio-system longhorn-system cattle-global-data fleet-system fleet-default rancher-operator-system cattle-monitoring-system cattle-logging-system cattle-fleet-system cattle-fleet-local-system tigera-operator calico-system suse-observability cattle-turtles-system cattle-capi-system rke2-bootstrap-system rke2-control-plane-system cattle-ai-agent-system)
-APP_NAMESPACES=(kube-system cattle-system cattle-fleet-system cattle-fleet-local-system cattle-provisioning-capi-system cattle-resources-system cattle-ui-plugin-system)
 
 # Included container logs
 KUBE_CONTAINERS=(etcd etcd-rolling-snapshots kube-apiserver kube-controller-manager kubelet kube-scheduler kube-proxy nginx-proxy)
@@ -648,7 +647,7 @@ k3s-k8s() {
     for OBJECT in "${K8S_OBJECTS_NAMESPACED[@]}"; do
       k3s kubectl get "$OBJECT" --all-namespaces -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
     done
-    for APP_NS in "${APP_NAMESPACES[@]}"; do
+    for APP_NS in "${SYSTEM_NAMESPACES[@]}"; do
       k3s kubectl get apps.catalog.cattle.io --ignore-not-found=true --namespace $APP_NS 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
     done
 
@@ -728,7 +727,7 @@ rke2-k8s() {
     for OBJECT in "${K8S_OBJECTS_NAMESPACED[@]}"; do
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get "$OBJECT" --all-namespaces -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
     done
-    for APP_NS in "${APP_NAMESPACES[@]}"; do
+    for APP_NS in "${SYSTEM_NAMESPACES[@]}"; do
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get apps.catalog.cattle.io --ignore-not-found=true --namespace $APP_NS 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
     done
 
@@ -808,7 +807,7 @@ pod-k8s() {
     for OBJECT in "${K8S_OBJECTS_NAMESPACED[@]}"; do
       kubectl get "$OBJECT" --all-namespaces -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
     done
-    for APP_NS in "${APP_NAMESPACES[@]}"; do
+    for APP_NS in "${SYSTEM_NAMESPACES[@]}"; do
       kubectl get apps.catalog.cattle.io --ignore-not-found=true --namespace $APP_NS 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
     done
 
