@@ -262,7 +262,7 @@ system-all() {
   if command -v systemctl >/dev/null 2>&1; then
     systemctl list-unit-files > "${TMPDIR}/systeminfo/systemd-unit-files" 2>&1
   fi
-  if command -v systemd-detect-virt 2>&1; then
+  if command -v systemd-detect-virt >/dev/null 2>&1; then
     systemd-detect-virt > "${TMPDIR}/systeminfo/systemd-detect-virt" 2>&1
   fi
   if command -v service >/dev/null 2>&1; then
@@ -926,6 +926,11 @@ var-log() {
 
 journald-log() {
 
+  if [ -n "${START_DAY}" ]
+    then
+      DEFAULT_LOG_DAYS="$START_DAY"
+  fi
+
   JOURNALCTL_CMD=(journalctl)
   [ -n "${SINCE_FLAG[*]}" ] && JOURNALCTL_CMD+=("${SINCE_FLAG[@]}")
   [ -n "${UNTIL_FLAG[*]}" ] && JOURNALCTL_CMD+=("${UNTIL_FLAG[@]}")
@@ -934,7 +939,7 @@ journald-log() {
   mkdir -p "${TMPDIR}/journald"
   for JOURNALD_LOG in "${JOURNALD_LOGS[@]}"; do
     if grep "$JOURNALD_LOG.service" "${TMPDIR}/systeminfo/systemd-unit-files" > /dev/null 2>&1; then
-      "${JOURNALCTL_CMD[@]}" --unit="$JOURNALD_LOG" > "${TMPDIR}/journald/$JOURNALD_LOG"
+      "${JOURNALCTL_CMD[@]}" --unit="$JOURNALD_LOG" --since "${DEFAULT_LOG_DAYS} days ago" > "${TMPDIR}/journald/$JOURNALD_LOG"
     fi
   done
 
