@@ -944,6 +944,81 @@ journald-log() {
 
 }
 
+summary() {
+  SUMMARY="${TMPDIR}/summary.txt"
+
+  {
+    echo "Rancher 2.x Logs Collector Summary"
+    echo "=================================="
+    echo
+    echo "Generated: $(date)"
+    echo "Hostname:  $(hostname 2>/dev/null)"
+    echo "Kernel:    $(uname -r 2>/dev/null)"
+    echo "Distro:    ${DISTRO:-unknown}"
+    echo "Init:      ${INIT:-unknown}"
+    echo "Obfuscate: ${OBFUSCATE:+enabled}"
+    [ -z "${OBFUSCATE}" ] && echo "Obfuscate: disabled"
+    echo
+
+    echo "OS"
+    echo "--"
+    [ -f /etc/os-release ] && grep -E '^(PRETTY_NAME|VERSION_ID)=' /etc/os-release
+    echo
+
+    echo "System"
+    echo "------"
+    uptime 2>/dev/null || true
+    free -m 2>/dev/null || true
+    echo
+    echo "Disk usage >= 80%:"
+    df -h 2>/dev/null | awk 'NR==1 || int($5) >= 80 {print}'
+    echo
+    echo "Inode usage >= 80%:"
+    df -i 2>/dev/null | awk 'NR==1 || int($5) >= 80 {print}'
+    echo
+
+    echo "Versions"
+    echo "--------"
+    [ -f "${TMPDIR}/versions" ] && cat "${TMPDIR}/versions"
+    echo
+
+    echo "Kubernetes Nodes"
+    echo "----------------"
+    find "${TMPDIR}" -path "*/kubectl/nodes" -type f -exec sh -c 'echo "--- $1"; cat "$1"' _ {} \;
+    echo
+
+    echo "Kubernetes Version"
+    echo "------------------"
+    find "${TMPDIR}" -path "*/kubectl/version" -type f -exec sh -c 'echo "--- $1"; cat "$1"' _ {} \;
+    echo
+
+    echo "Rancher Pods"
+    echo "------------"
+    find "${TMPDIR}" -path "*/kubectl/pods" -type f -exec sh -c 'echo "--- $1"; grep -E "cattle-system|rancher" "$1" || true' _ {} \;
+    echo
+
+    echo "Fleet Pods"
+    echo "----------"
+    find "${TMPDIR}" -path "*/kubectl/pods" -type f -exec sh -c 'echo "--- $1"; grep -E "cattle-fleet-system|cattle-fleet-local-system|fleet-system|fleet-default" "$1" || true' _ {} \;
+    echo
+
+    echo "System Pods Not Running"
+    echo "-----------------------"
+    find "${TMPDIR}" -path "*/kubectl/pods" -type f -exec sh -c 'echo "--- $1"; awk "NR==1 || (\$4 != \"Running\" && \$4 != \"Completed\" && \$4 != \"Succeeded\")" "$1"' _ {} \;
+    echo
+
+    echo "Recent Warning Events"
+    echo "---------------------"
+    find "${TMPDIR}" -path "*/kubectl/events" -type f -exec sh -c 'echo "--- $1"; grep -i "Warning" "$1" | tail -50 || true' _ {} \;
+    echo
+
+    echo "Collector Contents"
+    echo "------------------"
+    find "${TMPDIR}" -maxdepth 2 -type f 2>/dev/null | sed "s#${TMPDIR}/##" | sort
+
+  } > "${SUMMARY}" 2>&1
+}
+
 rke-certs() {
 
   techo "Collecting k8s directory state"
@@ -1612,6 +1687,8 @@ if [ ! "$API_SERVER_OFFLINE" ]; then
   else
     techo "[!] Kube-apiserver is offline, skipping provisioning CRDs"
 fi
+
+summary
 
 if [ "$OBFUSCATE" ]; then
     obfuscate
