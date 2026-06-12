@@ -10,6 +10,18 @@ This logs collector project was created to collect logs from Linux Kubernetes no
 
 > Note: This script may not collect all necessary information when run on nodes in a [Hosted Kubernetes Provider](https://ranchermanager.docs.rancher.com/how-to-guides/new-user-guides/kubernetes-clusters-in-rancher-setup/set-up-clusters-from-hosted-kubernetes-providers) cluster.
 
+## Table of Contents
+
+- [Usage](#usage)
+  - [Download and run the script](#download-and-run-the-script)
+  - [Optional: Download and run the script in one command](#optional-download-and-run-the-script-in-one-command)
+  - [Optional: Run the script from a pod](#optional-run-the-script-from-a-pod)
+  - [Optional: Run the script with kubectl debug](#optional-run-the-script-with-kubectl-debug)
+    - [Using the `rancherlabs/swiss-army-knife` container image](#using-the-rancherlabsswiss-army-knife-container-image)
+    - [Alternatively: Using another container image](#alternatively-using-another-container-image)
+- [Flags](#flags)
+- [Scope of collection](#scope-of-collection)
+
 ## Usage
 
 The script needs to be downloaded and run directly on the node, using the `root` user or `sudo`.
@@ -43,12 +55,63 @@ Output will be written to `/tmp` as a tar.gz archive named `<hostname>-<date>.ta
   - Deploy the log collector pod:
   ```bash
   kubectl apply -f https://raw.githubusercontent.com/rancherlabs/support-tools/refs/heads/master/collection/rancher/v2.x/logs-collector/logs_collector.yaml
+
   kubectl exec -it rancher-logs-collector -- bash /usr/local/bin/rancher2_logs_collector.sh
   ```
 
   - Copy the collection from the pod using the "kubectl cp" command example in the output
 
+  - Clean up the log collector pod
+  ```bash
+  kubectl delete -f https://raw.githubusercontent.com/rancherlabs/support-tools/refs/heads/master/collection/rancher/v2.x/logs-collector/logs_collector.yaml
+  ```
+
   > Note: When run from a pod the log collection only captures Kubernetes-specific output. To collect OS or node-level output, run the logs collector directly on a node.
+
+### Optional: Run the script with kubectl debug
+
+If you do not have direct SSH access to a node but need to collect OS or node-level output (such as OS and container runtime logs), you can use the `kubectl debug` command to schedule an ephemeral pod on a node and run the logs collector.
+
+- Set the target node name as a variable:
+  ```bash
+  export NODE_NAME="<your-node-name>"
+  ```
+
+- Start the debug pod on the node:
+
+The script will re-execute in a chroot environment and generate a `.tar.gz` archive. The logs collector pod will sleep for 1 day to keep the pod running to provide access to the pod logs and copying the archive file.
+
+  #### Using the `rancherlabs/swiss-army-knife` container image
+  - Start a debug session on the node, and execute the logs collector with the `-D` flag:
+    ```bash
+    kubectl debug node/${NODE_NAME} --attach=false --image=rancherlabs/swiss-army-knife -- bash -c "rancher2_logs_collector.sh -D"
+    ```
+
+  #### Alternatively: Using another container image
+  - Start a debug session on the node, and execute the logs collector with the `-D` flag:
+    ```bash
+    export IMAGE="<container-image>"
+    ```
+    ```bash
+    kubectl debug node/${NODE_NAME} --attach=false --image=${IMAGE} -- bash -c "curl -OLs https://raw.githubusercontent.com/rancherlabs/support-tools/master/collection/rancher/v2.x/logs-collector/rancher2_logs_collector.sh && bash rancher2_logs_collector.sh -D"
+    ```
+
+    > **Note** This approach requires `curl` to be installed and internet access to download the script
+
+- To view the logs and download the archive, copy the name of the debug pod that was just created, set the variable and use the pod name in the command examples below:
+  ```bash
+  POD_NAME=<node-debugger-pod-name-here>
+  ```
+  ```bash
+  kubectl logs -f $POD_NAME
+  ```
+
+- Once finished, copy the logs from the pod using the example command in the pod logs.
+
+- Clean up the debug pod when finished:
+  ```bash
+  kubectl delete pod $POD_NAME
+  ```
 
 ## Flags
 
