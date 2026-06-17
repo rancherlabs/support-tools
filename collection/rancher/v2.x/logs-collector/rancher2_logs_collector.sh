@@ -218,10 +218,8 @@ system-all() {
   free -h 2>&1 | tee -a "${TMPDIR}/systeminfo/freeh" >/dev/null
   uptime > "${TMPDIR}/systeminfo/uptime" 2>&1
   dmesg -T > "${TMPDIR}/systeminfo/dmesg" 2>&1
-  df -h > "${TMPDIR}/systeminfo/dfh" 2>&1
-  if df -i >/dev/null 2>&1; then
-    df -i > "${TMPDIR}/systeminfo/dfi" 2>&1
-  fi
+  df -Ph > "${TMPDIR}/systeminfo/dfh" 2>&1
+  df -Pi > "${TMPDIR}/systeminfo/dfi" 2>&1
   lsmod > "${TMPDIR}/systeminfo/lsmod" 2>&1
   mount > "${TMPDIR}/systeminfo/mount" 2>&1
   ps auxfww > "${TMPDIR}/systeminfo/ps" 2>&1
@@ -967,14 +965,14 @@ summary() {
 
     echo "System"
     echo "------"
-    uptime 2>/dev/null || true
-    free -m 2>/dev/null || true
+    [ -f "${TMPDIR}/systeminfo/uptime" ] && cat "${TMPDIR}/systeminfo/uptime"
+    [ -f "${TMPDIR}/systeminfo/freeh" ] && cat "${TMPDIR}/systeminfo/freeh"
     echo
     echo "Disk usage >= 80%:"
-    df -h 2>/dev/null | awk 'NR==1 || int($5) >= 80 {print}'
+    [ -f "${TMPDIR}/systeminfo/dfh" ] && cat "${TMPDIR}/systeminfo/dfh" | awk 'NR==1 || int($5) >= 80 {print}'
     echo
     echo "Inode usage >= 80%:"
-    df -i 2>/dev/null | awk 'NR==1 || int($5) >= 80 {print}'
+    [ -f "${TMPDIR}/systeminfo/dfi" ] && cat "${TMPDIR}/systeminfo/dfi" | awk 'NR==1 || int($5) >= 80 {print}'
     echo
 
     echo "Versions"
@@ -1002,14 +1000,14 @@ summary() {
     find "${TMPDIR}" -path "*/kubectl/pods" -type f -exec sh -c 'echo "--- $1"; grep -E "cattle-fleet-system|cattle-fleet-local-system|fleet-system|fleet-default" "$1" || true' _ {} \;
     echo
 
-    echo "System Pods Not Running"
-    echo "-----------------------"
+    echo "Pods Not Running"
+    echo "--------------------"
     find "${TMPDIR}" -path "*/kubectl/pods" -type f -exec sh -c 'echo "--- $1"; awk "NR==1 || (\$4 != \"Running\" && \$4 != \"Completed\" && \$4 != \"Succeeded\")" "$1"' _ {} \;
     echo
 
     echo "Recent Warning Events"
     echo "---------------------"
-    find "${TMPDIR}" -path "*/kubectl/events" -type f -exec sh -c 'echo "--- $1"; grep -i "Warning" "$1" | tail -50 || true' _ {} \;
+    find "${TMPDIR}" -path "*/kubectl/events" -type f -exec sh -c 'echo "--- $1"; grep -i "Warning" "$1" | tail -25 || true' _ {} \;
     echo
 
     echo "Collector Contents"
