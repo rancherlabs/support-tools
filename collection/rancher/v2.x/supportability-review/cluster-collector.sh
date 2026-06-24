@@ -49,6 +49,7 @@ collect_common_cluster_info() {
   kubectl get pods -A -o json > pods.json
   jq -cr '.items | length' pods.json > pod-count
   jq -cr '[([.items[].spec.containers | length] | add), ([.items[].spec.initContainers | length] | add)] | add' pods.json > container-count
+  jq -cr '.items[] | select(.metadata.namespace == "default") | .metadata.name' pods.json | wc -l > pods_in_default_ns
   cat pods.json | jq -cr '
 .items
 | map(.spec.nodeName)
@@ -110,6 +111,7 @@ collect_common_cluster_info() {
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
   kubectl get deploy -n cattle-neuvector-system -o json > cattle-neuvector-system-deploy.json
   kubectl get deploy -n kube-system -o json > kube-system-deploy.json
+  kubectl get deploy -n cert-manager -o json > cert-manager-deploy.json
   kubectl get statefulsets -n cattle-fleet-system -o json > cattle-fleet-system-statefulsets.json
   kubectl get settings.management.cattle.io server-version -o json > server-version.json
   if [ ! -s server-version.json ]; then
@@ -281,6 +283,11 @@ collect_downstream_cluster_info() {
 collect_app_info() {
   mkdir -p "${OUTPUT_DIR}/apps"
 
+  kubectl get settings.longhorn.io -n longhorn-system -o json > apps/longhorn-settings.json
+  if [ ! -s apps/longhorn-settings.json ]; then
+    rm apps/longhorn-settings.json
+  fi
+
   kubectl get ds -n longhorn-system -o json > apps/longhorn-system-daemonsets.json
   NUM_OF_LONGHORN_DS=`jq -cr '.items | length' apps/longhorn-system-daemonsets.json`
   if [ $NUM_OF_LONGHORN_DS -eq 0 ]; then
@@ -295,6 +302,11 @@ collect_app_info() {
   kubectl get backuptargets.longhorn.io -n longhorn-system -o json > apps/longhorn-backuptargets.json
   if [ ! -s apps/longhorn-backuptargets.json ]; then
     rm apps/longhorn-backuptargets.json
+  fi
+
+  kubectl get orphans.longhorn.io -n longhorn-system -o json > apps/longhorn-orphans.json
+  if [ ! -s apps/longhorn-orphans.json ]; then
+    rm apps/longhorn-orphans.json
   fi
 
   kubectl get deploy -A -o json | jq -cr '.items[] | select(.metadata.labels."app.kubernetes.io/name" == "headlamp")' > apps/headlamp.json
