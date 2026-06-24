@@ -107,6 +107,7 @@ export SR_COLLECT_CLUSTER_INFO_DUMP=1
 # Optional: Proxy settings
 export COLLECTOR_HTTP_PROXY="http://proxy.example.com:8080"
 export COLLECTOR_HTTPS_PROXY="https://proxy.example.com:8080"
+export COLLECTOR_NO_PROXY=".noproxy.com:443,127.0.0.1,localhost"
 ```
 
 ### 3. Run Collection

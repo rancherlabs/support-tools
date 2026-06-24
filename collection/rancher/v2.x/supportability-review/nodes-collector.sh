@@ -81,6 +81,13 @@ collect_systeminfo() {
   if [ ! -s systeminfo/server-version.json ]; then
     rm systeminfo/server-version.json
   fi
+
+  node_name=$(cat /etc/hostname)
+  kubectl get --raw "/api/v1/nodes/${node_name}/proxy/configz" > systeminfo/kubeletconfig.json 2>/dev/null
+  if [ ! -s systeminfo/kubeletconfig.json ]; then
+    rm systeminfo/kubeletconfig.json
+  fi
+
   lsblk -d -o name,rota > systeminfo/rotational 2>&1
   systemd-detect-virt > systeminfo/detect-virt 2>&1
 }
@@ -158,26 +165,9 @@ collect_networking_info_ip6() {
   ss -tunlp6 > networking/sstunlp6 2>&1
 }
 
-collect_websock_info() {
-  # echo "SGVsbG8sIHdvcmxkIQ==" | base64 -d
-  RANCHER_HOST=$(echo ${RANCHER_URL} | sed -E 's/^http(s)?:\/\///')
-  echo ${RANCHER_URL} > networking/rancher_url 2>&1
-  echo ${RANCHER_HOST%/} > networking/rancher_host 2>&1
-  echo ${HOSTED_RANCHER_HOSTNAME_SUFFIX} > networking/hosted_rancher_hostname_suffix 2>&1
-  curl -s --include --no-buffer \
-  --header "Connection: Upgrade" \
-  --header "Upgrade: websocket" \
-  --header "Host: "${RANCHER_HOST%/} \
-  --header "Origin: "${RANCHER_URL} \
-  --header "Sec-WebSocket-Key: SGVsbG8sIHdvcmxkIQ==" \
-  --header "Sec-WebSocket-Version: 13" ${RANCHER_URL}/healthz \
-  -o networking/rancher_websocket_check
-}
-
 collect_networking_info() {
   collect_networking_info_ip4
   collect_networking_info_ip6
-  collect_websock_info
 
   cp -r -p ${HOST_FS_PREFIX}/etc/cni/net.d/* networking/cni 2>&1
 }
