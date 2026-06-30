@@ -121,16 +121,16 @@ while true; do
         S2["$name"]=$sum
         C2["$name"]=$count
         
-        delta_S=$(echo "${S2[$name]} - ${S1[$name]}" | bc)
-        delta_C=$(echo "${C2[$name]} - ${C1[$name]}" | bc)
+        delta_S=$(awk "BEGIN {print ${S2[$name]} - ${S1[$name]}}")
+        delta_C=$(awk "BEGIN {print ${C2[$name]} - ${C1[$name]}}")
 
         # Safe guard against zero-division
-        if [ -z "$delta_C" ] || [ $(echo "$delta_C == 0" | bc) -eq 1 ]; then
+        if [ -z "$delta_C" ] || [ "$(awk "BEGIN {print ($delta_C == 0) ? 1 : 0}")" -eq 1 ]; then
             delta_C=1
         fi
 
-        intensity=$(echo "scale=4; $delta_S / $delta_t" | bc | awk '{printf "%.4f", $0}')
-        penalty=$(echo "scale=4; $delta_S / $delta_C" | bc | awk '{printf "%.4f", $0}')
+        intensity=$(awk "BEGIN {printf \"%.4f\", $delta_S / $delta_t}")
+        penalty=$(awk "BEGIN {printf \"%.4f\", $delta_S / $delta_C}")
 
         printf "%-25s %-15s %-15s\n" "$name" "$intensity" "$penalty"
 
