@@ -51,7 +51,7 @@ If a component is actively throttling, you can increase its limits by passing ad
 
 ### Standalone clusters
 
-For **RKE2**, you would add the following to `/etc/rancher/rke2/config.yaml` (adjusting the component name and limits as needed):
+For example, to adjust the `kube-api-qps` and `kube-api-burst` limits for [kube-controller-manager](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/) on an **RKE2** cluster, you would add the following to `/etc/rancher/rke2/config.yaml`:
 
 ```yaml
 kube-controller-manager-arg:
@@ -59,14 +59,16 @@ kube-controller-manager-arg:
   - "kube-api-burst=200"
 ```
 
-For **K3s**, the equivalent configuration in `/etc/rancher/k3s/config.yaml` would be:
+Another example, to adjust the [kubelet](https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/):
 ```yaml
-kube-controller-manager-arg:
+kubelet-arg:
   - "kube-api-qps=100"
   - "kube-api-burst=200"
 ```
 
-Restart the respective service (`systemctl restart rke2-server` or `systemctl restart k3s`) for the changes to take effect.
+For **K3s**, the equivalent configuration would be added to `/etc/rancher/k3s/config.yaml` 
+
+Restart the respective service (`systemctl restart rke2-server`, `systemctl restart rke2-agent`, or `systemctl restart k3s`) for the changes to take effect.
 
 ### Clusters provisioned by Rancher
 
