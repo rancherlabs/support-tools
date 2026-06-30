@@ -2,7 +2,7 @@
 
 A lightweight bash utility to detect client-side API throttling (`rest_client_rate_limiter_duration_seconds`) across core Kubernetes components. 
 
-When deploying clusters without a centralized monitoring stack (like Prometheus) installed, diagnosing control plane bottlenecks can be difficult. This tool acts as a drop-in alternative to PromQL queries by scraping the `/metrics` endpoints directly using the local cluster certificates.
+When deploying clusters without a centralised monitoring stack (like Prometheus) installed, diagnosing control plane bottlenecks can be difficult. This tool acts as a drop-in alternative to PromQL queries by scraping the `/metrics` endpoints directly using the local cluster certificates.
 
 Currently supports:
 - **RKE2**
@@ -18,16 +18,16 @@ This script takes a baseline snapshot of the metrics, loops continuously every 1
 
 ## Usage
 
-Run the script as `root` (or with `sudo`) directly on a server/control-plane node:
+Run the script as `root` (or with `sudo`) directly on any server or agent (worker) node:
 
 ```bash
-sudo ./k8s-throttle-monitor.sh
+sudo bash ./k8s-throttle-monitor.sh
 ```
 
 ### Interpreting the Output
 
 ```text
-Detected Distribution: rke2
+Detected Distribution: rke2 (server)
 Capturing initial baseline...
 Starting continuous monitoring (Press Ctrl+C to stop)...
 ------------------------------------------------------------
@@ -36,6 +36,7 @@ COMPONENT                 INTENSITY (s/s) PENALTY (s/req)
 
 --- Snapshot taken at 15:33:04 (Interval: 10s) ---
 kube-apiserver            0.0000          0.0000         
+kube-proxy                0.0000          0.0000         
 kube-controller-manager   0.4500          0.0012         
 kube-scheduler            0.0000          0.0000         
 kubelet                   0.0000          0.0000         
@@ -58,7 +59,6 @@ kube-controller-manager-arg:
   - "kube-api-burst=200"
 ```
 
-
 For **K3s**, the equivalent configuration in `/etc/rancher/k3s/config.yaml` would be:
 ```yaml
 kube-controller-manager-arg:
@@ -73,4 +73,4 @@ Restart the respective service (`systemctl restart rke2-server` or `systemctl re
 For clusters provisioned and managed by **Rancher**, these arguments should be added to the Cluster Configuration via the Rancher dashboard or Terraform. 
 
 For more details on modifying cluster arguments, see the official SUSE knowledge base article:
-[How to Update or Add Arguments to the kube-apiserver in RKE2 and K3s Clusters](https://support.scc.suse.com/s/kb/How-to-Update-or-Add-Arguments-to-the-kube-apiserver-in-RKE2-and-K3s-Clusters?language=en_US)
+[How to Update or Add Arguments to the kube-apiserver in RKE2 and K3s Clusters](https://support.scc.suse.com/s/kb/How-to-Update-or-Add-Arguments-to-the-kube-apiserver-in-RKE2-and-K3s-Clusters)

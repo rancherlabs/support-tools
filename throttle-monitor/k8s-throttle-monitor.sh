@@ -1,44 +1,78 @@
 #!/bin/bash
 set -e
 
-# 1. Detect Distribution
-if [ -d "/var/lib/rancher/rke2" ]; then
+# 1. Detect Distribution and Node Type
+if [ -d "/var/lib/rancher/rke2/server/tls" ]; then
     DISTRO="rke2"
     BASE_DIR="/var/lib/rancher/rke2/server/tls"
-elif [ -d "/var/lib/rancher/k3s" ]; then
+    NODE_TYPE="server"
+    CERT="client-admin.crt"
+    KEY="client-admin.key"
+elif [ -d "/var/lib/rancher/rke2/agent" ]; then
+    DISTRO="rke2"
+    BASE_DIR="/var/lib/rancher/rke2/agent"
+    NODE_TYPE="agent"
+    CERT="client-kubelet.crt"
+    KEY="client-kubelet.key"
+elif [ -d "/var/lib/rancher/k3s/server/tls" ]; then
     DISTRO="k3s"
     BASE_DIR="/var/lib/rancher/k3s/server/tls"
+    NODE_TYPE="server"
+    CERT="client-admin.crt"
+    KEY="client-admin.key"
+elif [ -d "/var/lib/rancher/k3s/agent" ]; then
+    DISTRO="k3s"
+    BASE_DIR="/var/lib/rancher/k3s/agent"
+    NODE_TYPE="agent"
+    CERT="client-kubelet.crt"
+    KEY="client-kubelet.key"
 else
     echo "Error: Neither RKE2 nor K3s detected."
     exit 1
 fi
 
-echo "Detected Distribution: $DISTRO"
+echo "Detected Distribution: $DISTRO ($NODE_TYPE)"
 
 # 2. Component Mapping
-# Format: "Name|Port|CertFile|KeyFile"
-COMPONENTS=(
-    "kube-apiserver|6443|client-admin.crt|client-admin.key"
-    "kube-controller-manager|10257|client-admin.crt|client-admin.key"
-    "kube-scheduler|10259|client-admin.crt|client-admin.key"
-    "kubelet|10250|client-admin.crt|client-admin.key"
-)
-
+# Format: "Name|Port|Scheme|CertFile|KeyFile"
+if [ "$NODE_TYPE" = "server" ]; then
+    COMPONENTS=(
+        "kube-apiserver|6443|https|$CERT|$KEY"
+        "kube-proxy|10249|http|none|none"
+        "kube-controller-manager|10257|https|$CERT|$KEY"
+        "kube-scheduler|10259|https|$CERT|$KEY"
+        "kubelet|10250|https|$CERT|$KEY"
+    )
+else
+    COMPONENTS=(
+        "kube-proxy|10249|http|none|none"
+        "kubelet|10250|https|$CERT|$KEY"
+    )
+fi
 # 3. Helper Function
 get_metrics() {
     local name=$1
     local port=$2
-    local cert="$BASE_DIR/$3"
-    local key="$BASE_DIR/$4"
-    local url="https://127.0.0.1:${port}/metrics"
+    local scheme=$3
+    local cert="$BASE_DIR/$4"
+    local key="$BASE_DIR/$5"
+    local url="${scheme}://127.0.0.1:${port}/metrics"
 
-    # Quick check if endpoint is responding
-    if ! curl -s -k --key "$key" --cert "$cert" "$url" | head -n 1 > /dev/null; then
-        echo "$name OFF"
-        return
+    local raw_data
+    if [ "$scheme" = "https" ]; then
+        if ! curl -s -k --key "$key" --cert "$cert" "$url" | head -n 1 > /dev/null; then
+            echo "$name OFF"
+            return
+        fi
+        raw_data=$(curl -s -k --key "$key" --cert "$cert" "$url")
+    else
+        if ! curl -s "$url" | head -n 1 > /dev/null; then
+            echo "$name OFF"
+            return
+        fi
+        raw_data=$(curl -s "$url")
     fi
 
-    local raw_data=$(curl -s -k --key "$key" --cert "$cert" "$url")
     local sum=$(echo "$raw_data" | grep "^rest_client_rate_limiter_duration_seconds_sum" | awk '{sum += $2} END {printf("%.6f\n", sum)}')
     local count=$(echo "$raw_data" | grep "^rest_client_rate_limiter_duration_seconds_count" | awk '{sum += $2} END {printf("%.0f\n", sum)}')
 
@@ -54,8 +88,8 @@ declare -A S1 C1 S2 C2
 # Initial Baseline Snapshot
 echo "Capturing initial baseline..."
 for comp in "${COMPONENTS[@]}"; do
-    IFS='|' read -r name port cert key <<< "$comp"
-    read -r out_name sum count <<< "$(get_metrics "$name" "$port" "$cert" "$key")"
+    IFS='|' read -r name port scheme cert key <<< "$comp"
+    read -r out_name sum count <<< "$(get_metrics "$name" "$port" "$scheme" "$cert" "$key")"
     if [ "$sum" != "OFF" ]; then
         S1["$name"]=$sum
         C1["$name"]=$count
@@ -78,12 +112,12 @@ while true; do
     echo -e "\n--- Snapshot taken at $(date +"%H:%M:%S") (Interval: ${delta_t}s) ---"
 
     for comp in "${COMPONENTS[@]}"; do
-        IFS='|' read -r name port cert key <<< "$comp"
+        IFS='|' read -r name port scheme cert key <<< "$comp"
         
         # Skip if it wasn't alive in baseline
         if [ -z "${S1[$name]}" ]; then continue; fi
 
-        read -r out_name sum count <<< "$(get_metrics "$name" "$port" "$cert" "$key")"
+        read -r out_name sum count <<< "$(get_metrics "$name" "$port" "$scheme" "$cert" "$key")"
         S2["$name"]=$sum
         C2["$name"]=$count
         
