@@ -34,3 +34,68 @@ Note, pod logs from other nodes and additional kubectl output can only be collec
 #### Kubectl output
 - Kubectl list of nodes, pods, services, RBAC roles, persistent volumes, events, ingress and deployments
 - Cluster provisioning CRD objects
+
+### Logs Bundle Directory Structure
+The following section provides a high-level overview of the directories and files created by the logs collector. It is intended to help support quickly locate commonly used troubleshooting data within a collected support bundle.
+
+#### Top-level directories
+
+| Directory | Contents |
+|-----------|----------|
+| `systeminfo/` | Host OS, CPU, memory, mounts, processes, sysctl, services, NetworkManager configs, iostat, pidstat, lsof, etc. |
+| `networking/` | iptables/ip6tables, nftables, routes, interfaces, neighbors, ss/netstat, IPVS, CNI configs, ethtool output. |
+| `systemlogs/` | `/var/log` files (syslog, messages, audit, cloud-init, dmesg, docker, etc.) and atop/sysstat data. |
+| `journald/` | Journal output for RKE2, K3s, kubelet, containerd, Docker, rancher-system-agent, etc. |
+| `docker/` | Docker information, images, daemon configuration (RKE only). |
+| `rancher/` | Rancher container logs and inspect output (RKE). |
+| `etcd/` | etcd health, alarms, metrics, snapshots, members, and database metadata. |
+| `kubeadm/` | kubeadm resources, PKI, manifests, and pod logs. |
+| `${DISTRO}/` | Primary cluster-specific collection (RKE2, K3s, or RKE). |
+
+#### `${DISTRO}/`
+
+This directory contains the majority of the Kubernetes and Rancher troubleshooting data.
+
+##### `kubectl/`
+Includes cluster resources (nodes, pods, services, endpoints, ConfigMaps, namespaces, Deployments, DaemonSets, StatefulSets, ReplicaSets, Jobs, CronJobs, Events, Ingresses, NetworkPolicies, PVs, PVCs, CRDs, ClusterRoles, ClusterRoleBindings, HelmCharts, Leases, HPAs, Roles, RoleBindings, and Rancher provisioning CRDs).
+
+###### `kubectl/poddescribe/`
+One `kubectl describe pod` output file for each system namespace.
+
+##### `kubectl/rancher-prov/`
+Rancher provisioning CRDs and infrastructure provider resources.
+
+##### `podlogs/`
+Pod logs for system namespaces. Helm Job logs are also collected here if the Job pod still exists.
+
+##### `containerlogs/` *(RKE only)*
+Static Kubernetes component logs (etcd, kube-apiserver, kube-controller-manager, kube-scheduler, kube-proxy, kubelet, nginx-proxy).
+
+##### `containerinspect/`
+Docker inspect output for system containers.
+
+##### `podinspect/`
+Docker inspect output for Kubernetes-managed containers.
+
+##### `crictl/`
+CRI runtime information (ps, pods, info, stats, images, versions, imagefsinfo).
+
+##### `pod-manifests/`
+Static pod manifests for control plane components.
+
+##### `agent-logs/` / `server-logs/`
+RKE2 agent and server logs within the requested date range.
+
+##### `directories/`
+Filesystem and certificate directory listings.
+
+##### `certs/`
+Decoded certificates.
+
+#### Additional files
+
+- `summary.txt`
+- `versions`
+- `collector-output.log`
+
+  
