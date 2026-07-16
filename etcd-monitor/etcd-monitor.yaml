@@ -1,0 +1,110 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rke2-etcd-quorum-early-warning
+  namespace: cattle-monitoring-system
+  labels:
+    release: rancher-monitoring
+spec:
+  groups:
+    - name: rke2-etcd-quorum-early-warning
+      rules:
+        - alert: EtcdMemberDown
+          expr: up{job=~".*etcd.*"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            category: etcd
+          annotations:
+            summary: "etcd member is not reachable"
+            description: "Prometheus cannot scrape etcd metrics from {{ $labels.instance }} for more than 2 minutes."
+
+        - alert: EtcdNoLeader
+          expr: etcd_server_has_leader == 0
+          for: 1m
+          labels:
+            severity: critical
+            category: etcd
+          annotations:
+            summary: "etcd member reports no leader"
+            description: "etcd member {{ $labels.instance }} has no leader. API instability or quorum loss may follow."
+
+        - alert: EtcdFrequentLeaderChanges
+          expr: increase(etcd_server_leader_changes_seen_total[15m]) > 3
+          for: 5m
+          labels:
+            severity: warning
+            category: etcd
+          annotations:
+            summary: "Frequent etcd leader changes detected"
+            description: "etcd has seen more than 3 leader changes in 15 minutes. This may indicate network, disk, CPU, or member health issues."
+
+        - alert: EtcdHighWALFsyncLatency
+          expr: histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket[5m])) > 0.5
+          for: 10m
+          labels:
+            severity: warning
+            category: etcd
+          annotations:
+            summary: "High etcd WAL fsync latency"
+            description: "p99 WAL fsync latency is above 500ms on {{ $labels.instance }}. This often points to disk latency or I/O starvation."
+
+        - alert: EtcdHighBackendCommitLatency
+          expr: histogram_quantile(0.99, rate(etcd_disk_backend_commit_duration_seconds_bucket[5m])) > 0.5
+          for: 10m
+          labels:
+            severity: warning
+            category: etcd
+          annotations:
+            summary: "High etcd backend commit latency"
+            description: "p99 backend commit latency is above 500ms on {{ $labels.instance }}."
+
+        - alert: EtcdDatabaseSizeGrowingQuickly
+          expr: increase(etcd_mvcc_db_total_size_in_bytes[1h]) > 1073741824
+          for: 15m
+          labels:
+            severity: warning
+            category: etcd
+          annotations:
+            summary: "etcd database size is growing quickly"
+            description: "etcd DB on {{ $labels.instance }} grew by more than 1GiB in the last hour."
+
+        - alert: EtcdDatabaseQuotaNearLimit
+          expr: etcd_mvcc_db_total_size_in_use_in_bytes / etcd_server_quota_backend_bytes > 0.8
+          for: 10m
+          labels:
+            severity: warning
+            category: etcd
+          annotations:
+            summary: "etcd database quota usage is above 80%"
+            description: "etcd backend quota usage is above 80% on {{ $labels.instance }}."
+
+        - alert: EtcdDatabaseQuotaCritical
+          expr: etcd_mvcc_db_total_size_in_use_in_bytes / etcd_server_quota_backend_bytes > 0.95
+          for: 5m
+          labels:
+            severity: critical
+            category: etcd
+          annotations:
+            summary: "etcd database quota usage is critical"
+            description: "etcd backend quota usage is above 95% on {{ $labels.instance }}. NOSPACE alarms or write failures may occur soon."
+
+        - alert: EtcdHighApplyLatency
+          expr: histogram_quantile(0.99, rate(etcd_server_apply_duration_seconds_bucket[5m])) > 0.5
+          for: 10m
+          labels:
+            severity: warning
+            category: etcd
+          annotations:
+            summary: "High etcd apply latency"
+            description: "p99 etcd apply latency is above 500ms on {{ $labels.instance }}."
+
+        - alert: EtcdInsufficientMembersVisible
+          expr: count(up{job=~".*etcd.*"} == 1) < 3
+          for: 2m
+          labels:
+            severity: critical
+            category: etcd
+          annotations:
+            summary: "Fewer than 3 etcd members are visible"
+            description: "Prometheus sees fewer than 3 healthy etcd scrape targets. Validate etcd quorum immediately."
