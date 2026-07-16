@@ -17,7 +17,14 @@ The rules in this repo can be used to monitor etcd and alert when the threshold 
 - member count and quorum risk
 
 ## How to use it
-Download the etcd-monitor.yaml and apply it to your cluster
+Download the either the `etcd-monitor.yaml` or `etcd-monitor-extended.yaml` and apply it to the cluster
+
+**Option 1: Standard Monitoring (Recommended)**
+Provides essential coverage for quorum loss, leader elections, high disk latency, and quota exhaustion.
+- `kubectl apply -f etcd-monitor.yaml`
+**Option 2: Extended Monitoring**
+Includes the standard alerts plus deeper insights into apply latencies, read index slowness, and proposal backlogs (useful for high-load clusters).
+- `kubectl apply -f etcd-monitor-extended.yaml`
 
 kubectl apply -f etcd-monitor.yaml
 
