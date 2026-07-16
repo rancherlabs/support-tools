@@ -2,7 +2,7 @@
 Monitor RKE2 exposed etcd metrics to increase Cluster stability
 
 etcd already exposes Prometheus metrics for member health, DB size, disk fsync latency, and leader changes. RKE2 also documents metrics support for cluster components, including etcd.   
-The rules in this repo can be used to monitor etcd and alerts when treshold is reached.
+The rules in this repo can be used to monitor etcd and alert when the threshold is reached. They are designed to integrate seamlessly with the rancher-monitoring stack.
 
 ## What it monitors
 
