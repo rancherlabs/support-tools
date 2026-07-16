@@ -26,6 +26,5 @@ Provides essential coverage for quorum loss, leader elections, high disk latency
 Includes the standard alerts plus deeper insights into apply latencies, read index slowness, and proposal backlogs (useful for high-load clusters).
 - `kubectl apply -f etcd-monitor-extended.yaml`
 
-kubectl apply -f etcd-monitor.yaml
 
 
