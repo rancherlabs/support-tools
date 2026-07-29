@@ -108,11 +108,31 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
       - name: Run shellcheck and annotate PR
         run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            git fetch origin ${{ github.event.pull_request.base.ref }}
+            BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          else
+            BASE_REF="HEAD^"
+          fi
+
+          # Get list of added/modified .sh files
+          CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR $BASE_REF...HEAD | grep '\.sh$' || true)
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No shell scripts changed. Skipping shellcheck."
+            exit 0
+          fi
+
+          echo "Running shellcheck on the following files:"
+          echo "$CHANGED_FILES"
+
           # Use jq to parse the JSON output of shellcheck and translate it into native GitHub Actions annotations
           # This automatically highlights warnings/errors directly inline on the PR code tab
-          shellcheck -f json $(find . -type f -name "*.sh") | jq -r '.[] | "::\(if .level == "error" then "error" elif .level == "warning" then "warning" else "notice" end) file=\(.file),line=\(.line),col=\(.column),title=ShellCheck \(.code)::\(.message)"'
+          echo "$CHANGED_FILES" | xargs shellcheck -f json | jq -r '.[] | "::\(if .level == "error" then "error" elif .level == "warning" then "warning" else "notice" end) file=\(.file),line=\(.line),col=\(.column),title=ShellCheck \(.code)::\(.message)"'
           
           # Rerun normally to print the human-readable output and fail the job if errors exist
-          shellcheck $(find . -type f -name "*.sh")
+          echo "$CHANGED_FILES" | xargs shellcheck
