@@ -108,3 +108,4 @@ spec:
           annotations:
             summary: "Fewer than 3 etcd members are visible"
             description: "Prometheus sees fewer than 3 healthy etcd scrape targets. Validate etcd quorum immediately."
+

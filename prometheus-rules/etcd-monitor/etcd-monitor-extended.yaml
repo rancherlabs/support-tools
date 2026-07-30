@@ -210,3 +210,4 @@ spec:
           annotations:
             summary: "etcd proposal failures detected"
             description: "Failed etcd proposal count is increasing on {{ $labels.instance }}."
+
