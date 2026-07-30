@@ -1,1 +1,289 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rke2-monitor
+  namespace: cattle-monitoring-system
+  labels:
+    app: rke2-monitor
+    release: rancher-monitoring
+spec:
+  groups:
+    - name: rke2.control-plane.health
+      rules:
+        - alert: RKE2KubeAPIServerDown
+          expr: up{job=~".*kube-apiserver.*"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            component: kube-apiserver
+          annotations:
+            summary: "RKE2 kube-apiserver is down"
+            description: "Prometheus cannot scrape kube-apiserver on {{ $labels.instance }} for more than 2 minutes."
+
+        - alert: RKE2KubeAPIServerHighErrorRate
+          expr: |
+            (
+              sum(rate(apiserver_request_total{code=~"5.."}[5m]))
+              /
+              sum(rate(apiserver_request_total[5m]))
+            ) > 0.05
+          for: 10m
+          labels:
+            severity: warning
+            component: kube-apiserver
+          annotations:
+            summary: "High kube-apiserver 5xx error rate"
+            description: "More than 5% of kube-apiserver requests are returning 5xx errors for 10 minutes."
+
+        - alert: RKE2KubeAPIServerHighLatency
+          expr: |
+            histogram_quantile(
+              0.99,
+              sum by (le, verb) (
+                rate(apiserver_request_duration_seconds_bucket{verb!~"WATCH|CONNECT"}[5m])
+              )
+            ) > 2
+          for: 10m
+          labels:
+            severity: warning
+            component: kube-apiserver
+          annotations:
+            summary: "High kube-apiserver request latency"
+            description: "99th percentile kube-apiserver latency is above 2 seconds for non-watch requests."
+
+        - alert: RKE2KubeControllerManagerDown
+          expr: up{job=~".*kube-controller-manager.*"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: kube-controller-manager
+          annotations:
+            summary: "RKE2 kube-controller-manager is down"
+            description: "Prometheus cannot scrape kube-controller-manager on {{ $labels.instance }}."
+
+        - alert: RKE2KubeSchedulerDown
+          expr: up{job=~".*kube-scheduler.*"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: kube-scheduler
+          annotations:
+            summary: "RKE2 kube-scheduler is down"
+            description: "Prometheus cannot scrape kube-scheduler on {{ $labels.instance }}."
+
+    - name: rke2.node.health
+      rules:
+        - alert: RKE2NodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 10m
+          labels:
+            severity: critical
+            component: node
+          annotations:
+            summary: "RKE2 node is NotReady"
+            description: "Node {{ $labels.node }} has not been Ready for more than 10 minutes."
+
+        - alert: RKE2NodeMemoryPressure
+          expr: kube_node_status_condition{condition="MemoryPressure",status="true"} == 1
+          for: 5m
+          labels:
+            severity: warning
+            component: node
+          annotations:
+            summary: "Node memory pressure detected"
+            description: "Node {{ $labels.node }} is reporting MemoryPressure."
+
+        - alert: RKE2NodeDiskPressure
+          expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+          for: 5m
+          labels:
+            severity: warning
+            component: node
+          annotations:
+            summary: "Node disk pressure detected"
+            description: "Node {{ $labels.node }} is reporting DiskPressure."
+
+        - alert: RKE2NodeFilesystemAlmostFull
+          expr: |
+            (
+              node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"}
+              /
+              node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"}
+            ) < 0.10
+          for: 15m
+          labels:
+            severity: warning
+            component: node
+          annotations:
+            summary: "Node filesystem almost full"
+            description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} has less than 10% free space."
+
+        - alert: RKE2NodeHighIOWait
+          expr: |
+            avg by (instance) (
+              rate(node_cpu_seconds_total{mode="iowait"}[5m])
+            ) > 0.20
+          for: 10m
+          labels:
+            severity: warning
+            component: node
+          annotations:
+            summary: "High node IO wait"
+            description: "Node {{ $labels.instance }} has sustained IO wait above 20% for 10 minutes."
+
+    - name: rke2.kubelet.runtime.health
+      rules:
+        - alert: RKE2KubeletDown
+          expr: up{job=~".*kubelet.*"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: kubelet
+          annotations:
+            summary: "Kubelet is down or not scrapeable"
+            description: "Prometheus cannot scrape kubelet on {{ $labels.instance }}."
+
+        - alert: RKE2ContainerRuntimeErrors
+          expr: |
+            rate(kubelet_runtime_operations_errors_total[5m]) > 0
+          for: 10m
+          labels:
+            severity: warning
+            component: containerd
+          annotations:
+            summary: "Container runtime operation errors detected"
+            description: "Kubelet is reporting runtime operation errors on {{ $labels.instance }}."
+
+        - alert: RKE2PodStartupLatencyHigh
+          expr: |
+            histogram_quantile(
+              0.99,
+              sum by (le, instance) (
+                rate(kubelet_pod_worker_duration_seconds_bucket[5m])
+              )
+            ) > 60
+          for: 10m
+          labels:
+            severity: warning
+            component: kubelet
+          annotations:
+            summary: "High pod worker latency"
+            description: "Kubelet pod worker latency is above 60 seconds on {{ $labels.instance }}."
+
+    - name: rke2.cni.network.health
+      rules:
+        - alert: RKE2CNIPluginPodsNotReady
+          expr: |
+            sum by (namespace, pod) (
+              kube_pod_status_ready{
+                namespace=~"kube-system|cattle-system",
+                condition="true",
+                pod=~".*(canal|calico|cilium|flannel).*"
+              } == 0
+            ) > 0
+          for: 10m
+          labels:
+            severity: critical
+            component: cni
+          annotations:
+            summary: "CNI pod is not Ready"
+            description: "CNI-related pod {{ $labels.namespace }}/{{ $labels.pod }} has not been Ready for 10 minutes."
+
+        - alert: RKE2CoreDNSNotReady
+          expr: |
+            sum by (namespace, pod) (
+              kube_pod_status_ready{
+                namespace="kube-system",
+                condition="true",
+                pod=~"rke2-coredns.*|coredns.*"
+              } == 0
+            ) > 0
+          for: 10m
+          labels:
+            severity: warning
+            component: dns
+          annotations:
+            summary: "CoreDNS pod is not Ready"
+            description: "CoreDNS pod {{ $labels.namespace }}/{{ $labels.pod }} has not been Ready for 10 minutes."
+
+        - alert: RKE2CoreDNSHighErrorRate
+          expr: |
+            sum(rate(coredns_dns_responses_total{rcode=~"SERVFAIL|REFUSED"}[5m]))
+            /
+            sum(rate(coredns_dns_responses_total[5m]))
+            > 0.05
+          for: 10m
+          labels:
+            severity: warning
+            component: dns
+          annotations:
+            summary: "High CoreDNS error rate"
+            description: "More than 5% of CoreDNS responses are SERVFAIL or REFUSED."
+
+    - name: rke2.workload.health
+      rules:
+        - alert: RKE2SystemPodsCrashLooping
+          expr: |
+            increase(kube_pod_container_status_restarts_total{
+              namespace=~"kube-system|cattle-system|cattle-fleet-system|cattle-monitoring-system"
+            }[15m]) > 3
+          for: 5m
+          labels:
+            severity: warning
+            component: system-workloads
+          annotations:
+            summary: "System pod restarting repeatedly"
+            description: "Container {{ $labels.container }} in pod {{ $labels.namespace }}/{{ $labels.pod }} restarted more than 3 times in 15 minutes."
+
+        - alert: RKE2SystemPodPending
+          expr: |
+            kube_pod_status_phase{
+              namespace=~"kube-system|cattle-system|cattle-fleet-system|cattle-monitoring-system",
+              phase="Pending"
+            } == 1
+          for: 15m
+          labels:
+            severity: warning
+            component: system-workloads
+          annotations:
+            summary: "System pod stuck Pending"
+            description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been Pending for more than 15 minutes."
+
+        - alert: RKE2SystemPodFailed
+          expr: |
+            kube_pod_status_phase{
+              namespace=~"kube-system|cattle-system|cattle-fleet-system|cattle-monitoring-system",
+              phase="Failed"
+            } == 1
+          for: 5m
+          labels:
+            severity: warning
+            component: system-workloads
+          annotations:
+            summary: "System pod failed"
+            description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is in Failed phase."
+
+    - name: rke2.certificates.health
+      rules:
+        - alert: RKE2KubeletClientCertificateExpiringSoon
+          expr: |
+            kubelet_certificate_manager_client_ttl_seconds < 604800
+          for: 10m
+          labels:
+            severity: warning
+            component: certificates
+          annotations:
+            summary: "Kubelet client certificate expiring soon"
+            description: "Kubelet client certificate on {{ $labels.instance }} expires in less than 7 days."
+
+        - alert: RKE2KubeletServerCertificateExpiringSoon
+          expr: |
+            kubelet_certificate_manager_server_ttl_seconds < 604800
+          for: 10m
+          labels:
+            severity: warning
+            component: certificates
+          annotations:
+            summary: "Kubelet server certificate expiring soon"
+            description: "Kubelet server certificate on {{ $labels.instance }} expires in less than 7 days."
 
