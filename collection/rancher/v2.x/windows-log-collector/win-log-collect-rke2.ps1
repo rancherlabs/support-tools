@@ -102,7 +102,7 @@ $crictlSinceDuration = "$($sinceDays * 24)h"
 # init functions
 # ---------------------------------------------------------------------------------------
 
-Function is_elevated {
+function is_elevated {
     If (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
     [Security.Principal.WindowsBuiltInRole] "Administrator")) {
         Write-Information "This script requires elevated privileges."
@@ -197,7 +197,7 @@ function get_host_prefix_path {
 # collect functions
 # ---------------------------------------------------------------------------------------
 
-Function get_ps_info{
+function get_ps_info{
     try {
         Write-Host "Collecting PS output"
         Get-Process > $directory/system/ps
@@ -211,7 +211,7 @@ Function get_ps_info{
     }
 }
 
-Function get_disk_info{
+function get_disk_info{
     try {
         Write-Host "Collecting Disk and Volume information"
         wmic OS get FreePhysicalMemory /Value > $directory/system/freememory
@@ -229,7 +229,7 @@ Function get_disk_info{
     }
 }
 
-Function get_firewall_info{
+function get_firewall_info{
     try {
         Write-Host "Collecting Windows Firewall info"
         $fw = Get-NetFirewallProfile
@@ -251,7 +251,7 @@ Function get_firewall_info{
     }
 }
 
-Function get_software{
+function get_software{
     try {
         Write-Host "Collecting installed applications list"
         Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* |Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, HelpLink, UninstallString | out-file $directory\installed-64bit-apps.txt
@@ -264,7 +264,7 @@ Function get_software{
     }
 }
 
-Function get_system_services{
+function get_system_services{
     try {
         Write-Host "Collecting Services list"
         get-service | Format-List | out-file $directory\system\services
@@ -276,7 +276,7 @@ Function get_system_services{
     }
 }
 
-Function get_rke2_services_status {
+function get_rke2_services_status {
     try {
         Write-Host "Collecting RKE2 core service status (rke2, rancher-wins, csiproxy)"
         foreach ($svcName in $rke2Services) {
@@ -295,7 +295,7 @@ Function get_rke2_services_status {
     }
 }
 
-Function get_containerd_info{
+function get_containerd_info{
     try {
         Write-Host "Collecting containerd runtime information"
 
@@ -326,7 +326,7 @@ Function get_containerd_info{
     }
 }
 
-Function get_k8s_config {
+function get_k8s_config {
     try {
         Write-Host "Collecting Kubernetes/RKE2 components config"
         test_and_copy "$($rke2ConfigDir)\config.yaml" "$directory/config/rke2/config.yaml" $false
@@ -344,7 +344,7 @@ Function get_k8s_config {
     }
 }
 
-Function get_certs{
+function get_certs{
     try {
         Write-Host "Collecting certificates for RKE2"
         test_and_copy (Join-Path $rke2DataDir "agent\client-kubelet.crt") "$directory/certs/rke2/client-kubelet.crt" $false
@@ -359,7 +359,7 @@ Function get_certs{
     }
 }
 
-Function get_windows_event_logs {
+function get_windows_event_logs {
     try{
         Write-Host "Collecting Windows Event logs"
 
@@ -382,7 +382,7 @@ Function get_windows_event_logs {
     }
 }
 
-Function get_rke2_agent_logs {
+function get_rke2_agent_logs {
     try {
         Write-Host "Collecting RKE2 agent component logs (kubelet, kube-proxy, rke2)"
         # rke2 is the only agent process running natively on the Windows worker node.
@@ -410,7 +410,7 @@ Function get_rke2_agent_logs {
     }
 }
 
-Function get_k8s_container_logs{
+function get_k8s_container_logs{
     try {
         Write-Host "Collecting Kubernetes container logs via crictl"
 
@@ -456,7 +456,7 @@ Function get_k8s_container_logs{
     }
 }
 
-Function get_wins_info{
+function get_wins_info{
     try {
         Write-Host "Collecting rancher-wins service information"
         $winsSvc = Get-WmiObject win32_service -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*rancher-wins*' }
@@ -477,7 +477,7 @@ Function get_wins_info{
     }
 }
 
-Function get_csi_proxy_info{
+function get_csi_proxy_info{
     try {
         Write-Host "Collecting csiproxy service information"
         $csiSvc = Get-Service -Name "csiproxy" -ErrorAction SilentlyContinue
@@ -495,7 +495,7 @@ Function get_csi_proxy_info{
     }
 }
 
-Function get_network_info{
+function get_network_info{
     try {
         Write-Host "Collecting network Information"
         Get-HnsNetwork | Select-Object Name, Type, Id, AddressPrefix > $directory\network\hns\network.txt
@@ -527,7 +527,7 @@ Function get_network_info{
     }
 }
 
-Function get_gp_info{
+function get_gp_info{
     try {
         Write-Host "Collecting group policy information"
         if (check_command -cmdname 'Get-GPOReport')
@@ -546,7 +546,7 @@ Function get_gp_info{
     }
 }
 
-Function get_proxy_info{
+function get_proxy_info{
     try {
         Write-Host "Collecting proxy information"
         Get-ItemProperty -Path "Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings"  > $directory/network/ie-proxy.txt
@@ -563,7 +563,7 @@ Function get_proxy_info{
 # main functions
 # ---------------------------------------------------------------------------------------
 
-Function compress{
+function compress{
     try {
         Write-Host "Archiving Rancher RKE2 log collection script data"
         if (-not (check_command -cmdname 'tar')) {
@@ -593,7 +593,7 @@ Function compress{
     }
 }
 
-Function cleanup{
+function cleanup{
     Write-Host "Cleaning up temporary directory"
     Remove-Item -Recurse -Force $directory -ErrorAction Ignore
     Write-Host "Cleaning up temporary directory - OK" -foregroundcolor "Green"
@@ -606,7 +606,7 @@ function setup_env {
     Write-Host "Configuring environment for RKE2 tooling - OK" -ForegroundColor "green"
 }
 
-Function init{
+function init{
     is_elevated
     create_working_dir
     get_sysinfo
@@ -614,7 +614,7 @@ Function init{
     setup_env
 }
 
-Function collect{
+function collect{
     init
     get_ps_info
     get_disk_info
@@ -637,7 +637,7 @@ Function collect{
 
 
 # Main function
-Function main {
+function main {
     Write-Host "Running Rancher RKE2 Log Collection" -foregroundcolor "Cyan"
     collect
     compress
