@@ -154,8 +154,7 @@ function create_working_dir {
             "$directory/network/hns",
             "$directory/eventlogs",
             "$directory/firewall",
-            "$directory/services",
-            "$outputDir"
+            "$directory/services"
         )
 
         foreach ($dirPath in $directoriesToCreate) {
@@ -166,6 +165,8 @@ function create_working_dir {
                 throw "Failed to create directory '$dirPath': $($_.Exception.Message)"
             }
         }
+        # Create the output directory if it doesn't exist
+        New-Item -ItemType Directory -Path "$outputDir" -ErrorAction SilentlyContinue | Out-Null
         Write-Host "Creating temporary directory - OK" -ForegroundColor "green"
     }
     catch {
