@@ -170,7 +170,6 @@ function get_sysinfo {
         systeminfo > $directory/system/systeminfo
         msinfo32 /nfo $directory/system/msinfo32-report.nfo /report $directory/system/msinfo32-report.txt
         $uptime > $directory/system/uptime
-        Get-ChildItem env: > $directory/system/env
         Write-Host "Collecting System information - OK" -ForegroundColor "green"
     }
     catch {
@@ -248,19 +247,6 @@ function get_firewall_info{
     catch {
         Write-Host $_
         Write-Warning "Unable to Collect Windows Firewall information"
-    }
-}
-
-function get_software{
-    try {
-        Write-Host "Collecting installed applications list"
-        Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* |Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, HelpLink, UninstallString | out-file $directory\installed-64bit-apps.txt
-        Get-ItemProperty HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* |Select-Object DisplayName, DisplayVersion, Publisher, InstallDate, HelpLink, UninstallString | out-file $directory\installed-32bit-apps.txt
-        Write-Host "Collecting installed applications list - OK" -foregroundcolor "green"
-    }
-    catch {
-        Write-Host $_
-        Write-Warning "Unable to collect installed applications list"
     }
 }
 
@@ -619,7 +605,6 @@ function collect{
     get_ps_info
     get_disk_info
     get_firewall_info
-    get_software
     get_system_services
     get_rke2_services_status
     get_containerd_info
