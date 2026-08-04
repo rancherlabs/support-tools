@@ -16,20 +16,20 @@
 Param(
     [Parameter(HelpMessage="Override the host prefix path (default C:\)")]
     [Alias("p")]
-    [String] $hostPrefixPath,
+    [String] $hostPrefixPath = "C:\",
 
     [Parameter(HelpMessage="Override the temporary directory (default C:\rancher)")]
     [Alias("d")]
-    [String] $baseDir,
+    [String] $baseDir = "C:\rancher",
 
     [Parameter(HelpMessage="Override the output location for compressed log bundle (default C:\)")]
     [Alias("o")]
-    [String] $outputDir,
+    [String] $outputDir = "C:\",
 
     [Parameter(HelpMessage="Override the number of days history to collect from container/service logs (default 30d)")]
     [ValidatePattern("\d{1,3}[d]")]
     [Alias("s")]
-    [String] $sinceFlag,
+    [String] $sinceFlag = "30d",
 
     [Parameter(HelpMessage="Override the RKE2 data directory (default C:\var\lib\rancher\rke2)")]
     [String] $rke2DataDir,
@@ -42,15 +42,11 @@ Param(
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
 
 # set default directories and replace / with \
-if (!$baseDir) {
-    $baseDir = "C:\rancher"
-} elseif ($baseDir.Contains("/")) {
+if ($baseDir.Contains("/")) {
     $baseDir = $baseDir -Replace "/", "\"
 }
 
-if (!$outputDir) {
-    $outputDir = "C:\"
-} elseif ($outputDir.Contains("/")) {
+if ($outputDir.Contains("/")) {
     $outputDir = $outputDir -Replace "/", "\"
 }
 
@@ -68,14 +64,25 @@ $origDir = $PSScriptRoot
 $finalFile = $outputDir + "\" + $outFileName + ".tar.gz"
 
 # Windows host prefix path
-if (!$hostPrefixPath) {
-    $hostPrefixPath = "C:\"
-} elseif ($hostPrefixPath.Contains("/")) {
+Write-Host "Validating Windows host prefix path"
+if ($hostPrefixPath.Contains("/")) {
     $hostPrefixPath = $hostPrefixPath -Replace "/", "\"
 }
 if (-not $hostPrefixPath.EndsWith("\")) {
     $hostPrefixPath = $hostPrefixPath + "\"
 }
+try {
+    if (-not (Test-Path -Path $hostPrefixPath)) {
+        Write-Warning "Host prefix path '$hostPrefixPath' does not exist, falling back to default 'C:\'"
+        $hostPrefixPath = "C:\"
+    }
+    Write-Host "Validating Windows host prefix path - OK" -ForegroundColor "green"
+}
+catch {
+    Write-Warning "Unable to validate host prefix path, it has been set to the default: 'C:\'"
+    $hostPrefixPath = "C:\"
+}
+
 
 # RKE2 data/config directories
 if (!$rke2DataDir) {
@@ -91,11 +98,7 @@ if (!$rke2ConfigDir) {
 }
 
 # Set the length of collection for container/service logs
-if (!$sinceFlag) {
-    $sinceDays = 30
-} else {
-    $sinceDays = [int]($sinceFlag.Replace("d", ""))
-}
+$sinceDays = [int]($sinceFlag.Replace("d", ""))
 $logSinceDate = (Get-Date).AddDays(-$sinceDays)
 $crictlSinceDuration = "$($sinceDays * 24)h"
 
@@ -189,20 +192,6 @@ function get_sysinfo {
     }
 }
 
-function get_host_prefix_path {
-    Write-Host "Validating Windows host prefix path"
-    try {
-        if (-not (Test-Path -Path $hostPrefixPath)) {
-            Write-Warning "Host prefix path '$hostPrefixPath' does not exist, falling back to default 'C:\'"
-            $script:hostPrefixPath = "C:\"
-        }
-        Write-Host "Validating Windows host prefix path - OK" -ForegroundColor "green"
-    }
-    catch {
-        Write-Warning "Unable to validate host prefix path, it has been set to the default: 'C:\'"
-        $script:hostPrefixPath = "C:\"
-    }
-}
 
 # collect functions
 # ---------------------------------------------------------------------------------------
@@ -607,7 +596,6 @@ function init{
     is_elevated
     create_working_dir
     get_sysinfo
-    get_host_prefix_path
     setup_env
 }
 
