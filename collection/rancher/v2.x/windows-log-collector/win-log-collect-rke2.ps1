@@ -135,23 +135,34 @@ function test_and_copy ($source, $destination, $recurse) {
 function create_working_dir {
     try {
         Write-Host "Creating temporary directory"
-        New-Item -ItemType Directory -Path "$directory" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/k8s/containerlogs" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/k8s/containerinspect" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/k8s/components" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/containerd" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/config" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/config/rke2" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/config/cni" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/config/wins" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/certs/rke2" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/system" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/network" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/network/hns" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/eventlogs" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/firewall" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$directory/services" -Force | Out-Null
-        New-Item -ItemType Directory -Path "$outputDir" -ErrorAction SilentlyContinue | Out-Null
+        $directoriesToCreate = @(
+            "$directory",
+            "$directory/k8s/containerlogs",
+            "$directory/k8s/containerinspect",
+            "$directory/k8s/components",
+            "$directory/containerd",
+            "$directory/config",
+            "$directory/config/rke2",
+            "$directory/config/cni",
+            "$directory/config/wins",
+            "$directory/certs/rke2",
+            "$directory/system",
+            "$directory/network",
+            "$directory/network/hns",
+            "$directory/eventlogs",
+            "$directory/firewall",
+            "$directory/services",
+            "$outputDir"
+        )
+
+        foreach ($dirPath in $directoriesToCreate) {
+            try {
+                New-Item -ItemType Directory -Path $dirPath -Force -ErrorAction Stop | Out-Null
+            }
+            catch {
+                throw "Failed to create directory '$dirPath': $($_.Exception.Message)"
+            }
+        }
         Write-Host "Creating temporary directory - OK" -ForegroundColor "green"
     }
     catch {
