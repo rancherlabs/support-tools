@@ -57,9 +57,10 @@ $rke2Services = @('rke2', 'rancher-wins', 'csiproxy')
 $systemNamespaces = @('kube-system', 'cattle-system', 'cattle-fleet-system', 'cattle-fleet-local-system', 'ingress-nginx', 'cattle-monitoring-system')
 
 # default options
-$directory = $baseDir + "\log-collector"
+$hostname = $(hostname)
+$directory = $baseDir + "\" + $hostname
 $currentTime = get-date -Format yyyy-MM-dd
-$outFileName = "rancher_rke2_" + "$(hostname)" + "_" + $currentTime
+$outFileName = "rancher_rke2_" + $hostname + "_" + $currentTime
 $origDir = $PSScriptRoot
 $finalFile = $outputDir + "\" + $outFileName + ".tar.gz"
 
@@ -557,8 +558,8 @@ function compress{
             throw "tar is not a valid command"
         }
 
-        Set-Location $directory
-        tar -czf "$finalFile" .
+        Set-Location $baseDir
+        tar -czf "$finalFile" "$hostname"
         if ($LASTEXITCODE -ne 0) {
             throw "tar failed with exit code $LASTEXITCODE"
         }
