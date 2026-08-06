@@ -58,9 +58,9 @@ $systemNamespaces = @('kube-system', 'cattle-system', 'cattle-fleet-system', 'ca
 
 # default options
 $hostname = $(hostname)
-$directory = $baseDir + "\" + $hostname
-$currentTime = get-date -Format yyyy-MM-dd
-$outFileName = "rancher_rke2_" + $hostname + "_" + $currentTime
+$currentTime = get-date -Format yyyy-MM-dd_HH_mm_ss
+$outFileName = $hostname + "-" + $currentTime
+$directory = $baseDir + "\" + $outFileName
 $origDir = $PSScriptRoot
 $finalFile = $outputDir + "\" + $outFileName + ".tar.gz"
 
@@ -559,7 +559,7 @@ function compress{
         }
 
         Set-Location $baseDir
-        tar -czf "$finalFile" "$hostname"
+        tar -czf "$finalFile" "$outFileName"
         if ($LASTEXITCODE -ne 0) {
             throw "tar failed with exit code $LASTEXITCODE"
         }
