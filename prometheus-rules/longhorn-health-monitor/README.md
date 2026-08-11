@@ -319,7 +319,6 @@ kubectl apply -f deploy/longhorn-health-rules.yaml
 deploy/
 dashboards/
 docs/
-examples/
 ```
 
 ---
