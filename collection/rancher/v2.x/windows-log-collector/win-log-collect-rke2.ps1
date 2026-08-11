@@ -57,9 +57,11 @@ $rke2Services = @('rke2', 'rancher-wins', 'csiproxy')
 $systemNamespaces = @('kube-system', 'cattle-system', 'cattle-fleet-system', 'cattle-fleet-local-system', 'ingress-nginx', 'cattle-monitoring-system')
 
 # default options
-$directory = $baseDir + "\log-collector"
-$currentTime = get-date -Format yyyy-MM-dd
+$currentTime = get-date -Format yyyy-MM-dd_HH_mm_ss
 $outFileName = "rancher_rke2_" + "$(hostname)" + "_" + $currentTime
+$logCollectorDir = $baseDir + "\log-collector"
+# nest output under a hostname/timestamp directory so multiple bundles can be unpacked into the same folder without colliding
+$directory = $logCollectorDir + "\" + $outFileName
 $origDir = $PSScriptRoot
 $finalFile = $outputDir + "\" + $outFileName + ".tar.gz"
 
@@ -71,17 +73,11 @@ if ($hostPrefixPath.Contains("/")) {
 if (-not $hostPrefixPath.EndsWith("\")) {
     $hostPrefixPath = $hostPrefixPath + "\"
 }
-try {
-    if (-not (Test-Path -Path $hostPrefixPath)) {
-        Write-Warning "Host prefix path '$hostPrefixPath' does not exist, falling back to default 'C:\'"
-        $hostPrefixPath = "C:\"
-    }
-    Write-Host "Validating Windows host prefix path - OK" -ForegroundColor "green"
-}
-catch {
-    Write-Warning "Unable to validate host prefix path, it has been set to the default: 'C:\'"
+if (-not (Test-Path -Path $hostPrefixPath)) {
+    Write-Warning "Host prefix path '$hostPrefixPath' does not exist, falling back to default 'C:\'"
     $hostPrefixPath = "C:\"
 }
+Write-Host "Validating Windows host prefix path - OK" -ForegroundColor "green"
 
 
 # RKE2 data/config directories
@@ -557,8 +553,8 @@ function compress{
             throw "tar is not a valid command"
         }
 
-        Set-Location $directory
-        tar -czf "$finalFile" .
+        Set-Location $logCollectorDir
+        tar -czf "$finalFile" "$outFileName"
         if ($LASTEXITCODE -ne 0) {
             throw "tar failed with exit code $LASTEXITCODE"
         }
@@ -582,7 +578,7 @@ function compress{
 
 function cleanup{
     Write-Host "Cleaning up temporary directory"
-    Remove-Item -Recurse -Force $directory -ErrorAction Ignore
+    Remove-Item -Recurse -Force $logCollectorDir -ErrorAction Ignore
     Write-Host "Cleaning up temporary directory - OK" -foregroundcolor "Green"
 }
 
