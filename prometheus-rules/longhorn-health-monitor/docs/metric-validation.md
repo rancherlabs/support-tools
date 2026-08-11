@@ -5,9 +5,6 @@ kubectl -n longhorn-system get pods \
 
 Forward the metrics endpoint:
 
-kubectl -n longhorn-system port-forward \
-  pod/<LONGHORN_MANAGER_POD> 9500:9500
-
 LONGHORN_MANAGER_POD="$(
   kubectl -n longhorn-system get pod \
     -l app=longhorn-manager \
