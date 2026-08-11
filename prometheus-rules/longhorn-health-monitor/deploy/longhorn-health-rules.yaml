@@ -1,0 +1,304 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: longhorn-health-monitor
+  namespace: cattle-monitoring-system
+  labels:
+    release: rancher-monitoring
+    app.kubernetes.io/name: longhorn-health-monitor
+    app.kubernetes.io/component: alerting
+spec:
+  groups:
+    - name: longhorn.volume.health
+      rules:
+        - alert: LonghornVolumeDegraded
+          expr: |
+            longhorn_volume_robustness{state="degraded"} == 1
+          for: 10m
+          labels:
+            severity: warning
+            component: longhorn
+            category: volume
+          annotations:
+            summary: "Longhorn volume is degraded"
+            description: >-
+              Longhorn volume {{ $labels.volume }} in namespace
+              {{ $labels.pvc_namespace }} has remained degraded for more than
+              10 minutes. At least one replica may be unavailable or rebuilding.
+            runbook_url: >-
+              https://longhorn.io/docs/latest/high-availability/recover-volume/
+
+        - alert: LonghornVolumeFaulted
+          expr: |
+            longhorn_volume_robustness{state="faulted"} == 1
+          for: 2m
+          labels:
+            severity: critical
+            component: longhorn
+            category: volume
+          annotations:
+            summary: "Longhorn volume is faulted"
+            description: >-
+              Longhorn volume {{ $labels.volume }} in namespace
+              {{ $labels.pvc_namespace }} has remained faulted for more than
+              2 minutes. Workloads using PVC {{ $labels.pvc }} may be unable
+              to access their storage.
+            runbook_url: >-
+              https://longhorn.io/docs/latest/high-availability/recover-volume/
+
+        - alert: LonghornVolumeRobustnessUnknown
+          expr: |
+            longhorn_volume_robustness{state="unknown"} == 1
+          for: 10m
+          labels:
+            severity: warning
+            component: longhorn
+            category: volume
+          annotations:
+            summary: "Longhorn volume robustness is unknown"
+            description: >-
+              Longhorn cannot determine the robustness of volume
+              {{ $labels.volume }} for more than 10 minutes. Check the volume,
+              engine, replica, and longhorn-manager status.
+
+        - alert: LonghornVolumeFilesystemReadOnly
+          expr: |
+            longhorn_volume_file_system_read_only == 1
+          for: 5m
+          labels:
+            severity: critical
+            component: longhorn
+            category: volume
+          annotations:
+            summary: "Longhorn volume filesystem is read-only"
+            description: >-
+              The filesystem on Longhorn volume {{ $labels.volume }} associated
+              with PVC {{ $labels.pvc_namespace }}/{{ $labels.pvc }} has been
+              detected as read-only for more than 5 minutes. Check the workload,
+              filesystem, node kernel logs, and Longhorn volume health.
+
+        - alert: LonghornVolumeActualSpaceHigh
+          expr: |
+            (
+              longhorn_volume_actual_size_bytes
+              /
+              longhorn_volume_capacity_bytes
+            ) > 0.90
+          for: 15m
+          labels:
+            severity: warning
+            component: longhorn
+            category: volume
+          annotations:
+            summary: "Longhorn volume actual usage is high"
+            description: >-
+              Longhorn volume {{ $labels.volume }} is using more than 90% of
+              its configured capacity for more than 15 minutes. Current usage
+              ratio is {{ $value | humanizePercentage }}.
+
+    - name: longhorn.replica.engine.health
+      rules:
+        - alert: LonghornReplicaError
+          expr: |
+            longhorn_replica_state{state="error"} == 1
+          for: 5m
+          labels:
+            severity: critical
+            component: longhorn
+            category: replica
+          annotations:
+            summary: "Longhorn replica is in error state"
+            description: >-
+              Replica {{ $labels.replica }} for volume {{ $labels.volume }}
+              on node {{ $labels.node }} has remained in error state for more
+              than 5 minutes.
+
+        - alert: LonghornReplicaUnknown
+          expr: |
+            longhorn_replica_state{state="unknown"} == 1
+          for: 10m
+          labels:
+            severity: warning
+            component: longhorn
+            category: replica
+          annotations:
+            summary: "Longhorn replica state is unknown"
+            description: >-
+              Replica {{ $labels.replica }} for volume {{ $labels.volume }}
+              on node {{ $labels.node }} has reported an unknown state for
+              more than 10 minutes.
+
+        - alert: LonghornEngineError
+          expr: |
+            longhorn_engine_state{state="error"} == 1
+          for: 5m
+          labels:
+            severity: critical
+            component: longhorn
+            category: engine
+          annotations:
+            summary: "Longhorn engine is in error state"
+            description: >-
+              Engine {{ $labels.engine }} for volume {{ $labels.volume }}
+              on node {{ $labels.node }} has remained in error state for more
+              than 5 minutes.
+
+        - alert: LonghornEngineUnknown
+          expr: |
+            longhorn_engine_state{state="unknown"} == 1
+          for: 10m
+          labels:
+            severity: warning
+            component: longhorn
+            category: engine
+          annotations:
+            summary: "Longhorn engine state is unknown"
+            description: >-
+              Engine {{ $labels.engine }} for volume {{ $labels.volume }}
+              on node {{ $labels.node }} has reported an unknown state for
+              more than 10 minutes.
+
+        - alert: LonghornEngineReplicaModeError
+          expr: |
+            longhorn_engine_replica_mode{mode="ERR"} == 1
+          for: 5m
+          labels:
+            severity: critical
+            component: longhorn
+            category: replica
+          annotations:
+            summary: "Longhorn engine reports a replica error"
+            description: >-
+              Engine {{ $labels.engine }} for volume {{ $labels.volume }}
+              reports replica {{ $labels.replica }} in ERR mode for more than
+              5 minutes.
+
+        - alert: LonghornReplicaRebuildStalled
+          expr: |
+            longhorn_engine_rebuild_progress < 100
+            and
+            changes(longhorn_engine_rebuild_progress[30m]) == 0
+          for: 30m
+          labels:
+            severity: warning
+            component: longhorn
+            category: rebuild
+          annotations:
+            summary: "Longhorn replica rebuild may be stalled"
+            description: >-
+              Rebuild for engine {{ $labels.engine }} has made no measurable
+              progress for at least 30 minutes. Current rebuild progress is
+              {{ $value }} percent.
+
+    - name: longhorn.node.disk.health
+      rules:
+        - alert: LonghornNodeNotReady
+          expr: |
+            longhorn_node_status{condition="ready"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: longhorn
+            category: node
+          annotations:
+            summary: "Longhorn node is not ready"
+            description: >-
+              Longhorn node {{ $labels.node }} has reported Ready=false for
+              more than 5 minutes. Reason: {{ $labels.condition_reason }}.
+
+        - alert: LonghornDiskNotReady
+          expr: |
+            longhorn_disk_status{condition="ready"} == 0
+          for: 10m
+          labels:
+            severity: warning
+            component: longhorn
+            category: disk
+          annotations:
+            summary: "Longhorn disk is not ready"
+            description: >-
+              Longhorn disk {{ $labels.disk }} on node {{ $labels.node }} has
+              reported Ready=false for more than 10 minutes.
+              Reason: {{ $labels.condition_reason }}.
+
+        - alert: LonghornDiskSpaceLow
+          expr: |
+            (
+              longhorn_disk_capacity_bytes
+              -
+              longhorn_disk_usage_bytes
+              -
+              longhorn_disk_reservation_bytes
+            )
+            /
+            longhorn_disk_capacity_bytes
+            < 0.15
+          for: 15m
+          labels:
+            severity: warning
+            component: longhorn
+            category: capacity
+          annotations:
+            summary: "Longhorn disk usable space is low"
+            description: >-
+              Longhorn disk {{ $labels.disk }} on node {{ $labels.node }} has
+              less than 15% usable capacity remaining after accounting for
+              used and reserved storage. Remaining ratio is
+              {{ $value | humanizePercentage }}.
+
+        - alert: LonghornDiskSpaceCritical
+          expr: |
+            (
+              longhorn_disk_capacity_bytes
+              -
+              longhorn_disk_usage_bytes
+              -
+              longhorn_disk_reservation_bytes
+            )
+            /
+            longhorn_disk_capacity_bytes
+            < 0.05
+          for: 5m
+          labels:
+            severity: critical
+            component: longhorn
+            category: capacity
+          annotations:
+            summary: "Longhorn disk usable space is critically low"
+            description: >-
+              Longhorn disk {{ $labels.disk }} on node {{ $labels.node }} has
+              less than 5% usable capacity remaining after accounting for
+              used and reserved storage. Remaining ratio is
+              {{ $value | humanizePercentage }}.
+
+        - alert: LonghornDiskUnhealthy
+          expr: |
+            longhorn_disk_health == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: longhorn
+            category: disk
+          annotations:
+            summary: "Longhorn disk health check failed"
+            description: >-
+              Longhorn disk {{ $labels.disk }} on node {{ $labels.node }} is
+              reporting an unhealthy disk status.
+
+    - name: longhorn.monitoring.health
+      rules:
+        - alert: LonghornManagerMetricsMissing
+          expr: |
+            absent(longhorn_manager_cpu_usage_millicpu)
+          for: 10m
+          labels:
+            severity: critical
+            component: longhorn
+            category: monitoring
+          annotations:
+            summary: "Longhorn Manager metrics are unavailable"
+            description: >-
+              Prometheus has not received Longhorn Manager metrics for more
+              than 10 minutes. Check the ServiceMonitor, Prometheus targets,
+              longhorn-manager pods, and network policies.
