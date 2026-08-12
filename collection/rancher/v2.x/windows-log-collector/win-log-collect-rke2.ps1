@@ -26,7 +26,7 @@ Param(
     [Alias("o")]
     [String] $outputDir = "C:\",
 
-    [Parameter(HelpMessage="Override the number of days history to collect from container/service logs (default 30d)")]
+    [Parameter(HelpMessage="Override the number of days to collect logs from containers/services (default 30d)")]
     [ValidatePattern("\d{1,3}[d]")]
     [Alias("s")]
     [String] $sinceFlag = "30d",
