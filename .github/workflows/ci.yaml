@@ -11,9 +11,11 @@ on:
 jobs:
   detect_secrets:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install detect-secrets
         run: pip install detect-secrets
@@ -76,10 +78,61 @@ jobs:
 
           if new_findings:
               print("UNREVIEWED SECRETS introduced by this PR:")
-              for path, s in sorted(new_findings, key=lambda x: (x[0], x[1].get('line_number', 0))):
-                  print(f"  {path}:{s['line_number']} [{s['type']}]")
+              with open('/tmp/secrets_report.md', 'w') as out:
+                  out.write("### 🚨 Unreviewed Secrets Detected\n\n")
+                  out.write("The following secrets were introduced in this PR and are not present in the `.secrets.baseline` file:\n\n")
+                  out.write("| File Path | Line | Secret Type |\n")
+                  out.write("|---|---|---|\n")
+                  for path, s in sorted(new_findings, key=lambda x: (x[0], x[1].get('line_number', 0))):
+                      print(f"  {path}:{s['line_number']} [{s['type']}]")
+                      out.write(f"| `{path}` | `{s['line_number']}` | {s['type']} |\n")
               sys.exit(1)
 
           pr_total = sum(len(v) for v in pr_scan.get('results', {}).values())
           print(f"All {pr_total} finding(s) are in the baseline — OK")
           EOF
+
+      - name: Comment PR on Failure
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f /tmp/secrets_report.md ]; then
+            gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/secrets_report.md
+          fi
+
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Run shellcheck and annotate PR
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            git fetch origin ${{ github.event.pull_request.base.ref }}
+            BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          else
+            BASE_REF="HEAD^"
+          fi
+
+          # Get list of added/modified .sh files
+          CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR $BASE_REF...HEAD | grep '\.sh$' || true)
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No shell scripts changed. Skipping shellcheck."
+            exit 0
+          fi
+
+          echo "Running shellcheck on the following files:"
+          echo "$CHANGED_FILES"
+
+          # Use jq to parse the JSON output of shellcheck and translate it into native GitHub Actions annotations
+          # This automatically highlights warnings/errors directly inline on the PR code tab
+          echo "$CHANGED_FILES" | xargs shellcheck -f json | jq -r '.[] | "::\(if .level == "error" then "error" elif .level == "warning" then "warning" else "notice" end) file=\(.file),line=\(.line),col=\(.column),title=ShellCheck \(.code)::\(.message)"'
+          
+          # Rerun normally to print the human-readable output and fail the job if errors exist
+          echo "$CHANGED_FILES" | xargs shellcheck
