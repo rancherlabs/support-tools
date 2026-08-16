@@ -26,8 +26,6 @@ This will deploy a deamonset that will run on all nodes in the cluster. These po
 You can run the overlay test script by running the following command:
 ```bash
 curl -sL https://raw.githubusercontent.com/rancherlabs/support-tools/master/swiss-army-knife/overlaytest.sh -o /tmp/overlaytest.sh
-# sha256 as of master — update this hash after modifying the script
-echo "02b00cd7c301229e8eece46a10119db187b520e4e0fd17955fb4e4b153dbe3dd  /tmp/overlaytest.sh" | sha256sum -c -
 bash /tmp/overlaytest.sh
 ```
 
@@ -39,7 +37,7 @@ This can be deployed to the cluster by running the following command:
 kubectl apply -f https://raw.githubusercontent.com/rancherlabs/support-tools/master/swiss-army-knife/admin-tools.yaml
 ```
 
-Inside the pod, you will be able to un `kubectl` commands with cluster-admin privileges. Along with this pod being able to gain full access to the node, including the ability to gain a root shell on the node. By running the following commands:
+Inside the pod, you will be able to run `kubectl` commands with cluster-admin privileges. Along with this pod being able to gain full access to the node, including the ability to gain a root shell on the node. By running the following commands:
 - `kubectl -n kube-system get pods -l app=swiss-army-knife -o wide`
 - This will show you all pods running `swiss-army-knife` in the `kube-system` namespace.
 - Find the pod on the node you want to interact with.
