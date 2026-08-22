@@ -3,7 +3,7 @@ entries:
   rancher:
   - apiVersion: v1
     appVersion: 0.0.1
-    created: "2021-03-04T11:39:06.0872245-06:00"
+    created: "2026-08-08T20:19:30.447584-05:00"
     description: Rancher Systems Info
     digest: b2d217c3c7ab839bb11151cdd1d99ab8920f0241dcda74764e3932969f17fe0c
     home: https://rancher.com
@@ -18,6 +18,73 @@ entries:
     sources:
     - https://github.com/rancherlabs/systems-info
     urls:
-    - https://rancherlabs.github.io/systems-info/charts/rancher-0.0.1.tgz
+    - https://rancherlabs.github.io/support-tools/charts/rancher-0.0.1.tgz
     version: 0.0.1
-generated: "2021-03-04T11:39:06.0847725-06:00"
+  rucc:
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: added
+          description: First public release with Community and Prime editions
+        - kind: added
+          description: Pluggable check architecture with 13 Community checks
+        - kind: added
+          description: Meta-Server integration for Prime edition features
+        - kind: added
+          description: CheckRun CRD for dry-run validation testing
+      artifacthub.io/crds: |
+        - kind: Upgrade
+          version: v1alpha1
+          name: upgrades.rucc.cattle.io
+          displayName: Upgrade
+          description: Manages Rancher and RKE2 upgrade workflows
+        - kind: Settings
+          version: v1alpha1
+          name: settings.rucc.cattle.io
+          displayName: Settings
+          description: Global RUCC configuration
+        - kind: CheckRun
+          version: v1alpha1
+          name: checkruns.rucc.cattle.io
+          displayName: CheckRun
+          description: Dry-run validation checks
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://github.com/rancherlabs/rucc/blob/main/docs/README.md
+        - name: Installation Guide
+          url: https://github.com/rancherlabs/rucc/blob/main/rucc-controller/charts/rucc-controller/INSTALLATION.md
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Full Lifecycle
+      artifacthub.io/recommendations: |
+        - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
+        - url: https://artifacthub.io/packages/helm/rancher-stable/rancher
+    apiVersion: v2
+    appVersion: v0.1.0
+    created: "2026-08-08T20:19:30.449834-05:00"
+    description: RUCC Controller - Safe, automated upgrades for Rancher and RKE2
+    digest: 7c241858c4097c8c6c96acc0a9d94b2e949e612b73f7ad0a141fe21bbabf7bbb
+    home: https://github.com/rancherlabs/rucc
+    icon: https://avatars.githubusercontent.com/u/9343010?s=200&v=4
+    keywords:
+    - rancher
+    - upgrade
+    - controller
+    - rucc
+    - rke2
+    - kubernetes
+    - automation
+    - backup
+    - rollback
+    - validation
+    maintainers:
+    - email: support@rancher.com
+      name: Rancher Labs
+    name: rucc
+    sources:
+    - https://github.com/rancherlabs/rucc
+    type: application
+    urls:
+    - https://rancherlabs.github.io/support-tools/charts/rucc-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-08-08T20:19:30.447332-05:00"
