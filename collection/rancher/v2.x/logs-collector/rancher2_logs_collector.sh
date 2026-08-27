@@ -1657,7 +1657,7 @@ if [ ! "$DISTRO" = "pod" ]; then
     sles)
       system-sles
       ;;
-    sle-micro)
+    sle-micro|sl-micro)
       system-sles
       ;;
     opensuse-leap)
