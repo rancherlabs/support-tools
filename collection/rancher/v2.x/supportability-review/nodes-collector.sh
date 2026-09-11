@@ -90,6 +90,8 @@ collect_systeminfo() {
 
   lsblk -d -o name,rota > systeminfo/rotational 2>&1
   systemd-detect-virt > systeminfo/detect-virt 2>&1
+
+  /etc/sonobuoy/ntp_check.py > systeminfo/ntp_check.json 2>&1
 }
 
 collect_networking_info_ip4() {
@@ -123,6 +125,11 @@ collect_networking_info_ip4() {
   cat ${HOST_FS_PREFIX}/proc/sys/net/ipv4/ip_local_port_range > networking/ip_local_port_range
   cat ${HOST_FS_PREFIX}/proc/sys/net/netfilter/nf_conntrack_max > networking/nf_conntrack_max
   cat ${HOST_FS_PREFIX}/proc/sys/net/netfilter/nf_conntrack_count > networking/nf_conntrack_count
+
+  curl -s --max-time 5 http://127.0.0.1:10249/proxyMode > networking/kube-proxy-proxymode 2>/dev/null || true
+  if [ ! -s networking/kube-proxy-proxymode ]; then
+    rm -f networking/kube-proxy-proxymode
+  fi
 
   for _NAMESERVER in $(awk '/^nameserver/ {print $2}' systeminfo/etcresolvconf)
     do
