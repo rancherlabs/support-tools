@@ -36,7 +36,7 @@ prereqs() {
 }
 
 get_symlink_destination() {
-  LS_RESULT=$(ls -l $1)
+  LS_RESULT=$(ls -l "$1")
   if [[ $LS_RESULT == *"->"* ]]; then
     IFS=' ' read -ra ADDR <<< "$LS_RESULT"
     LINK_DESTINATION=${ADDR[-1]}
@@ -45,34 +45,34 @@ get_symlink_destination() {
       return
     fi
   fi
-  echo $1
+  echo "$1"
 }
 
 collect_systeminfo() {
-  if [ -d ${HOST_FS_PREFIX} ]; then
-    ls -l ${HOST_FS_PREFIX} > ls-l-host.log
+  if [ -d "${HOST_FS_PREFIX}" ]; then
+    ls -l "${HOST_FS_PREFIX}" > ls-l-host.log
   fi
 
-  cp -p ${HOST_FS_PREFIX}/etc/hosts systeminfo/etchosts 2>&1
-  ETC_RESOLVE_CONF_PATH="$(get_symlink_destination ${HOST_FS_PREFIX}/etc/resolv.conf)"
-  cp -p ${ETC_RESOLVE_CONF_PATH} systeminfo/etcresolvconf 2>&1
-  if [ -e ${HOST_FS_PREFIX}/run/systemd/resolve/resolv.conf ];then
-    cp -p ${HOST_FS_PREFIX}/run/systemd/resolve/resolv.conf systeminfo/systemd-resolved 2>&1
+  cp -p "${HOST_FS_PREFIX}/etc/hosts" systeminfo/etchosts 2>&1
+  ETC_RESOLVE_CONF_PATH="$(get_symlink_destination "${HOST_FS_PREFIX}/etc/resolv.conf")"
+  cp -p "${ETC_RESOLVE_CONF_PATH}" systeminfo/etcresolvconf 2>&1
+  if [ -e "${HOST_FS_PREFIX}/run/systemd/resolve/resolv.conf" ];then
+    cp -p "${HOST_FS_PREFIX}/run/systemd/resolve/resolv.conf" systeminfo/systemd-resolved 2>&1
   fi
 
-  cp -p ${HOST_FS_PREFIX}/proc/cpuinfo systeminfo/cpuinfo 2>&1
-  cp -p ${HOST_FS_PREFIX}/proc/meminfo systeminfo/meminfo 2>&1
-  cp -p ${HOST_FS_PREFIX}/proc/sys/fs/file-nr systeminfo/file-nr 2>&1
-  cp -p ${HOST_FS_PREFIX}/proc/sys/fs/file-max systeminfo/file-max 2>&1
-  cp -p ${HOST_FS_PREFIX}/etc/security/limits.conf systeminfo/limits.conf 2>&1
+  cp -p "${HOST_FS_PREFIX}/proc/cpuinfo" systeminfo/cpuinfo 2>&1
+  cp -p "${HOST_FS_PREFIX}/proc/meminfo" systeminfo/meminfo 2>&1
+  cp -p "${HOST_FS_PREFIX}/proc/sys/fs/file-nr" systeminfo/file-nr 2>&1
+  cp -p "${HOST_FS_PREFIX}/proc/sys/fs/file-max" systeminfo/file-max 2>&1
+  cp -p "${HOST_FS_PREFIX}/etc/security/limits.conf" systeminfo/limits.conf 2>&1
   # Every system that we officially support has /etc/os-release
-  cat ${HOST_FS_PREFIX}/etc/os-release > systeminfo/os-release 2>&1
-  cat ${HOST_FS_PREFIX}/etc/centos-release > systeminfo/centos-release 2>&1
+  cat "${HOST_FS_PREFIX}/etc/os-release" > systeminfo/os-release 2>&1
+  cat "${HOST_FS_PREFIX}/etc/centos-release" > systeminfo/centos-release 2>&1
 
   ps auxfww > systeminfo/ps 2>&1
   free -m > systeminfo/freem 2>&1
-  df -i ${HOST_FS_PREFIX}/var > systeminfo/dfivar 2>&1
-  df ${HOST_FS_PREFIX}/var > systeminfo/dfvar 2>&1
+  df -i "${HOST_FS_PREFIX}/var" > systeminfo/dfivar 2>&1
+  df "${HOST_FS_PREFIX}/var" > systeminfo/dfvar 2>&1
 
   mount | grep cgroup > systeminfo/mount_cgroup
 
@@ -90,15 +90,17 @@ collect_systeminfo() {
 
   lsblk -d -o name,rota > systeminfo/rotational 2>&1
   systemd-detect-virt > systeminfo/detect-virt 2>&1
+
+  /etc/sonobuoy/ntp_check.py > systeminfo/ntp_check.json 2>&1
 }
 
 collect_networking_info_ip4() {
   iptables-save > networking/iptablessave
 
-  IPTABLES_FLAGS="--wait 1"
-  iptables $IPTABLES_FLAGS --numeric --verbose --list --table mangle > networking/iptablesmangle 2>&1
-  iptables $IPTABLES_FLAGS --numeric --verbose --list --table nat > networking/iptablesnat 2>&1
-  iptables $IPTABLES_FLAGS --numeric --verbose --list > networking/iptables 2>&1
+  IPTABLES_FLAGS=(--wait 1)
+  iptables "${IPTABLES_FLAGS[@]}" --numeric --verbose --list --table mangle > networking/iptablesmangle 2>&1
+  iptables "${IPTABLES_FLAGS[@]}" --numeric --verbose --list --table nat > networking/iptablesnat 2>&1
+  iptables "${IPTABLES_FLAGS[@]}" --numeric --verbose --list > networking/iptables 2>&1
 
   ip addr show > networking/ipaddrshow 2>&1
   ip route show table all > networking/iproute 2>&1
@@ -117,17 +119,22 @@ collect_networking_info_ip4() {
 
   conntrack -S > networking/conntrack.out
   nft list ruleset > networking/nft_ruleset 2>&1
-  cat ${HOST_FS_PREFIX}/proc/sys/net/bridge/bridge-nf-call-ip6tables > networking/bridge-nf-call-ip6tables
-  cat ${HOST_FS_PREFIX}/proc/sys/net/bridge/bridge-nf-call-iptables > networking/bridge-nf-call-iptables
-  cat ${HOST_FS_PREFIX}/proc/sys/net/ipv4/ip_forward > networking/ipv4_ip_forward
-  cat ${HOST_FS_PREFIX}/proc/sys/net/ipv4/ip_local_port_range > networking/ip_local_port_range
-  cat ${HOST_FS_PREFIX}/proc/sys/net/netfilter/nf_conntrack_max > networking/nf_conntrack_max
-  cat ${HOST_FS_PREFIX}/proc/sys/net/netfilter/nf_conntrack_count > networking/nf_conntrack_count
+  cat "${HOST_FS_PREFIX}/proc/sys/net/bridge/bridge-nf-call-ip6tables" > networking/bridge-nf-call-ip6tables
+  cat "${HOST_FS_PREFIX}/proc/sys/net/bridge/bridge-nf-call-iptables" > networking/bridge-nf-call-iptables
+  cat "${HOST_FS_PREFIX}/proc/sys/net/ipv4/ip_forward" > networking/ipv4_ip_forward
+  cat "${HOST_FS_PREFIX}/proc/sys/net/ipv4/ip_local_port_range" > networking/ip_local_port_range
+  cat "${HOST_FS_PREFIX}/proc/sys/net/netfilter/nf_conntrack_max" > networking/nf_conntrack_max
+  cat "${HOST_FS_PREFIX}/proc/sys/net/netfilter/nf_conntrack_count" > networking/nf_conntrack_count
 
-  for _NAMESERVER in $(awk '/^nameserver/ {print $2}' systeminfo/etcresolvconf)
+  curl -s --max-time 5 http://127.0.0.1:10249/proxyMode > networking/kube-proxy-proxymode 2>/dev/null || true
+  if [ ! -s networking/kube-proxy-proxymode ]; then
+    rm -f networking/kube-proxy-proxymode
+  fi
+
+  awk '/^nameserver/ {print $2}' systeminfo/etcresolvconf | while read -r _NAMESERVER
     do
       echo "--- Nameserver: ${_NAMESERVER}" >> networking/dns-external 2>&1
-      dig google.com @${_NAMESERVER} >> networking/dns-external 2>&1
+      dig google.com "@${_NAMESERVER}" >> networking/dns-external 2>&1
   done
 
   if kubectl get svc -n kube-system kube-dns > /dev/null 2>&1
@@ -137,24 +144,24 @@ collect_networking_info_ip4() {
       _COREDNS_SVC=rke2-coredns-rke2-coredns
   fi
 
-  _COREDNS_SVC_IP=$(kubectl get services -n kube-system ${_COREDNS_SVC} -o=jsonpath='{.spec.clusterIP}')
-  dig kubernetes.default.svc.cluster.local @${_COREDNS_SVC_IP} >> networking/dns-internal 2>&1
+  _COREDNS_SVC_IP=$(kubectl get services -n kube-system "${_COREDNS_SVC}" -o=jsonpath='{.spec.clusterIP}')
+  dig kubernetes.default.svc.cluster.local "@${_COREDNS_SVC_IP}" >> networking/dns-internal 2>&1
 
-  _COREDNS_ENDPOINTS=$(kubectl get endpoints -n kube-system ${_COREDNS_SVC} -o=jsonpath='{.subsets[*].addresses[*].ip}')
+  _COREDNS_ENDPOINTS=$(kubectl get endpoints -n kube-system "${_COREDNS_SVC}" -o=jsonpath='{.subsets[*].addresses[*].ip}')
   for _ENDPOINT in ${_COREDNS_ENDPOINTS}
     do
       echo "--- CoreDNS endpoint: ${_ENDPOINT}" >> networking/dns-internal-all-endpoints 2>&1
-      dig kubernetes.default.svc.cluster.local @${_ENDPOINT} >> networking/dns-internal-all-endpoints 2>&1
+      dig kubernetes.default.svc.cluster.local "@${_ENDPOINT}" >> networking/dns-internal-all-endpoints 2>&1
   done
 }
 
 collect_networking_info_ip6() {
   ip6tables-save > networking/ip6tablessave 2>&1
 
-  IPTABLES_FLAGS="--wait 1"
-  ip6tables $IPTABLES_FLAGS --numeric --verbose --list --table mangle > networking/ip6tablesmangle 2>&1
-  ip6tables $IPTABLES_FLAGS --numeric --verbose --list --table nat > networking/ip6tablesnat 2>&1
-  ip6tables $IPTABLES_FLAGS --numeric --verbose --list > networking/ip6tables 2>&1
+  IPTABLES_FLAGS=(--wait 1)
+  ip6tables "${IPTABLES_FLAGS[@]}" --numeric --verbose --list --table mangle > networking/ip6tablesmangle 2>&1
+  ip6tables "${IPTABLES_FLAGS[@]}" --numeric --verbose --list --table nat > networking/ip6tablesnat 2>&1
+  ip6tables "${IPTABLES_FLAGS[@]}" --numeric --verbose --list > networking/ip6tables 2>&1
 
   ip -6 neighbour > networking/ipv6neighbour 2>&1
   ip -6 rule show > networking/ipv6rule 2>&1
@@ -169,31 +176,30 @@ collect_networking_info() {
   collect_networking_info_ip4
   collect_networking_info_ip6
 
-  cp -r -p ${HOST_FS_PREFIX}/etc/cni/net.d/* networking/cni 2>&1
+  cp -r -p "${HOST_FS_PREFIX}"/etc/cni/net.d/* networking/cni 2>&1
 }
 
 collect_rke_node_info() {
   mkdir -p "${OUTPUT_DIR}/rke"
   mkdir -p "${OUTPUT_DIR}/docker"
-  curl -s --unix-socket ${HOST_FS_PREFIX}/run/docker.sock http://localhost/info > ${OUTPUT_DIR}/docker/docker_info.json 2>&1
-  cp ${HOST_FS_PREFIX}/etc/docker/daemon.json ${OUTPUT_DIR}/docker/docker_daemon.json 2>&1
+  curl -s --unix-socket "${HOST_FS_PREFIX}/run/docker.sock" http://localhost/info > "${OUTPUT_DIR}/docker/docker_info.json" 2>&1
+  cp "${HOST_FS_PREFIX}/etc/docker/daemon.json" "${OUTPUT_DIR}/docker/docker_daemon.json" 2>&1
   collect_rke_certs
 }
 
 collect_rke2_node_info() {
   mkdir -p "${OUTPUT_DIR}/rke2"
-  RKE2_BINARY=$( pgrep -a rke2 | cut -d' ' -f2 )
 
   #Get RKE2 Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" ]; then
-    cat ${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/rke2/config.yaml
+    sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" > "${OUTPUT_DIR}/rke2/config.yaml"
   else
-    touch ${OUTPUT_DIR}/rke2/config.yaml
+    touch "${OUTPUT_DIR}/rke2/config.yaml"
   fi
   if [ -d "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml.d" ]; then
     mkdir -p "${OUTPUT_DIR}/rke2/config.yaml.d"
-    for yaml in ${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml.d/*.yaml; do
-      cat ${yaml} | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/rke2/config.yaml.d/$(basename ${yaml})
+    for yaml in "${HOST_FS_PREFIX}"/etc/rancher/rke2/config.yaml.d/*.yaml; do
+      sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' "${yaml}" > "${OUTPUT_DIR}/rke2/config.yaml.d/$(basename "${yaml}")"
     done
   fi
   sherlock-rke2-data-dir
@@ -202,18 +208,17 @@ collect_rke2_node_info() {
 
 collect_k3s_node_info() {
   mkdir -p "${OUTPUT_DIR}/k3s"
-  K3S_BINARY=$( pgrep -a k3s | cut -d' ' -f2 )
 
   #Get k3s Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml" ]; then
-    cat ${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/k3s/config.yaml
+    sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml" > "${OUTPUT_DIR}/k3s/config.yaml"
   else
-    touch ${OUTPUT_DIR}/k3s/config.yaml
+    touch "${OUTPUT_DIR}/k3s/config.yaml"
   fi
   if [ -d "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml.d" ]; then
     mkdir -p "${OUTPUT_DIR}/k3s/config.yaml.d"
-    for yaml in ${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml.d/*.yaml; do
-      cat ${yaml} | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/k3s/config.yaml.d/$(basename ${yaml})
+    for yaml in "${HOST_FS_PREFIX}"/etc/rancher/k3s/config.yaml.d/*.yaml; do
+      sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' "${yaml}" > "${OUTPUT_DIR}/k3s/config.yaml.d/$(basename "${yaml}")"
     done
   fi
   collect_k3s_certs
@@ -254,50 +259,50 @@ collect_downstream_cluster_specific_info() {
 }
 
 collect_rke_certs() {
-  mkdir -p ${OUTPUT_DIR}/rke/certs
-  if [ -d ${HOST_FS_PREFIX}/opt/rke/etc/kubernetes/ssl ]; then
-    CERTS=$(find ${HOST_FS_PREFIX}/opt/rke/etc/kubernetes/ssl -type f -name *.pem | grep -v "\-key\.pem$")
+  mkdir -p "${OUTPUT_DIR}/rke/certs"
+  if [ -d "${HOST_FS_PREFIX}/opt/rke/etc/kubernetes/ssl" ]; then
+    CERTS=$(find "${HOST_FS_PREFIX}/opt/rke/etc/kubernetes/ssl" -type f -name "*.pem" | grep -v "\-key\.pem$")
     for CERT in $CERTS; do
-      openssl x509 -in $CERT -text -noout > ${OUTPUT_DIR}/rke/certs/$(basename $CERT) 2>&1
+      openssl x509 -in "$CERT" -text -noout > "${OUTPUT_DIR}/rke/certs/$(basename "$CERT")" 2>&1
     done
-  elif [ -d ${HOST_FS_PREFIX}/etc/kubernetes/ssl ]; then
-    CERTS=$(find ${HOST_FS_PREFIX}/etc/kubernetes/ssl -type f -name *.pem | grep -v "\-key\.pem$")
+  elif [ -d "${HOST_FS_PREFIX}/etc/kubernetes/ssl" ]; then
+    CERTS=$(find "${HOST_FS_PREFIX}/etc/kubernetes/ssl" -type f -name "*.pem" | grep -v "\-key\.pem$")
     for CERT in $CERTS; do
-      openssl x509 -in $CERT -text -noout > ${OUTPUT_DIR}/rke/certs/$(basename $CERT) 2>&1
+      openssl x509 -in "$CERT" -text -noout > "${OUTPUT_DIR}/rke/certs/$(basename "$CERT")" 2>&1
     done
   fi
 }
 
 collect_k3s_certs() {
-  if [ -d ${HOST_FS_PREFIX}/var/lib/rancher/k3s ]; then
-    mkdir -p ${OUTPUT_DIR}/k3s/certs/agent
-    AGENT_CERTS=$(find ${HOST_FS_PREFIX}/var/lib/rancher/k3s/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+  if [ -d "${HOST_FS_PREFIX}/var/lib/rancher/k3s" ]; then
+    mkdir -p "${OUTPUT_DIR}/k3s/certs/agent"
+    AGENT_CERTS=$(find "${HOST_FS_PREFIX}/var/lib/rancher/k3s/agent" -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
     for CERT in $AGENT_CERTS; do
-      openssl x509 -in $CERT -text -noout > ${OUTPUT_DIR}/k3s/certs/agent/$(basename $CERT) 2>&1
+      openssl x509 -in "$CERT" -text -noout > "${OUTPUT_DIR}/k3s/certs/agent/$(basename "$CERT")" 2>&1
     done
-    if [ -d ${HOST_FS_PREFIX}/var/lib/rancher/k3s/server/tls ]; then
-      mkdir -p ${OUTPUT_DIR}/k3s/certs/server
-      SERVER_CERTS=$(find ${HOST_FS_PREFIX}/var/lib/rancher/k3s/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+    if [ -d "${HOST_FS_PREFIX}/var/lib/rancher/k3s/server/tls" ]; then
+      mkdir -p "${OUTPUT_DIR}/k3s/certs/server"
+      SERVER_CERTS=$(find "${HOST_FS_PREFIX}/var/lib/rancher/k3s/server/tls" -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
       for CERT in $SERVER_CERTS; do
-        openssl x509 -in $CERT -text -noout > ${OUTPUT_DIR}/k3s/certs/server/$(basename $CERT) 2>&1
+        openssl x509 -in "$CERT" -text -noout > "${OUTPUT_DIR}/k3s/certs/server/$(basename "$CERT")" 2>&1
       done
     fi
   fi
 }
 
 collect_rke2_certs() {
-  if [ -d ${RKE2_DIR} ]; then
-    mkdir -p ${OUTPUT_DIR}/rke2/certs/agent
-    AGENT_CERTS=$(find ${RKE2_DIR}/agent -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+  if [ -d "${RKE2_DIR}" ]; then
+    mkdir -p "${OUTPUT_DIR}/rke2/certs/agent"
+    AGENT_CERTS=$(find "${RKE2_DIR}/agent" -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
     for CERT in $AGENT_CERTS; do
-      openssl x509 -in $CERT -text -noout > ${OUTPUT_DIR}/rke2/certs/agent/$(basename $CERT) 2>&1
+      openssl x509 -in "$CERT" -text -noout > "${OUTPUT_DIR}/rke2/certs/agent/$(basename "$CERT")" 2>&1
     done
-    if [ -d ${RKE2_DIR}/server/tls ]; then
-      techo "Collecting rke2 server certificates"
-      mkdir -p ${OUTPUT_DIR}/rke2/certs/server
-      SERVER_CERTS=$(find ${RKE2_DIR}/server/tls -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
+    if [ -d "${RKE2_DIR}/server/tls" ]; then
+      echo "Collecting rke2 server certificates"
+      mkdir -p "${OUTPUT_DIR}/rke2/certs/server"
+      SERVER_CERTS=$(find "${RKE2_DIR}/server/tls" -maxdepth 1 -type f -name "*.crt" | grep -v "\-ca.crt$")
       for CERT in $SERVER_CERTS; do
-        openssl x509 -in $CERT -text -noout > ${OUTPUT_DIR}/rke2/certs/server/$(basename $CERT) 2>&1
+        openssl x509 -in "$CERT" -text -noout > "${OUTPUT_DIR}/rke2/certs/server/$(basename "$CERT")" 2>&1
       done
     fi
   fi
@@ -305,8 +310,8 @@ collect_rke2_certs() {
 
 sherlock-rke2-data-dir() {
 
-  if [ -f ${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml ]; then
-      CUSTOM_DIR=$(awk '$1 ~ /data-dir:/ {print $2}' ${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml)
+  if [ -f "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" ]; then
+      CUSTOM_DIR=$(awk '$1 ~ /data-dir:/ {print $2}' "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml")
   fi
   if [[ -z "${CUSTOM_DIR}" ]]; then
     RKE2_DIR="${HOST_FS_PREFIX}/var/lib/rancher/rke2"
@@ -323,7 +328,7 @@ delete_sensitive_info() {
 move_ip_map() {
   if [ "${OBFUSCATE}" == "true" ]; then
     echo "moving map"
-    mv ip_map.json ${SONOBUOY_RESULTS_DIR}/
+    mv ip_map.json "${SONOBUOY_RESULTS_DIR}/"
   else
     echo "nothing to move"
   fi
@@ -338,7 +343,7 @@ main() {
   # Note:
   #       Don't prefix any of the output files. The following line needs to be
   #       adjusted accordingly.
-  cd "${OUTPUT_DIR}"
+  cd "${OUTPUT_DIR}" || exit 1
 
   collect_node_info
 
@@ -351,20 +356,20 @@ main() {
     text_list=("systeminfo/ps" "networking/ipaddrshow" "networking/iproute" "networking/ipneighbour" "networking/ssanp" "networking/ssitan" "networking/ssuapn" "networking/ss4apn" "networking/sstunlp4" "networking/nft_ruleset" "networking/dns-external" "networking/dns-internal" "networking/dns-internal-all-endpoints" "networking/ss6apn"
 )
 
-    for file in ${json_list[@]}; do
-      newfile=$(sed 's/\//\/obf_/' <<< $file)
-      obfuscate_json.py $file $newfile
-      rm $file
+    for file in "${json_list[@]}"; do
+      newfile=$(sed 's/\//\/obf_/' <<< "$file")
+      obfuscate_json.py "$file" "$newfile"
+      rm "$file"
       echo "moving $newfile to $file"
-      mv $newfile $file
+      mv "$newfile" "$file"
     done
 
-    for file in ${text_list[@]}; do
-      newfile=$(sed 's/\//\/obf_/' <<< $file)
-      obfuscate_text.py $file $newfile
-      rm $file
+    for file in "${text_list[@]}"; do
+      newfile=$(sed 's/\//\/obf_/' <<< "$file")
+      obfuscate_text.py "$file" "$newfile"
+      rm "$file"
       echo "moving ${newfile} to ${file}"
-      mv $newfile $file
+      mv "$newfile" "$file"
     done
   fi
 

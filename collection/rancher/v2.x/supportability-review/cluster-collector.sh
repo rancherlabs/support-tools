@@ -34,8 +34,8 @@ prereqs() {
 
 collect_common_cluster_info() {
   date "+%Y-%m-%d %H:%M:%S" > date.log
-  echo ${RANCHER_URL} > rancher_url 2>&1
-  echo ${HOSTED_RANCHER_HOSTNAME_SUFFIX} > hosted_rancher_hostname_suffix 2>&1
+  echo "${RANCHER_URL}" > rancher_url 2>&1
+  echo "${HOSTED_RANCHER_HOSTNAME_SUFFIX}" > hosted_rancher_hostname_suffix 2>&1
 
   kubectl version -o json > kubectl-version.json
   kubectl get nodes -o json > nodes.json
@@ -50,47 +50,47 @@ collect_common_cluster_info() {
   jq -cr '.items | length' pods.json > pod-count
   jq -cr '[([.items[].spec.containers | length] | add), ([.items[].spec.initContainers | length] | add)] | add' pods.json > container-count
   jq -cr '.items[] | select(.metadata.namespace == "default") | .metadata.name' pods.json | wc -l > pods_in_default_ns
-  cat pods.json | jq -cr '
+  jq -cr '
 .items
 | map(.spec.nodeName)
 | group_by(.)
 | map({name: .[0], count: length})
 | {items: .}
-' > pod-count-per-node.json
+' pods.json > pod-count-per-node.json
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' pods.json > terminating-pods
   jq -c '.items[]' pods.json | {
     while read -r item; do
       # Skip sonobuoy pods because they are in ContainerCreating state
-      namespace=$(echo $item | tr '\n' ' ' | jq -cr '.metadata.namespace')
-      if [ $namespace == $SONOBUOY_NAMESPACE ]; then
+      namespace=$(echo "$item" | tr '\n' ' ' | jq -cr '.metadata.namespace')
+      if [ "$namespace" == "$SONOBUOY_NAMESPACE" ]; then
         continue
       fi
 
-      name=$(echo $item | tr '\n' ' ' | jq -cr '.metadata.name')
-      has_container_statuses=$(echo $item | tr '\n' ' ' | jq -cr '.status | has("containerStatuses")')
-      if [ $has_container_statuses == "false" ]; then
-        echo $name
+      name=$(echo "$item" | tr '\n' ' ' | jq -cr '.metadata.name')
+      has_container_statuses=$(echo "$item" | tr '\n' ' ' | jq -cr '.status | has("containerStatuses")')
+      if [ "$has_container_statuses" == "false" ]; then
+        echo "$name"
         continue
       fi
-      container_statuses=$(echo $item | tr '\n' ' ' | jq -cr '.status.containerStatuses')
-      echo $container_statuses | jq -c '.[]' | {
+      container_statuses=$(echo "$item" | tr '\n' ' ' | jq -cr '.status.containerStatuses')
+      echo "$container_statuses" | jq -c '.[]' | {
         while read -r status; do
           # Check Running Pod
-          has_running=$(echo $status | tr '\n' ' ' | jq -cr '.state | has("running")')
-          if [ $has_running == "true" ]; then
+          has_running=$(echo "$status" | tr '\n' ' ' | jq -cr '.state | has("running")')
+          if [ "$has_running" == "true" ]; then
             continue
           fi
 
           # Check Completed Job
-          has_terminated=$(echo $status | tr '\n' ' ' | jq -cr '.state | has("terminated")')
-          if [ $has_terminated == "true" ]; then
-            reason_is_completed=$(echo $status | tr '\n' ' ' | jq -cr '.state.terminated.reason == "Completed"')
-            if [ $reason_is_completed == "true" ]; then
+          has_terminated=$(echo "$status" | tr '\n' ' ' | jq -cr '.state | has("terminated")')
+          if [ "$has_terminated" == "true" ]; then
+            reason_is_completed=$(echo "$status" | tr '\n' ' ' | jq -cr '.state.terminated.reason == "Completed"')
+            if [ "$reason_is_completed" == "true" ]; then
               continue
             fi
           fi
 
-          echo $name
+          echo "$name"
         done
       }
     done
@@ -98,12 +98,12 @@ collect_common_cluster_info() {
   jq -c '.items[]' nodes.json | {
     RESULT_JSON=""
     while read -r item; do
-      NODENAME=$(echo $item | tr '\n' ' ' | jq -cr '.metadata.name')
+      NODENAME=$(echo "$item" | tr '\n' ' ' | jq -cr '.metadata.name')
       IP_LIST=$(jq ".items[] | select(.spec.nodeName == \"$NODENAME\") | .status.podIPs[].ip" pods.json | jq -s '.')
-      ADDITONAL_JSON=$(echo "{\""$NODENAME"\":" $IP_LIST "}")
+      ADDITONAL_JSON="{\"${NODENAME}\": ${IP_LIST} }"
       RESULT_JSON=$(jq -s add <<< "$RESULT_JSON $ADDITONAL_JSON")
     done
-    echo ${RESULT_JSON} | jq '.' > pod-ipaddresses.json
+    echo "${RESULT_JSON}" | jq '.' > pod-ipaddresses.json
   }
   kubectl get services -A -o json > services.json
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' services.json > terminating-services
@@ -130,7 +130,7 @@ collect_common_cluster_info() {
   fi
   kubectl get apps.catalog.cattle.io -n cattle-monitoring-system -o json > cattle-monitoring-system-apps.json
   if [ -s cattle-monitoring-system-apps.json ]; then
-    if [ $(jq '.items | length' cattle-monitoring-system-apps.json) -lt 1 ]; then
+    if [ "$(jq '.items | length' cattle-monitoring-system-apps.json)" -lt 1 ]; then
       rm cattle-monitoring-system-apps.json
     fi
   else
@@ -150,7 +150,7 @@ collect_common_cluster_info() {
   kubectl get RuntimeClass -A -o json | jq '{"items": [.items[] | {"apiVersion": .apiVersion, "metadata": {"name": .metadata.name, "namespace": .metadata.namespace }}]}' > api_version/RuntimeClass.json
 
   # Make collection optional
-  if [ ! -z "${SR_COLLECT_CLUSTER_INFO_DUMP}" ]; then
+  if [ -n "${SR_COLLECT_CLUSTER_INFO_DUMP}" ]; then
     echo "SR_COLLECT_CLUSTER_INFO_DUMP is set, hence collecting cluster-info dump"
     kubectl cluster-info dump > cluster-info.dump.log
   fi
@@ -167,22 +167,21 @@ collect_common_cluster_info() {
 collect_rke_info() {
   mkdir -p "${OUTPUT_DIR}/rke"
 
-  kubectl -n kube-system get secret | grep full-cluster-state
-  if [ $? -eq 0 ]; then
-    kubectl -n kube-system get secret full-cluster-state -o jsonpath='{.data.full-cluster-state}' | base64 -d > ${OUTPUT_DIR}/rke/full-cluster-state.json
-    echo "true" > ${OUTPUT_DIR}/rke/CVE-2023-32191.txt
+  if kubectl -n kube-system get secret | grep full-cluster-state; then
+    kubectl -n kube-system get secret full-cluster-state -o jsonpath='{.data.full-cluster-state}' | base64 -d > "${OUTPUT_DIR}/rke/full-cluster-state.json"
+    echo "true" > "${OUTPUT_DIR}/rke/CVE-2023-32191.txt"
   else
-    kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' > ${OUTPUT_DIR}/rke/full-cluster-state.json
-    echo "false" > ${OUTPUT_DIR}/rke/CVE-2023-32191.txt
+    kubectl -n kube-system get configmap full-cluster-state -o jsonpath='{.data.full-cluster-state}' > "${OUTPUT_DIR}/rke/full-cluster-state.json"
+    echo "false" > "${OUTPUT_DIR}/rke/CVE-2023-32191.txt"
   fi
-  jq -cr '.currentState.rkeConfig.network.plugin' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/cni
-  jq -cr '.currentState.rkeConfig.services.etcd | del(.backupConfig.s3BackupConfig)' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/etcd.json
-  jq -cr '.currentState.rkeConfig.services.kubeApi' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/kubeApi.json
-  jq -cr '.currentState.rkeConfig.services.kubeController' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/kubeController.json
-  jq -cr '.currentState.rkeConfig.dns' ${OUTPUT_DIR}/rke/full-cluster-state.json > ${OUTPUT_DIR}/rke/dns.json
-  rm ${OUTPUT_DIR}/rke/full-cluster-state.json
+  jq -cr '.currentState.rkeConfig.network.plugin' "${OUTPUT_DIR}/rke/full-cluster-state.json" > "${OUTPUT_DIR}/rke/cni"
+  jq -cr '.currentState.rkeConfig.services.etcd | del(.backupConfig.s3BackupConfig)' "${OUTPUT_DIR}/rke/full-cluster-state.json" > "${OUTPUT_DIR}/rke/etcd.json"
+  jq -cr '.currentState.rkeConfig.services.kubeApi' "${OUTPUT_DIR}/rke/full-cluster-state.json" > "${OUTPUT_DIR}/rke/kubeApi.json"
+  jq -cr '.currentState.rkeConfig.services.kubeController' "${OUTPUT_DIR}/rke/full-cluster-state.json" > "${OUTPUT_DIR}/rke/kubeController.json"
+  jq -cr '.currentState.rkeConfig.dns' "${OUTPUT_DIR}/rke/full-cluster-state.json" > "${OUTPUT_DIR}/rke/dns.json"
+  rm "${OUTPUT_DIR}/rke/full-cluster-state.json"
 
-  kubectl get ds -n ingress-nginx -o json > ${OUTPUT_DIR}/rke/ingress-nginx-daemonsets.json
+  kubectl get ds -n ingress-nginx -o json > "${OUTPUT_DIR}/rke/ingress-nginx-daemonsets.json"
   kubectl -n ingress-nginx exec ds/nginx-ingress-controller -- /nginx-ingress-controller --help > rke/ingress-nginx-help.txt 2>&1
 }
 
@@ -209,14 +208,14 @@ collect_rke2_info() {
 
   #Get RKE2 Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" ]; then
-    cat ${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/rke2/config.yaml
+    sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml" > "${OUTPUT_DIR}/rke2/config.yaml"
   else
-    touch ${OUTPUT_DIR}/rke2/config.yaml
+    touch "${OUTPUT_DIR}/rke2/config.yaml"
   fi
   if [ -d "${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml.d" ]; then
     mkdir -p "${OUTPUT_DIR}/rke2/config.yaml.d"
-    for yaml in ${HOST_FS_PREFIX}/etc/rancher/rke2/config.yaml.d/*.yaml; do
-      cat ${yaml} | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/rke2/config.yaml.d/$(basename ${yaml})
+    for yaml in "${HOST_FS_PREFIX}"/etc/rancher/rke2/config.yaml.d/*.yaml; do
+      sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' "${yaml}" > "${OUTPUT_DIR}/rke2/config.yaml.d/$(basename "${yaml}")"
     done
   fi
 }
@@ -227,14 +226,14 @@ collect_k3s_info() {
 
   #Get k3s Configuration file(s), redacting secrets
   if [ -f "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml" ]; then
-    cat ${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/k3s/config.yaml
+    sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml" > "${OUTPUT_DIR}/k3s/config.yaml"
   else
-    touch ${OUTPUT_DIR}/k3s/config.yaml
+    touch "${OUTPUT_DIR}/k3s/config.yaml"
   fi
   if [ -d "${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml.d" ]; then
     mkdir -p "${OUTPUT_DIR}/k3s/config.yaml.d"
-    for yaml in ${HOST_FS_PREFIX}/etc/rancher/k3s/config.yaml.d/*.yaml; do
-      cat ${yaml} | sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' > ${OUTPUT_DIR}/k3s/config.yaml.d/$(basename ${yaml})
+    for yaml in "${HOST_FS_PREFIX}"/etc/rancher/k3s/config.yaml.d/*.yaml; do
+      sed -E 's/("|\x27)?(agent-token|token|etcd-s3-access-key|etcd-s3-secret-key|datastore-endpoint)("|\x27)?:\s*("|\x27)?.*("|\x27)?/\1\2\3: <REDACTED>/' "${yaml}" > "${OUTPUT_DIR}/k3s/config.yaml.d/$(basename "${yaml}")"
     done
   fi
 }
@@ -263,7 +262,6 @@ collect_upstream_cluster_info() {
   rancher_version=$(kubectl get settings.management.cattle.io server-version -o json | jq -cr '.value | sub("^v"; "")')
   rancher_deployment_name=$(kubectl -n cattle-system get deployments.apps -o json | jq -cr ".items[] | select(.metadata.labels.chart == \"rancher-$rancher_version\") | .metadata.name")
   jq "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\") | .spec.nodeName] | unique | length" pods.json > unique-rancher-pod-count-by-node
-  number_of_rancher_pods=$(jq -cr "[.items[] | select(.metadata.namespace == \"cattle-system\" and .metadata.labels.app == \"$rancher_deployment_name\") | .metadata.name] | length" pods.json)
 
   kubectl get settings.management.cattle.io install-uuid -o json > settings-install-uuid.json
   kubectl get settings.management.cattle.io ui-brand -o json > settings-ui-brand.json
@@ -289,8 +287,8 @@ collect_app_info() {
   fi
 
   kubectl get ds -n longhorn-system -o json > apps/longhorn-system-daemonsets.json
-  NUM_OF_LONGHORN_DS=`jq -cr '.items | length' apps/longhorn-system-daemonsets.json`
-  if [ $NUM_OF_LONGHORN_DS -eq 0 ]; then
+  NUM_OF_LONGHORN_DS=$(jq -cr '.items | length' apps/longhorn-system-daemonsets.json)
+  if [ "$NUM_OF_LONGHORN_DS" -eq 0 ]; then
     rm apps/longhorn-system-daemonsets.json
   fi
 
@@ -350,9 +348,9 @@ delete_sensitive_info() {
 }
 
 move_ip_map() {
-  if "${OBFUSCATE}" == "true"; then
+  if [ "${OBFUSCATE}" == "true" ]; then
     echo "moving map"
-    mv ip_map.json ${SONOBUOY_RESULTS_DIR}/
+    mv ip_map.json "${SONOBUOY_RESULTS_DIR}/"
   else
     echo "nothing to move"
   fi
@@ -367,24 +365,24 @@ main() {
   # Note:
   #       Don't prefix any of the output files. The following line needs to be
   #       adjusted accordingly.
-  cd "${OUTPUT_DIR}"
+  cd "${OUTPUT_DIR}" || exit 1
 
   collect_cluster_info
 
   #Handle Obfuscate case
-  if "${OBFUSCATE}" == "true"; then
+  if [ "${OBFUSCATE}" == "true" ]; then
     echo "obfuscation enabled"
     echo "true" > "${OUTPUT_DIR}/obfuscate_data"
 
     json_list=("nodes.json" "cattle-system-deploy.json" "nodes-cattle.json" "services-default.json" "crds.json" "pods.json")
 
-    for file in ${json_list[@]}; do
+    for file in "${json_list[@]}"; do
       prefix='obf_'
       newfile="${prefix}${file}"
-      obfuscate_json.py $file $newfile
+      obfuscate_json.py "$file" "$newfile"
       echo "moving ${newfile} to ${file}"
-      rm $file
-      mv $newfile $file
+      rm "$file"
+      mv "$newfile" "$file"
     done
   fi
 
