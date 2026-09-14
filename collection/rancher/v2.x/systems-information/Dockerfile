@@ -8,9 +8,9 @@ msmtp \
 && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ##Installing kubectl
-ARG KUBECTL_VERSION=v1.35.3
-# renovate-local: kubectl-amd64=v1.35.3
-ARG KUBECTL_SUM_amd64=fd31c7d7129260e608f6faf92d5984c3267ad0b5ead3bced2fe125686e286ad6
+ARG KUBECTL_VERSION=v1.37.0
+# renovate-local: kubectl-amd64=v1.37.0
+ARG KUBECTL_SUM_amd64=6129359f4e1f3848a5572ccb0b26cf28b8ca08cef38c95a765b2f64a2c961a2f
 RUN curl -sSLO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && \
     echo "${KUBECTL_SUM_amd64}  kubectl" | sha256sum -c - && \
     chmod +x kubectl && \
