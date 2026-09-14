@@ -296,6 +296,9 @@ system-rhel() {
   if command -v getenforce >/dev/null 2>&1; then
     getenforce > "${TMPDIR}/systeminfo/rhel-getenforce" 2>&1
   fi
+  if command -v sestatus >/dev/null 2>&1; then
+    sestatus -v -b > "${TMPDIR}/systeminfo/rhel-sestatus" 2>&1
+  fi
   if command -v rpm >/dev/null 2>&1; then
     rpm -qa > "${TMPDIR}/systeminfo/packages-rpm" 2>&1
   fi
