@@ -480,7 +480,7 @@ k3s-logs() {
     then
       for _FILE in "/etc/rancher/${DISTRO}/config.yaml.d/"*
         do
-          grep -Ev "token|access-key|secret-key" $_FILE >& "${TMPDIR}/${DISTRO}/$(basename $_FILE)"
+          grep -Ev "token|access-key|secret-key" "$_FILE" >& "${TMPDIR}/${DISTRO}/$(basename "$_FILE")"
       done
   fi
 
@@ -533,7 +533,7 @@ rke2-logs() {
     then
       for _FILE in "/etc/rancher/${DISTRO}/config.yaml.d/"*
         do
-          grep -Ev "token|access-key|secret-key" $_FILE >& "${TMPDIR}/${DISTRO}/$(basename $_FILE)"
+          grep -Ev "token|access-key|secret-key" "$_FILE" >& "${TMPDIR}/${DISTRO}/$(basename "$_FILE")"
       done
   fi
 
@@ -649,7 +649,7 @@ k3s-k8s() {
       k3s kubectl get "$OBJECT" --all-namespaces -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
     done
     for APP_NS in "${SYSTEM_NAMESPACES[@]}"; do
-      k3s kubectl get apps.catalog.cattle.io --ignore-not-found=true --namespace $APP_NS 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
+      k3s kubectl get apps.catalog.cattle.io --ignore-not-found=true --namespace "$APP_NS" 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
     done
 
     techo "Collecting system pod logs"
@@ -663,7 +663,7 @@ k3s-k8s() {
 
   elif [[ "${K3S_AGENT}" || "${API_SERVER_OFFLINE}" ]]; then
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
-    cd /var/log/pods
+    cd /var/log/pods || exit
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       if ls -d "${SYSTEM_NAMESPACE}_"* > /dev/null 2>&1; then
         find "${SYSTEM_NAMESPACE}"_* -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp --parents -p {} "${TMPDIR}/${DISTRO}/podlogs/" \;
@@ -729,7 +729,7 @@ rke2-k8s() {
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get "$OBJECT" --all-namespaces -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
     done
     for APP_NS in "${SYSTEM_NAMESPACES[@]}"; do
-      "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get apps.catalog.cattle.io --ignore-not-found=true --namespace $APP_NS 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
+      "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get apps.catalog.cattle.io --ignore-not-found=true --namespace "$APP_NS" 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
     done
 
     techo "Collecting rke2 system pod logs"
@@ -744,7 +744,7 @@ rke2-k8s() {
 
   elif [[ "${RKE2_AGENT}" || "${API_SERVER_OFFLINE}" ]]; then
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
-    cd /var/log/pods
+    cd /var/log/pods || exit
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       if ls -d "${SYSTEM_NAMESPACE}_"* > /dev/null 2>&1; then
         find "${SYSTEM_NAMESPACE}"_* -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp --parents -p {} "${TMPDIR}/${DISTRO}/podlogs/" \;
@@ -775,7 +775,7 @@ pod-k8s() {
 
   TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
   CA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-  if ! kubectl get --raw='/healthz' --request-timeout=5s --server="https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT" --certificate-authority=$CA_CERT --token=$TOKEN > /dev/null 2>&1; then
+  if ! kubectl get --raw='/healthz' --request-timeout=5s --server="https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT" --certificate-authority=$CA_CERT --token="$TOKEN" > /dev/null 2>&1; then
     API_SERVER_OFFLINE=true
     techo "[!] Kube-apiserver is offline, may not be able to collect any output"
   fi
@@ -809,7 +809,7 @@ pod-k8s() {
       kubectl get "$OBJECT" --all-namespaces -o wide > "${TMPDIR}/${DISTRO}/kubectl/${OBJECT}" 2>&1
     done
     for APP_NS in "${SYSTEM_NAMESPACES[@]}"; do
-      kubectl get apps.catalog.cattle.io --ignore-not-found=true --namespace $APP_NS 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
+      kubectl get apps.catalog.cattle.io --ignore-not-found=true --namespace "$APP_NS" 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
     done
 
     techo "Collecting system pod logs"
@@ -869,7 +869,7 @@ kubeadm-k8s() {
     done
   done
   for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-    cd /var/log/pods
+    cd /var/log/pods || exit
     if ls -d "${SYSTEM_NAMESPACE}_"* > /dev/null 2>&1; then
       find "${SYSTEM_NAMESPACE}"_* -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp --parents -p {} "${TMPDIR}/kubeadm/podlogs/" \;
     fi
@@ -972,10 +972,10 @@ summary() {
     [ -f "${TMPDIR}/systeminfo/freeh" ] && cat "${TMPDIR}/systeminfo/freeh"
     echo
     echo "Disk usage >= 80%:"
-    [ -f "${TMPDIR}/systeminfo/dfh" ] && cat "${TMPDIR}/systeminfo/dfh" | awk 'NR==1 || int($5) >= 80 {print}'
+    [ -f "${TMPDIR}/systeminfo/dfh" ] && awk 'NR==1 || int($5) >= 80 {print}' "${TMPDIR}/systeminfo/dfh"
     echo
     echo "Inode usage >= 80%:"
-    [ -f "${TMPDIR}/systeminfo/dfi" ] && cat "${TMPDIR}/systeminfo/dfi" | awk 'NR==1 || int($5) >= 80 {print}'
+    [ -f "${TMPDIR}/systeminfo/dfi" ] && awk 'NR==1 || int($5) >= 80 {print}' "${TMPDIR}/systeminfo/dfi"
     echo
 
     echo "Versions"
@@ -1498,7 +1498,7 @@ cleanup() {
 
   rm -r -f "$TMPDIR_BASE" > /dev/null 2>&1
   if [ "$CHROOTED_DEBUG_POD" = "true" ]; then
-    rm /tmp/$(basename "$0")
+    rm "/tmp/$(basename "$0")"
   fi
 
 }
