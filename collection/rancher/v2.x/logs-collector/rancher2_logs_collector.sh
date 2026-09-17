@@ -316,6 +316,19 @@ system-sles() {
 
 }
 
+system-azure() {
+
+  journalctl -u systemd-networkd --no-pager > "${TMPDIR}/systeminfo/azure-journal-networkd" 2>&1
+  systemctl status apparmor > "${TMPDIR}/systeminfo/azure-statusapparmor" 2>&1
+  if [ -f /sys/kernel/security/apparmor/profiles ]; then
+    cp /sys/kernel/security/apparmor/profiles "${TMPDIR}/systeminfo/azure-apparmorprofiles"
+  fi
+  if command -v rpm >/dev/null 2>&1; then
+    rpm -qa > "${TMPDIR}/systeminfo/packages-rpm" 2>&1
+  fi
+
+}
+
 networking() {
 
   techo "Collecting network info"
@@ -1665,6 +1678,9 @@ if [ ! "$DISTRO" = "pod" ]; then
       ;;
     opensuse-leap)
       system-sles
+      ;;
+    mariner|azurelinux)
+      system-azure
       ;;
     *)
       echo "[!] Unsupported OS: $OSRELEASE"
