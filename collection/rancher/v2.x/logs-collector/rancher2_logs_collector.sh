@@ -1692,7 +1692,7 @@ case "$DISTRO" in
   rke2|k3s|rke) actions="logs k8s certs etcd" ;;
   kubeadm)      actions="k8s certs etcd" ;;
   pod)          actions="k8s" ;;
-  *)            echo "[!] Unknown distro: may not be able to collect any Kubernetes output"; return 1 ;;
+  *)            echo "[!] Unknown distro: may not be able to collect any Kubernetes output"; exit 1 ;;
 esac
 
 for action in $actions; do
