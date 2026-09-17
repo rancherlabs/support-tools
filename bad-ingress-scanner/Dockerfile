@@ -1,4 +1,4 @@
-FROM ubuntu:20.04@sha256:8feb4d8ca5354def3d8fce243717141ce31e2c428701f6682bd2fafe15388214
+FROM ubuntu:22.04@sha256:829f6df217bcbae2b371026e81711d1a787c61b2967ad09d015063663ebafbf7
 MAINTAINER Matthew Mattox <matt.mattox@suse.com>
 
 ENV DEBIAN_FRONTEND=noninteractive
