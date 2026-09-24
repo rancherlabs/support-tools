@@ -1670,13 +1670,10 @@ if [ ! "$DISTRO" = "pod" ]; then
     ubuntu)
       system-ubuntu
       ;;
-    sles)
+    sles|opensuse-leap)
       system-sles
       ;;
-    sle-micro|sl-micro)
-      system-sles
-      ;;
-    opensuse-leap)
+    sle-micro|sl-micro|opensuse-leap-micro)
       system-sles
       ;;
     mariner|azurelinux)
