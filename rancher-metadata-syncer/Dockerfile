@@ -12,7 +12,7 @@ WORKDIR /root/
 RUN /usr/local/bin/download.sh
 
 ## Building webserver
-FROM httpd:alpine@sha256:1b766f17b84026429b7cb243317b142921b24432336e798bc881c43f45ed9567
+FROM httpd:alpine@sha256:4e585da9d0125dec36d4500a9f5c5df7b2c0a01f67cb47865a91a4b05bdbec1b
 MAINTAINER Matthew Mattox matt.mattox@suse.com
 RUN  apk update && apk add --update-cache \
     wget \
