@@ -178,10 +178,12 @@ If you encounter issues, please share:
 - If there is an issue collecting via Rancher, use `KUBECONFIG` instead on every cluster individually:
   ```shell
   export KUBECONFIG="/path/to/kubeconfig.yaml"
-  ./collect.sh --downstream
+  ./collect.sh --downstream --cluster-name <test-name> --cluster-provider [k3s|rke2]
   ```
-- When doing a collection on individual cluster via `KUBECONFIG`, you must specify the type using `--upstream` or `--downstream`
-- When providing a collection via `KUBECONFIG` be sure to include the local RMS cluster.
+- You must specify the type using `--upstream` or `--downstream`.
+- Specify `--cluster-name` as well.
+- Optionally specify `--cluster-provider` to get detailed report.
+- You can use `KUBECONFIG` for non-rancher managed clusters.
 
 ### Data Collection Overview
 
