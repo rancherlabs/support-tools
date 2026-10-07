@@ -38,6 +38,9 @@ spec:
 
 ## Pod Security Policies
 
+> `PodSecurityPolicy` was deprecated in Kubernetes 1.21 and removed in 1.25.
+> On 1.25 and later, use [Pod Security Admission](#pod-security-admission-psa) instead.
+
 ### Required Permissions
 ```yaml
 apiVersion: policy/v1beta1
@@ -63,6 +66,30 @@ spec:
   fsGroup:
     rule: RunAsAny
 ```
+
+## Pod Security Admission (PSA)
+
+The data collection pods run privileged containers and mount `hostPath` volumes, so
+the namespace used by `sonobuoy` must be admitted at the `privileged` level.
+
+If the namespace you plan to use for running Sonobuoy does not currently exist, no
+action is required on your part. The Sonobuoy application will automatically create
+the namespace and grant the necessary privileges.
+
+If the namespace you plan to use for running Sonobuoy already exists, you need to
+apply labels using the following command:
+```shell
+$ kubectl label namespace sonobuoy --overwrite \
+    pod-security.kubernetes.io/enforce=privileged \
+    pod-security.kubernetes.io/audit=privileged \
+    pod-security.kubernetes.io/warn=privileged
+```
+Labeling an existing namespace only helps when it is the one passed to
+`--sonobuoy-namespace`. A leftover default `sonobuoy` namespace instead fails the
+run with `namespace already exists`; delete it rather than labeling it.
+
+Please note that the namespace used for running Sonobuoy will be deleted after
+execution.
 
 ## Network Policies
 
@@ -135,7 +162,29 @@ validation error: privileged containers are not allowed
 Add namespace exclusion for sonobuoy namespace in your policy
 ```
 
-#### 2. Host Path Mounting Blocked
+#### 2. Pod Security Admission Rejects the Pods
+```yaml
+# Error:
+pods "sonobuoy" is forbidden: violates PodSecurity "restricted:latest":
+privileged (container "XXX" must not set securityContext.privileged=true),
+allowPrivilegeEscalation != false, restricted volume types
+
+# Solution:
+The namespace predates this run and is missing the privileged enforce label.
+Delete it, or label it as shown in the Pod Security Admission section
+```
+
+Check what the namespace is currently enforcing:
+```shell
+$ kubectl get namespace sonobuoy -o jsonpath='{.metadata.labels}'
+```
+If `pod-security.kubernetes.io/enforce` is absent, the cluster default applies.
+Note that a `restricted` message here does not implicate the cluster default when
+the label is present and set to `privileged` — in that case the rejection comes
+from Kyverno, Gatekeeper, or another admission controller replicating the Pod
+Security Standards, not from PSA.
+
+#### 3. Host Path Mounting Blocked
 ```yaml
 # Error:
 hostPath volumes are not allowed
@@ -144,7 +193,7 @@ hostPath volumes are not allowed
 Modify PSP to allow hostPath volume types for sonobuoy namespace
 ```
 
-#### 3. Network Policy Blocks
+#### 4. Network Policy Blocks
 ```yaml
 # Error:
 unable to connect to sonobuoy aggregator

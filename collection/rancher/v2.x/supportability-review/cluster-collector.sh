@@ -109,6 +109,7 @@ collect_common_cluster_info() {
   jq -cr '.items[] | select(.metadata.deletionTimestamp) | .metadata.name' services.json > terminating-services
   kubectl get deploy -n cattle-system -o json > cattle-system-deploy.json
   kubectl get deploy -n cattle-fleet-system -o json > cattle-fleet-system-deploy.json
+  kubectl get deploy -n cattle-monitoring-system -o json > cattle-monitoring-system-deploy.json
   kubectl get deploy -n cattle-neuvector-system -o json > cattle-neuvector-system-deploy.json
   kubectl get deploy -n kube-system -o json > kube-system-deploy.json
   kubectl get deploy -n cert-manager -o json > cert-manager-deploy.json
@@ -127,14 +128,6 @@ collect_common_cluster_info() {
   kubectl get apps.catalog.cattle.io -n istio-system -o json > istio-system-apps.json
   if [ ! -s istio-system-apps.json ]; then
     rm istio-system-apps.json
-  fi
-  kubectl get apps.catalog.cattle.io -n cattle-monitoring-system -o json > cattle-monitoring-system-apps.json
-  if [ -s cattle-monitoring-system-apps.json ]; then
-    if [ "$(jq '.items | length' cattle-monitoring-system-apps.json)" -lt 1 ]; then
-      rm cattle-monitoring-system-apps.json
-    fi
-  else
-    rm cattle-monitoring-system-apps.json
   fi
 
   # Collect API version info
