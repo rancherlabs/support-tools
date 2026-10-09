@@ -664,8 +664,8 @@ k3s-k8s() {
     for APP_NS in "${SYSTEM_NAMESPACES[@]}"; do
       k3s kubectl get apps.catalog.cattle.io --ignore-not-found=true --namespace "$APP_NS" 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
     done
-    mkdir -p "${TMPDIR}/${DISTRO}/kubectl/settings"
-    k3s kubectl get settings.management.cattle.io ui-brand -o json > "${TMPDIR}/${DISTRO}/kubectl/settings/ui-brand.json" 2>&1
+    k3s kubectl get settings.management.cattle.io --field-selector metadata.name!=cacerts,metadata.name!=internal-cacerts --ignore-not-found=true -o json > "${TMPDIR}/${DISTRO}/kubectl/settings.json" 2>&1
+    k3s kubectl get features.management.cattle.io --ignore-not-found=true -o json > "${TMPDIR}/${DISTRO}/kubectl/features.json" 2>&1
 
     techo "Collecting system pod logs"
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
@@ -746,8 +746,8 @@ rke2-k8s() {
     for APP_NS in "${SYSTEM_NAMESPACES[@]}"; do
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get apps.catalog.cattle.io --ignore-not-found=true --namespace "$APP_NS" 2>&1 | tee -a "${TMPDIR}/${DISTRO}/kubectl/apps" "${TMPDIR}/versions" >/dev/null
     done
-    mkdir -p "${TMPDIR}/${DISTRO}/kubectl/settings"
-    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get settings.management.cattle.io ui-brand -o json > "${TMPDIR}/${DISTRO}/kubectl/settings/ui-brand.json" 2>&1
+    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get settings.management.cattle.io --field-selector metadata.name!=cacerts,metadata.name!=internal-cacerts --ignore-not-found=true -o json > "${TMPDIR}/${DISTRO}/kubectl/settings.json" 2>&1
+    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get features.management.cattle.io --ignore-not-found=true -o json > "${TMPDIR}/${DISTRO}/kubectl/features.json" 2>&1
 
     techo "Collecting rke2 system pod logs"
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
