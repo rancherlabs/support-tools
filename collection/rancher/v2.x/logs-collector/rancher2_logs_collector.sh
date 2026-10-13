@@ -1668,7 +1668,7 @@ if [ ! "$DISTRO" = "pod" ]; then
   fi
 
   case "$OSRELEASE" in
-    rhel|centos)
+    rhel|centos|ol)
       system-rhel
       ;;
     ubuntu)
