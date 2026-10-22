@@ -671,8 +671,14 @@ k3s-k8s() {
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       for SYSTEM_POD in $(k3s kubectl -n "$SYSTEM_NAMESPACE" get pods --no-headers -o custom-columns=NAME:.metadata.name); do
-        k3s kubectl -n "$SYSTEM_NAMESPACE" "$KUBECTL_SINCE_FLAG" logs --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD" 2>&1
-        k3s kubectl -n "$SYSTEM_NAMESPACE" logs --previous --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous" 2>&1
+        if [[ $SYSTEM_POD == *"coredns"* ]];
+          then
+            TIMESTAMP_FLAG="--timestamps=true"
+          else
+            TIMESTAMP_FLAG="--timestamps=false"
+        fi
+        k3s kubectl -n "$SYSTEM_NAMESPACE" "$KUBECTL_SINCE_FLAG" logs "$TIMESTAMP_FLAG" --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD" 2>&1
+        k3s kubectl -n "$SYSTEM_NAMESPACE" logs --previous "$TIMESTAMP_FLAG" --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous" 2>&1
       done
     done
 
@@ -754,8 +760,14 @@ rke2-k8s() {
     KUBECONFIG="/etc/rancher/${DISTRO}/rke2.yaml"
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       for SYSTEM_POD in $("${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" get pods --no-headers -o custom-columns=NAME:.metadata.name); do
-        "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" "$KUBECTL_SINCE_FLAG" logs --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}" 2>&1
-        "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" logs -p --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}-previous" 2>&1
+        if [[ $SYSTEM_POD == *"coredns"* ]];
+          then
+            TIMESTAMP_FLAG="--timestamps=true"
+          else
+            TIMESTAMP_FLAG="--timestamps=false"
+        fi
+        "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" "$KUBECTL_SINCE_FLAG" logs "$TIMESTAMP_FLAG" --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}" 2>&1
+        "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" logs "$TIMESTAMP_FLAG" -p --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}-previous" 2>&1
       done
     done
 
@@ -833,8 +845,14 @@ pod-k8s() {
     mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       for SYSTEM_POD in $(kubectl -n "$SYSTEM_NAMESPACE" get pods --no-headers -o custom-columns=NAME:.metadata.name); do
-        kubectl -n "$SYSTEM_NAMESPACE" "$KUBECTL_SINCE_FLAG" logs --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}" 2>&1
-        kubectl -n "$SYSTEM_NAMESPACE" logs -p --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}-previous" 2>&1
+        if [[ $SYSTEM_POD == *"coredns"* ]];
+          then
+            TIMESTAMP_FLAG="--timestamps=true"
+          else
+            TIMESTAMP_FLAG="--timestamps=false"
+        fi
+        kubectl -n "$SYSTEM_NAMESPACE" "$KUBECTL_SINCE_FLAG" logs "$TIMESTAMP_FLAG" --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}" 2>&1
+        kubectl -n "$SYSTEM_NAMESPACE" logs "$TIMESTAMP_FLAG" -p --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}-previous" 2>&1
       done
     done
   fi
@@ -881,8 +899,14 @@ kubeadm-k8s() {
   techo "Collecting k8s kubeadm system pod logs"
   for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
     for SYSTEM_POD in $(kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" get pods --no-headers -o custom-columns=NAME:.metadata.name); do
-      kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" logs --all-containers "$SYSTEM_POD" > "${TMPDIR}/kubeadm/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}" 2>&1
-      kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" logs -p --all-containers "$SYSTEM_POD" > "${TMPDIR}/kubeadm/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}-previous" 2>&1
+      if [[ $SYSTEM_POD == *"coredns"* ]];
+        then
+          TIMESTAMP_FLAG="--timestamps=true"
+        else
+          TIMESTAMP_FLAG="--timestamps=false"
+      fi
+      kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" logs "$TIMESTAMP_FLAG" --all-containers "$SYSTEM_POD" > "${TMPDIR}/kubeadm/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}" 2>&1
+      kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" logs "$TIMESTAMP_FLAG" -p --all-containers "$SYSTEM_POD" > "${TMPDIR}/kubeadm/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}-previous" 2>&1
     done
   done
   for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
