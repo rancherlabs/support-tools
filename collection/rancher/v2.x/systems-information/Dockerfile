@@ -1,5 +1,4 @@
 FROM ubuntu:26.04
-MAINTAINER Rancher Support support@rancher.com
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -yq --no-install-recommends \

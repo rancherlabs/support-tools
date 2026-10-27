@@ -1,6 +1,5 @@
 ## Running builder to download metadata files
 FROM alpine:3.24 AS builder
-MAINTAINER Matthew Mattox matt.mattox@suse.com
 RUN  apk update && apk add --update-cache \
     wget \
     bash \
@@ -13,7 +12,6 @@ RUN /usr/local/bin/download.sh
 
 ## Building webserver
 FROM httpd:2.4.69-alpine
-MAINTAINER Matthew Mattox matt.mattox@suse.com
 RUN  apk update && apk add --update-cache \
     wget \
     curl \

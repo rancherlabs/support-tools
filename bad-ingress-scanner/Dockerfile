@@ -1,5 +1,4 @@
 FROM ubuntu:26.04
-MAINTAINER Matthew Mattox <matt.mattox@suse.com>
 
 ENV DEBIAN_FRONTEND=noninteractive
 
