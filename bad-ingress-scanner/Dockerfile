@@ -8,9 +8,9 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ## Install kubectl
-ARG KUBECTL_VERSION=v1.37.1
-# renovate-local: kubectl-amd64=v1.37.1
-ARG KUBECTL_SUM_amd64=65691ff77eb6fa44c908b77a1082c9f092c3b9733b5cefabec0d1104890e21a8
+ARG KUBECTL_VERSION=v1.37.2
+# renovate-local: kubectl-amd64=v1.37.2
+ARG KUBECTL_SUM_amd64=c04487523e7aa7d1493f7808174c899db93d7a9cf57531420cd76b9bd415f8f4
 RUN curl -sSLO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && \
     echo "${KUBECTL_SUM_amd64}  kubectl" | sha256sum -c - && \
     chmod +x kubectl && \
