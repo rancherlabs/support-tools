@@ -114,7 +114,7 @@ done
 echo "Waiting for $WAIT_TIME seconds to allow for updated changes to reflect in the VMs."
 
 ## Simple progress bar
-for ((i=1; i<=$WAIT_TIME; i++)); do
+for ((i=1; i<=WAIT_TIME; i++)); do
   echo -n ". "
   sleep 1
 done
