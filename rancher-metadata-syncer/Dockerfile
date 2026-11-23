@@ -11,7 +11,7 @@ WORKDIR /root/
 RUN /usr/local/bin/download.sh
 
 ## Building webserver
-FROM httpd:2.4.69-alpine
+FROM httpd:2.4.71-alpine
 RUN  apk update && apk add --update-cache \
     wget \
     curl \
