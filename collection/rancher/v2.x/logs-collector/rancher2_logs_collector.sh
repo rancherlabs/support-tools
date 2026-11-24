@@ -587,7 +587,7 @@ copy-local-pod-logs() {
     cd /var/log/pods || exit
     for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
       if ls -d "${SYSTEM_NAMESPACE}_"* > /dev/null 2>&1; then
-        find "${SYSTEM_NAMESPACE}"_* -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp --parents -p {} "${DEST}/" \;
+        find "${SYSTEM_NAMESPACE}"_* -mtime -"${START_DAY:-$DEFAULT_LOG_DAYS}" -type f -exec cp --parents -p {} "${DEST}/" \;
       fi
     done
   )
