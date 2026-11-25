@@ -45,7 +45,16 @@ setup() {
   }
 
   techo "Created ${TMPDIR_BASE}"
-  LOGNAME="$(hostname)-$(date +'%Y-%m-%d_%H_%M_%S')"
+  # Add a suffix to the archive name when only part of the collection is run,
+  # so that cluster and node archives can be told apart
+  if [[ "${COLLECT_CLUSTER}" && ! "${COLLECT_NODE}" ]]
+    then
+      LOGNAME_SUFFIX="-cluster"
+  elif [[ "${COLLECT_NODE}" && ! "${COLLECT_CLUSTER}" ]]
+    then
+      LOGNAME_SUFFIX="-node"
+  fi
+  LOGNAME="$(hostname)${LOGNAME_SUFFIX}-$(date +'%Y-%m-%d_%H_%M_%S')"
   mkdir -p "${TMPDIR_BASE}/${LOGNAME}"
   TMPDIR="${TMPDIR_BASE}/${LOGNAME}"
   export PATH=$PATH:/usr/local/bin:/opt/rke2/bin:/opt/bin
@@ -137,6 +146,17 @@ sherlock() {
               fi
             else
               FOUND+="rke "
+          fi
+      fi
+      # kubeadm nodes may also have docker installed, so check kubeadm separately
+      if [[ -z "${DISTRO}" ]] && command -v kubeadm >/dev/null 2>&1
+        then
+          if [ -f /etc/kubernetes/kubelet.conf ]
+            then
+              DISTRO=kubeadm
+              echo "kubeadm" | tee -a "${TMPDIR}/collector-output.log"
+            else
+              FOUND+="kubeadm "
           fi
       fi
       if [ -z "${DISTRO}" ]
@@ -552,11 +572,45 @@ rke2-logs() {
 
 }
 
-rke-k8s() {
+copy-local-pod-logs() {
+
+  # Copy the pod log files of system namespaces stored on this node.
+  # Only the newest *.log is copied from each container directory (usually
+  # the active 0.log), which keeps rotated pod logs out of the archive.
+  # $1: destination directory
+  local DEST="$1"
+  if [ ! -d /var/log/pods ]
+    then
+      techo "[!] /var/log/pods not found, skipping local pod logs"
+      return
+  fi
+  mkdir -p "${DEST}"
+  (
+    cd /var/log/pods || exit
+    shopt -s nullglob
+    for ns in "${SYSTEM_NAMESPACES[@]}"; do
+      find "${ns}"_* -mindepth 1 -maxdepth 1 -type d -exec bash -c '
+        for d; do
+          newest=""
+          for f in "$d"/*.log; do
+            [ -f "$f" ] || continue
+            [ -z "$newest" ] || [ "$f" -nt "$newest" ] && newest="$f"
+          done
+          [ -n "$newest" ] && printf "%s\n" "$newest"
+        done
+      ' bash {} + 2>/dev/null
+    done | while IFS= read -r newest; do
+      cp --parents -p "$newest" "${DEST}/"
+    done
+  )
+
+}
+
+rke-k8s-node() {
 
   DOCKER_LOGS_CMD=(docker logs)
-  [ -n "$SINCE_FLAG" ] && DOCKER_LOGS_CMD+=("$SINCE_FLAG")
-  [ -n "$UNTIL_FLAG" ] && DOCKER_LOGS_CMD+=("$UNTIL_FLAG")
+  [ -n "${SINCE_FLAG[*]}" ] && DOCKER_LOGS_CMD+=("${SINCE_FLAG[@]}")
+  [ -n "${UNTIL_FLAG[*]}" ] && DOCKER_LOGS_CMD+=("${UNTIL_FLAG[@]}")
   
   techo "Collecting rancher logs"
   mkdir -p "${TMPDIR}"/rancher/{containerlogs,containerinspect}
@@ -592,6 +646,17 @@ rke-k8s() {
     done
   done
 
+  techo "Collecting nginx-proxy info"
+  if docker inspect nginx-proxy >/dev/null 2>&1; then
+    mkdir -p "${TMPDIR}/${DISTRO}/nginx-proxy"
+    docker exec nginx-proxy cat /etc/nginx/nginx.conf > "${TMPDIR}/${DISTRO}/nginx-proxy/nginx.conf" 2>&1
+  fi
+
+}
+
+rke-k8s-cluster() {
+
+  techo "Collecting rke cluster logs"
   mkdir -p "${TMPDIR}/${DISTRO}/kubectl/poddescribe"
   KUBECONFIG=/etc/kubernetes/ssl/kubecfg-kube-node.yaml
   docker exec kubelet kubectl get nodes -o wide --kubeconfig=$KUBECONFIG > "${TMPDIR}/${DISTRO}/kubectl/nodes" 2>&1
@@ -605,35 +670,59 @@ rke-k8s() {
     docker exec kubelet kubectl describe pod -n "$SYSTEM_NAMESPACE" --kubeconfig="$KUBECONFIG" > "${TMPDIR}/${DISTRO}/kubectl/poddescribe/$SYSTEM_NAMESPACE" 2>&1
   done
 
-  techo "Collecting nginx-proxy info"
-  if docker inspect nginx-proxy >/dev/null 2>&1; then
-    mkdir -p "${TMPDIR}/${DISTRO}/nginx-proxy"
-    docker exec nginx-proxy cat /etc/nginx/nginx.conf > "${TMPDIR}/${DISTRO}/nginx-proxy/nginx.conf" 2>&1
-  fi
-
 }
 
-k3s-k8s() {
+k3s-k8s-check() {
 
+  # Detect the node role, and check the kube-apiserver when cluster info is collected
   if [ -d "/var/lib/rancher/${DISTRO}/agent" ]; then
     K3S_AGENT=true
+  fi
+  if [ -d "/var/lib/rancher/${DISTRO}/server" ]; then
+    K3S_SERVER=true
+  fi
+
+  if [ ! "${COLLECT_CLUSTER}" ]; then
+    return
+  fi
+
+  if [ "${K3S_AGENT}" ]; then
     KUBECONFIG="/var/lib/rancher/${DISTRO}/agent/kubelet.kubeconfig"
     if ! k3s kubectl --kubeconfig="$KUBECONFIG" get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1; then
       API_SERVER_OFFLINE=true
       techo "[!] Kube-apiserver is offline, collecting local pod logs only"
     fi
   fi
-  if [ -d "/var/lib/rancher/${DISTRO}/server" ]; then
-    K3S_SERVER=true
-    k3s kubectl get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1
-    if [[ $? -ne 0 && ! "${API_SERVER_OFFLINE}" ]]
-      then
-        API_SERVER_OFFLINE=true
-        techo "[!] Kube-apiserver is offline, collecting local pod logs only"
+  if [ "${K3S_SERVER}" ]; then
+    if k3s kubectl get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1; then
+      API_SERVER_OFFLINE=
+    elif [[ ! "${API_SERVER_OFFLINE}" ]]; then
+      API_SERVER_OFFLINE=true
+      techo "[!] Kube-apiserver is offline, collecting local pod logs only"
     fi
   fi
 
-  if [[ "${K3S_AGENT}" && ! "${API_SERVER_OFFLINE}" ]]; then
+}
+
+k3s-k8s-node() {
+
+  # Pod logs are collected from the kube-apiserver by k3s-k8s-cluster when running on
+  # a server node with the cluster collection enabled, otherwise from local files
+  if [[ ( "${K3S_AGENT}" || "${K3S_SERVER}" ) && ( ! "${COLLECT_CLUSTER}" || ! "${K3S_SERVER}" || "${API_SERVER_OFFLINE}" ) ]]; then
+    techo "Collecting local pod logs"
+    copy-local-pod-logs "${TMPDIR}/${DISTRO}/podlogs"
+  fi
+
+}
+
+k3s-k8s-cluster() {
+
+  if [ "${API_SERVER_OFFLINE}" ]; then
+    techo "[!] Kube-apiserver is offline, skipping k3s cluster logs"
+    return
+  fi
+
+  if [ "${K3S_AGENT}" ]; then
     techo "Collecting k3s cluster logs"
     mkdir -p "${TMPDIR}/${DISTRO}/kubectl/poddescribe"
     KUBECONFIG=/var/lib/rancher/${DISTRO}/agent/k3scontroller.kubeconfig
@@ -652,7 +741,8 @@ k3s-k8s() {
     k3s kubectl --kubeconfig="$KUBECONFIG" get svc -o wide --all-namespaces > "${TMPDIR}/${DISTRO}/kubectl/services" 2>&1
   fi
 
-  if [[ "${K3S_SERVER}" && ! "${API_SERVER_OFFLINE}" ]]; then
+  if [ "${K3S_SERVER}" ]; then
+    mkdir -p "${TMPDIR}/${DISTRO}/kubectl"
     unset KUBECONFIG
 
     for OBJECT in "${K8S_OBJECTS[@]}"; do
@@ -680,41 +770,80 @@ k3s-k8s() {
         k3s kubectl -n "$SYSTEM_NAMESPACE" logs --previous "${TIMESTAMP_FLAG[@]}" --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/$SYSTEM_NAMESPACE-$SYSTEM_POD-previous" 2>&1
       done
     done
-
-  elif [[ "${K3S_AGENT}" || "${API_SERVER_OFFLINE}" ]]; then
-    mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
-    cd /var/log/pods || exit
-    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-      if ls -d "${SYSTEM_NAMESPACE}_"* > /dev/null 2>&1; then
-        find "${SYSTEM_NAMESPACE}"_* -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp --parents -p {} "${TMPDIR}/${DISTRO}/podlogs/" \;
-      fi
-    done
   fi
 
 }
 
-rke2-k8s() {
+rke2-k8s-check() {
 
+  # Detect the node role, and check the kube-apiserver when cluster info is collected
   if [ -f "${RKE2_DATA_DIR}/agent/kubelet.kubeconfig" ]; then
     RKE2_AGENT=true
+  fi
+  if [ -f "/etc/rancher/${DISTRO}/rke2.yaml" ]; then
+    RKE2_SERVER=true
+  fi
+
+  if [ ! "${COLLECT_CLUSTER}" ]; then
+    return
+  fi
+
+  if [ "${RKE2_AGENT}" ]; then
     KUBECONFIG="${RKE2_DATA_DIR}/agent/kubelet.kubeconfig"
     if ! "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1; then
         API_SERVER_OFFLINE=true
         techo "[!] Kube-apiserver is offline, collecting local pod logs only"
     fi
   fi
-  if [ -f "/etc/rancher/${DISTRO}/rke2.yaml" ]; then
-    RKE2_SERVER=true
+  if [ "${RKE2_SERVER}" ]; then
     KUBECONFIG="/etc/rancher/${DISTRO}/rke2.yaml"
-    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1
-    if [[ $? -ne 0 && ! "${API_SERVER_OFFLINE}" ]]
-      then
-        API_SERVER_OFFLINE=true
-        techo "[!] Kube-apiserver is offline, collecting local pod logs only"
+    if "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1; then
+      API_SERVER_OFFLINE=
+    elif [[ ! "${API_SERVER_OFFLINE}" ]]; then
+      API_SERVER_OFFLINE=true
+      techo "[!] Kube-apiserver is offline, collecting local pod logs only"
     fi
   fi
 
-  if [[ "${RKE2_AGENT}" && ! "${API_SERVER_OFFLINE}" ]]; then
+}
+
+rke2-k8s-node() {
+
+  # Pod logs are collected from the kube-apiserver by rke2-k8s-cluster when running on
+  # a server node with the cluster collection enabled, otherwise from local files
+  if [[ ( "${RKE2_AGENT}" || "${RKE2_SERVER}" ) && ( ! "${COLLECT_CLUSTER}" || ! "${RKE2_SERVER}" || "${API_SERVER_OFFLINE}" ) ]]; then
+    techo "Collecting local pod logs"
+    copy-local-pod-logs "${TMPDIR}/${DISTRO}/podlogs"
+  fi
+
+  if find "${RKE2_DATA_DIR}/agent/pod-manifests" -mindepth 1 -print -quit | grep -q .; then
+      techo "Collecting rke2 static pod manifests"
+      mkdir -p "${TMPDIR}/${DISTRO}/pod-manifests"
+      cp -p "${RKE2_DATA_DIR}/agent/pod-manifests/"* "${TMPDIR}/${DISTRO}/pod-manifests"
+    else
+      techo "[!] Static pod manifest directory is empty, skipping"
+  fi
+
+  techo "Collecting rke2 agent/server logs"
+  for RKE2_LOG_DIR in agent server
+    do
+      if [ -d "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs/" ]; then
+        mkdir -p "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs"
+        # Copy only the current (non-rotated) *.log files
+        find "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs" -maxdepth 1 -type f -name '*.log' -exec cp -p {} "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs/" \;
+      fi
+  done
+
+}
+
+rke2-k8s-cluster() {
+
+  if [ "${API_SERVER_OFFLINE}" ]; then
+    techo "[!] Kube-apiserver is offline, skipping rke2 cluster logs"
+    return
+  fi
+
+  if [ "${RKE2_AGENT}" ]; then
     techo "Collecting rke2 cluster logs"
     mkdir -p "${TMPDIR}/${DISTRO}/kubectl/poddescribe"
     KUBECONFIG="${RKE2_DATA_DIR}/agent/kubeproxy.kubeconfig"
@@ -733,7 +862,8 @@ rke2-k8s() {
     done
   fi
 
-  if [[ "${RKE2_SERVER}" && ! "${API_SERVER_OFFLINE}" ]]; then
+  if [ "${RKE2_SERVER}" ]; then
+    mkdir -p "${TMPDIR}/${DISTRO}/kubectl"
     KUBECONFIG="/etc/rancher/${DISTRO}/rke2.yaml"
     if [ -f /etc/cni/net.d/05-cilium.conflist ]; then
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get CiliumNetworkPolicy -A > "${TMPDIR}/${DISTRO}/kubectl/ciliumnetworkpolicy" 2>&1
@@ -768,37 +898,15 @@ rke2-k8s() {
         "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" logs --previous "${TIMESTAMP_FLAG[@]}" --all-containers "$SYSTEM_POD" > "${TMPDIR}/${DISTRO}/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}-previous" 2>&1
       done
     done
-
-  elif [[ "${RKE2_AGENT}" || "${API_SERVER_OFFLINE}" ]]; then
-    mkdir -p "${TMPDIR}/${DISTRO}/podlogs"
-    cd /var/log/pods || exit
-    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-      if ls -d "${SYSTEM_NAMESPACE}_"* > /dev/null 2>&1; then
-        find "${SYSTEM_NAMESPACE}"_* -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp --parents -p {} "${TMPDIR}/${DISTRO}/podlogs/" \;
-      fi
-    done
   fi
-
-  if find "${RKE2_DATA_DIR}/agent/pod-manifests" -mindepth 1 -print -quit | grep -q .; then
-      techo "Collecting rke2 static pod manifests"
-      mkdir -p "${TMPDIR}/${DISTRO}/pod-manifests"
-      cp -p "${RKE2_DATA_DIR}/agent/pod-manifests/"* "${TMPDIR}/${DISTRO}/pod-manifests"
-    else
-      techo "[!] Static pod manifest directory is empty, skipping"
-  fi
-
-  techo "Collecting rke2 agent/server logs"
-  for RKE2_LOG_DIR in agent server
-    do
-      if [ -d "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs/" ]; then
-        mkdir -p "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs"
-        find "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs" -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp -p {} "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs/" \;
-      fi
-  done
 
 }
 
-pod-k8s() {
+pod-k8s-check() {
+
+  if [ ! "${COLLECT_CLUSTER}" ]; then
+    return
+  fi
 
   TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
   CA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
@@ -806,6 +914,10 @@ pod-k8s() {
     API_SERVER_OFFLINE=true
     techo "[!] Kube-apiserver is offline, may not be able to collect any output"
   fi
+
+}
+
+pod-k8s-cluster() {
 
   if [[ ! "${API_SERVER_OFFLINE}" ]]; then
     techo "Collecting cluster logs"
@@ -856,9 +968,26 @@ pod-k8s() {
 
 }
 
-kubeadm-k8s() {
+kubeadm-k8s-node() {
 
   KUBEADM_STATIC_DIR="/etc/kubernetes/manifests/"
+
+  techo "Collecting k8s kubeadm local pod logs"
+  copy-local-pod-logs "${TMPDIR}/kubeadm/podlogs"
+
+  techo "Collecting k8s kubeadm static pods info and containers logs"
+  mkdir -p "${TMPDIR}/kubeadm"
+  if [ -d /var/log/containers/ ]; then
+     cp -rp /var/log/containers "${TMPDIR}/kubeadm/containers-varlogs"
+  fi
+  if [ -d $KUBEADM_STATIC_DIR ]; then
+     ls -lah $KUBEADM_STATIC_DIR > "${TMPDIR}/kubeadm/staticpodlist" 2>&1
+  fi
+
+}
+
+kubeadm-k8s-cluster() {
+
   if ! command -v kubeadm >/dev/null 2>&1; then
     techo "error: kubeadm command not found"
     exit 1
@@ -869,7 +998,21 @@ kubeadm-k8s() {
     exit 1
   fi
 
-  KUBECONFIG=${KUBECONFIG:"$USER/.kube/config"}
+  # Use $KUBECONFIG if set, otherwise ~/.kube/config, falling back to the kubeadm admin kubeconfig
+  if [ -z "${KUBECONFIG}" ]
+    then
+      if [ -f "${HOME}/.kube/config" ]
+        then
+          KUBECONFIG="${HOME}/.kube/config"
+        else
+          KUBECONFIG=/etc/kubernetes/admin.conf
+      fi
+  fi
+  if [ ! -f "${KUBECONFIG}" ]
+    then
+      techo "[!] kubeconfig ${KUBECONFIG} not found, kubectl commands may fail. Run with -C on a control plane node, or set KUBECONFIG"
+  fi
+  techo "Using kubeconfig ${KUBECONFIG}"
   techo "Collecting k8s kubeadm cluster logs"
   mkdir -p "${TMPDIR}/kubeadm/kubectl"
   kubectl --kubeconfig="$KUBECONFIG" get nodes -o wide > "${TMPDIR}/kubeadm/kubectl/nodes" 2>&1
@@ -905,25 +1048,11 @@ kubeadm-k8s() {
       kubectl --kubeconfig="$KUBECONFIG" -n "$SYSTEM_NAMESPACE" logs --previous "${TIMESTAMP_FLAG[@]}" --all-containers "$SYSTEM_POD" > "${TMPDIR}/kubeadm/podlogs/${SYSTEM_NAMESPACE}-${SYSTEM_POD}-previous" 2>&1
     done
   done
-  for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-    cd /var/log/pods || exit
-    if ls -d "${SYSTEM_NAMESPACE}_"* > /dev/null 2>&1; then
-      find "${SYSTEM_NAMESPACE}"_* -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp --parents -p {} "${TMPDIR}/kubeadm/podlogs/" \;
-    fi
-  done
 
   techo "Collecting k8s kubeadm metrics"
   kubectl --kubeconfig="$KUBECONFIG" top node > "${TMPDIR}/kubeadm/metrics_pod" 2>&1
   kubectl --kubeconfig="$KUBECONFIG" top pod > "${TMPDIR}/kubeadm/metrics_nodes" 2>&1
   kubectl --kubeconfig="$KUBECONFIG" top pod --containers=true > "${TMPDIR}/kubeadm/metrics_containers" 2>&1
-
-  techo "Collecting k8s kubeadm static pods info and containers logs"
-  if [ -d /var/log/containers/ ]; then
-     cp -rp /var/log/containers "${TMPDIR}/kubeadm/containers-varlogs"
-  fi
-  if [ -d $KUBEADM_STATIC_DIR ]; then
-     ls -lah $KUBEADM_STATIC_DIR > "${TMPDIR}/kubeadm/staticpodlist" 2>&1
-  fi
 
 }
 
@@ -994,6 +1123,7 @@ summary() {
     echo "Kernel:    $(uname -r 2>/dev/null)"
     echo "Distro:    ${DISTRO:-unknown}"
     echo "Init:      ${INIT:-unknown}"
+    echo "Scope:    ${COLLECTION_SCOPE}"
     echo "Obfuscate: ${OBFUSCATE:+enabled}"
     [ -z "${OBFUSCATE}" ] && echo "Obfuscate: disabled"
     echo
@@ -1283,8 +1413,8 @@ kubeadm-etcd() {
   KUBEADM_ETCD_CERTS="/etc/kubernetes/pki/etcd/"
 
   if ! command -v etcdctl >/dev/null 2>&1; then
-    techo "error: etcdctl command not found"
-    exit 1
+    techo "[!] etcdctl command not found, skipping kubeadm etcd collection"
+    return
   fi
 
   if [ -d "$KUBEADM_ETCD_DIR" ]; then
@@ -1298,6 +1428,67 @@ kubeadm-etcd() {
 
   if [ -d "$KUBEADM_ETCD_DIR" ]; then
     find "$KUBEADM_ETCD_DIR" -type f -exec ls -la {} \; > "${TMPDIR}/etcd/findserverdbetcd" 2>&1
+  fi
+
+}
+
+collect-node() {
+
+  # Collect the information specific to this node (OS, container runtime, local logs, certificates, etcd data)
+  if [ "$DISTRO" = "pod" ]
+    then
+      techo "[!] Running in a pod, skipping node collection. To collect node-level output, run the logs collector directly on a node"
+      return
+  fi
+
+  system-all
+  networking
+  var-log
+  if [ "$INIT" = "systemd" ]; then
+      journald-log
+  fi
+
+  case "$OSRELEASE" in
+    rhel|centos|ol)
+      system-rhel
+      ;;
+    ubuntu)
+      system-ubuntu
+      ;;
+    sles|opensuse-leap)
+      system-sles
+      ;;
+    sle-micro|sl-micro|opensuse-leap-micro)
+      system-sles
+      ;;
+    mariner|azurelinux)
+      system-azure
+      ;;
+    *)
+      echo "[!] Unsupported OS: $OSRELEASE"
+      ;;
+  esac
+
+  case "$DISTRO" in
+    rke2|k3s|rke) node_actions="logs k8s-node certs etcd" ;;
+    kubeadm)      node_actions="k8s-node certs etcd" ;;
+  esac
+
+  for action in $node_actions; do
+    "${DISTRO}-${action}"
+  done
+
+}
+
+collect-cluster() {
+
+  # Collect the information shared by the whole cluster (Kubernetes objects, pod logs via the kube-apiserver, Rancher CRDs)
+  "${DISTRO}-k8s-cluster"
+
+  if [ ! "$API_SERVER_OFFLINE" ]; then
+      provisioning-crds
+    else
+      techo "[!] Kube-apiserver is offline, skipping provisioning CRDs"
   fi
 
 }
@@ -1543,10 +1734,14 @@ cleanup() {
 help() {
 
   echo "Rancher 2.x logs-collector
-  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -r <k8s distribution> -p -f -D ]
+  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -r <k8s distribution> -p -f -D -C -N ]
 
   All flags are optional
 
+  -C    Collect cluster information only (k8s objects, pod logs via the kube-apiserver, Rancher CRDs).
+        Run once on a single server/control plane node
+  -N    Collect node information only (OS, container runtime, local logs, certificates, etcd).
+        Run on every node. When neither -C nor -N is supplied, both are collected
   -c    Custom data-dir for RKE2 (ex: -c /opt/rke2)
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -s    Start day of journald and docker log collection. Specify the number of days before the current time (ex: -s 7)
@@ -1581,8 +1776,14 @@ if [[ $EUID -ne 0 ]] && [[ "$DEV" == "" ]]
     exit 1
 fi
 
-while getopts "c:d:s:e:S:E:r:fpohD" opt; do
+while getopts "c:d:s:e:S:E:r:fpohDCN" opt; do
   case $opt in
+    C)
+      COLLECT_CLUSTER=true
+      ;;
+    N)
+      COLLECT_NODE=true
+      ;;
     c)
       FLAG_DATA_DIR="$OPTARG"
       ;;
@@ -1664,6 +1865,17 @@ fi
 
 KUBECTL_SINCE_FLAG=(--since="$(( ${START_DAY:=$DEFAULT_LOG_DAYS} * 24 ))h")
 
+# Collect both the cluster and node information when neither -C nor -N is supplied
+if [[ ! "$COLLECT_CLUSTER" && ! "$COLLECT_NODE" ]]
+  then
+    COLLECT_CLUSTER=true
+    COLLECT_NODE=true
+fi
+
+COLLECTION_SCOPE=""
+[[ "${COLLECT_CLUSTER}" ]] && COLLECTION_SCOPE="cluster"
+[[ "${COLLECT_NODE}" ]] && COLLECTION_SCOPE="${COLLECTION_SCOPE:+${COLLECTION_SCOPE}, }node"
+
 setup
 disk-space
 if [ -n "$DISK_FULL" ]
@@ -1679,51 +1891,25 @@ if [ -n "$DISK_FULL" ]
 fi
 
 sherlock
-if [ ! "$DISTRO" = "pod" ]; then
-  system-all
-  networking
-  var-log
-  if [ "$INIT" = "systemd" ]; then
-      journald-log
-  fi
-
-  case "$OSRELEASE" in
-    rhel|centos|ol)
-      system-rhel
-      ;;
-    ubuntu)
-      system-ubuntu
-      ;;
-    sles|opensuse-leap)
-      system-sles
-      ;;
-    sle-micro|sl-micro|opensuse-leap-micro)
-      system-sles
-      ;;
-    mariner|azurelinux)
-      system-azure
-      ;;
-    *)
-      echo "[!] Unsupported OS: $OSRELEASE"
-      ;;
-  esac
-fi
 
 case "$DISTRO" in
-  rke2|k3s|rke) actions="logs k8s certs etcd" ;;
-  kubeadm)      actions="k8s certs etcd" ;;
-  pod)          actions="k8s" ;;
-  *)            echo "[!] Unknown distro: may not be able to collect any Kubernetes output"; exit 1 ;;
+  rke2|k3s|rke|kubeadm|pod) ;;
+  *) echo "[!] Unknown distro: may not be able to collect any Kubernetes output"; exit 1 ;;
 esac
 
-for action in $actions; do
-  "${DISTRO}-${action}"
-done
+techo "Collection scope: ${COLLECTION_SCOPE}"
 
-if [ ! "$API_SERVER_OFFLINE" ]; then
-    provisioning-crds
-  else
-    techo "[!] Kube-apiserver is offline, skipping provisioning CRDs"
+# Detect the node role and the kube-apiserver status, used by both the node and cluster collections
+if declare -F "${DISTRO}-k8s-check" >/dev/null; then
+  "${DISTRO}-k8s-check"
+fi
+
+if [ "$COLLECT_NODE" ]; then
+  collect-node
+fi
+
+if [ "$COLLECT_CLUSTER" ]; then
+  collect-cluster
 fi
 
 summary

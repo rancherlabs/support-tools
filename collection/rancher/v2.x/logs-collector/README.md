@@ -117,10 +117,14 @@ The script will re-execute in a chroot environment and generate a `.tar.gz` arch
 
 ```
 Rancher 2.x logs-collector
-  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -e <days> -r <k8s distribution> -p -f ]
+  Usage: rancher2_logs_collector.sh [ -d <directory> -s <days> -e <days> -r <k8s distribution> -p -f -C -N ]
 
   All flags are optional
 
+  -C    Collect cluster information only (k8s objects, pod logs via the kube-apiserver, Rancher CRDs).
+        Run once on a single server/control plane node
+  -N    Collect node information only (OS, container runtime, local logs, certificates, etcd).
+        Run on every node. When neither -C nor -N is supplied, both are collected
   -c    Custom data-dir for RKE2 (ex: -c /opt/rke2)
   -d    Output directory for temporary storage and .tar.gz archive (ex: -d /var/tmp)
   -s    Start day of journald and docker log collection, # of days relative to the current day (ex: -s 7)
@@ -132,6 +136,21 @@ Rancher 2.x logs-collector
   -f    Force log collection if the minimum space isn't available
   -o    Obfuscate IP addresses and hostnames
 ```
+
+### Collecting from multiple nodes
+
+By default the script collects both cluster-wide information (kubectl output, system pod logs and Rancher CRDs) and node-specific information. When collecting from several nodes of the same cluster, use the `-C` and `-N` flags to avoid collecting the same cluster-wide information on every node:
+
+- Run once on a single server/control plane node to collect the cluster information:
+  ```bash
+  sudo bash rancher2_logs_collector.sh -C
+  ```
+- Run on every node to collect the node information:
+  ```bash
+  sudo bash rancher2_logs_collector.sh -N
+  ```
+
+The archives are named `<hostname>-cluster-<date>.tar.gz` and `<hostname>-node-<date>.tar.gz` respectively. When `-N` is used, the pod logs of the node are collected from the local `/var/log/pods` directory.
 
 ## Scope of collection
 
