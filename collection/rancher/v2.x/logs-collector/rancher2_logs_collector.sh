@@ -574,7 +574,9 @@ rke2-logs() {
 
 copy-local-pod-logs() {
 
-  # Copy the pod log files of system namespaces stored on this node
+  # Copy the pod log files of system namespaces stored on this node.
+  # Only the newest *.log is copied from each container directory (usually
+  # the active 0.log), which keeps rotated pod logs out of the archive.
   # $1: destination directory
   local DEST="$1"
   if [ ! -d /var/log/pods ]
@@ -585,10 +587,20 @@ copy-local-pod-logs() {
   mkdir -p "${DEST}"
   (
     cd /var/log/pods || exit
-    for SYSTEM_NAMESPACE in "${SYSTEM_NAMESPACES[@]}"; do
-      if ls -d "${SYSTEM_NAMESPACE}_"* > /dev/null 2>&1; then
-        find "${SYSTEM_NAMESPACE}"_* -mtime -"${START_DAY:-$DEFAULT_LOG_DAYS}" -type f -exec cp --parents -p {} "${DEST}/" \;
-      fi
+    shopt -s nullglob
+    for ns in "${SYSTEM_NAMESPACES[@]}"; do
+      find "${ns}"_* -mindepth 1 -maxdepth 1 -type d -exec bash -c '
+        for d; do
+          newest=""
+          for f in "$d"/*.log; do
+            [ -f "$f" ] || continue
+            [ -z "$newest" ] || [ "$f" -nt "$newest" ] && newest="$f"
+          done
+          [ -n "$newest" ] && printf "%s\n" "$newest"
+        done
+      ' bash {} + 2>/dev/null
+    done | while IFS= read -r newest; do
+      cp --parents -p "$newest" "${DEST}/"
     done
   )
 
@@ -817,7 +829,8 @@ rke2-k8s-node() {
     do
       if [ -d "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs/" ]; then
         mkdir -p "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs"
-        find "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs" -mtime -"${START_DAY:=$DEFAULT_LOG_DAYS}" -type f -exec cp -p {} "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs/" \;
+        # Copy only the current (non-rotated) *.log files
+        find "${RKE2_DATA_DIR}/${RKE2_LOG_DIR}/logs" -maxdepth 1 -type f -name '*.log' -exec cp -p {} "${TMPDIR}/${DISTRO}/${RKE2_LOG_DIR}-logs/" \;
       fi
   done
 
