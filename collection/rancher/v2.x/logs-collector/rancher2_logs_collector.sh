@@ -597,8 +597,8 @@ copy-local-pod-logs() {
 rke-k8s-node() {
 
   DOCKER_LOGS_CMD=(docker logs)
-  [ -n "$SINCE_FLAG" ] && DOCKER_LOGS_CMD+=("$SINCE_FLAG")
-  [ -n "$UNTIL_FLAG" ] && DOCKER_LOGS_CMD+=("$UNTIL_FLAG")
+  [ -n "${SINCE_FLAG[*]}" ] && DOCKER_LOGS_CMD+=("${SINCE_FLAG[@]}")
+  [ -n "${UNTIL_FLAG[*]}" ] && DOCKER_LOGS_CMD+=("${UNTIL_FLAG[@]}")
   
   techo "Collecting rancher logs"
   mkdir -p "${TMPDIR}"/rancher/{containerlogs,containerinspect}
@@ -682,11 +682,11 @@ k3s-k8s-check() {
     fi
   fi
   if [ "${K3S_SERVER}" ]; then
-    k3s kubectl get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1
-    if [[ $? -ne 0 && ! "${API_SERVER_OFFLINE}" ]]
-      then
-        API_SERVER_OFFLINE=true
-        techo "[!] Kube-apiserver is offline, collecting local pod logs only"
+    if k3s kubectl get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1; then
+      API_SERVER_OFFLINE=
+    elif [[ ! "${API_SERVER_OFFLINE}" ]]; then
+      API_SERVER_OFFLINE=true
+      techo "[!] Kube-apiserver is offline, collecting local pod logs only"
     fi
   fi
 
@@ -730,6 +730,7 @@ k3s-k8s-cluster() {
   fi
 
   if [ "${K3S_SERVER}" ]; then
+    mkdir -p "${TMPDIR}/${DISTRO}/kubectl"
     unset KUBECONFIG
 
     for OBJECT in "${K8S_OBJECTS[@]}"; do
@@ -784,11 +785,11 @@ rke2-k8s-check() {
   fi
   if [ "${RKE2_SERVER}" ]; then
     KUBECONFIG="/etc/rancher/${DISTRO}/rke2.yaml"
-    "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1
-    if [[ $? -ne 0 && ! "${API_SERVER_OFFLINE}" ]]
-      then
-        API_SERVER_OFFLINE=true
-        techo "[!] Kube-apiserver is offline, collecting local pod logs only"
+    if "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get --raw='/healthz' --request-timeout=5s > /dev/null 2>&1; then
+      API_SERVER_OFFLINE=
+    elif [[ ! "${API_SERVER_OFFLINE}" ]]; then
+      API_SERVER_OFFLINE=true
+      techo "[!] Kube-apiserver is offline, collecting local pod logs only"
     fi
   fi
 
@@ -849,6 +850,7 @@ rke2-k8s-cluster() {
   fi
 
   if [ "${RKE2_SERVER}" ]; then
+    mkdir -p "${TMPDIR}/${DISTRO}/kubectl"
     KUBECONFIG="/etc/rancher/${DISTRO}/rke2.yaml"
     if [ -f /etc/cni/net.d/05-cilium.conflist ]; then
       "${RKE2_DATA_DIR}"/bin/kubectl --kubeconfig="$KUBECONFIG" get CiliumNetworkPolicy -A > "${TMPDIR}/${DISTRO}/kubectl/ciliumnetworkpolicy" 2>&1
@@ -1108,7 +1110,7 @@ summary() {
     echo "Kernel:    $(uname -r 2>/dev/null)"
     echo "Distro:    ${DISTRO:-unknown}"
     echo "Init:      ${INIT:-unknown}"
-    echo "Scope:    ${COLLECT_CLUSTER:+ cluster}${COLLECT_NODE:+ node}"
+    echo "Scope:    ${COLLECTION_SCOPE}"
     echo "Obfuscate: ${OBFUSCATE:+enabled}"
     [ -z "${OBFUSCATE}" ] && echo "Obfuscate: disabled"
     echo
@@ -1857,6 +1859,10 @@ if [[ ! "$COLLECT_CLUSTER" && ! "$COLLECT_NODE" ]]
     COLLECT_NODE=true
 fi
 
+COLLECTION_SCOPE=""
+[[ "${COLLECT_CLUSTER}" ]] && COLLECTION_SCOPE="cluster"
+[[ "${COLLECT_NODE}" ]] && COLLECTION_SCOPE="${COLLECTION_SCOPE:+${COLLECTION_SCOPE}, }node"
+
 setup
 disk-space
 if [ -n "$DISK_FULL" ]
@@ -1878,7 +1884,7 @@ case "$DISTRO" in
   *) echo "[!] Unknown distro: may not be able to collect any Kubernetes output"; exit 1 ;;
 esac
 
-techo "Collection scope:${COLLECT_CLUSTER:+ cluster}${COLLECT_NODE:+ node}"
+techo "Collection scope: ${COLLECTION_SCOPE}"
 
 # Detect the node role and the kube-apiserver status, used by both the node and cluster collections
 if declare -F "${DISTRO}-k8s-check" >/dev/null; then
